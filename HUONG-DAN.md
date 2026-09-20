@@ -117,6 +117,7 @@ Nút **Export Excel** trên bảng CMS xuất file CSV (UTF-8).
 
 - Không có backend / database thật. Đơn mới chỉ tồn tại trong tab hiện tại.
 - Ảnh lưu trên trình duyệt (không gửi server). Có thể bỏ qua IMEI và ảnh.
+- Đổi ảnh tại Admin → Hình ảnh · video lưu **Supabase Storage**, trang khách mọi máy đều thấy.
 - Import Excel đầy đủ (xlsx) chưa có thư viện parse.
 - Catalog, persona pin/dây đeo chưa chốt theo file giá cuối cùng của TRIONE.
 - GitHub: [https://github.com/butphamarketing-png/trione](https://github.com/butphamarketing-png/trione)

@@ -3,9 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { resolveLogin, saveSession } from "@/lib/session";
+import { useMediaSrc } from "@/lib/use-live-media";
 
 export default function LoginPage() {
   const router = useRouter();
+  const loginBg = useMediaSrc("login-bg", "/login-bg.png");
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [show, setShow] = useState(false);
@@ -28,7 +30,7 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden" suppressHydrationWarning>
-      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url(/login-bg.png?v=7)" }} />
+      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${loginBg})` }} />
       <div className="relative flex flex-1 flex-col items-center justify-center px-4 pt-[118px] pb-24">
         <form onSubmit={submit} className="w-full max-w-[380px] rounded-2xl bg-white p-7 shadow-2xl">
           <h1 className="mb-5 text-center text-[26px] font-bold">Đăng nhập</h1>

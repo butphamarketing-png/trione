@@ -1,3 +1,7 @@
+"use client";
+
+import { useMediaSrc } from "@/lib/use-live-media";
+
 export function WatchFace({
   face = "#222",
   strap = "#c45a28",
@@ -60,7 +64,17 @@ function RoundWatch({
   );
 }
 
+const lineFallback: Record<string, string> = {
+  ultra: "/watches/line-ultra.png",
+  series: "/watches/line-series.png",
+  se: "/watches/line-se.png",
+};
+
 export function LineThumb({ kind }: { kind: string }) {
+  const src = useMediaSrc(`line:${kind}`, lineFallback[kind] ?? "");
+  if (src) {
+    return <img src={src} alt="" className="h-[92px] w-[120px] shrink-0 rounded-xl bg-[#f4f4f5] object-cover" />;
+  }
   if (kind === "ultra") {
     return (
       <div className="relative h-[92px] w-[120px] shrink-0 overflow-hidden rounded-xl bg-[#111]">
@@ -110,7 +124,13 @@ export function LineThumb({ kind }: { kind: string }) {
   );
 }
 
+const garminFallback: Record<string, string> = {
+  fenix8: "/watches/g-fenix.png",
+  fr970: "/watches/g-fr970.png",
+};
+
 export function GarminThumb({
+  id,
   face,
   strap: _strap,
   time,
@@ -122,6 +142,14 @@ export function GarminThumb({
   time: string;
   size?: number;
 }) {
+  const src = useMediaSrc(id ? `garmin:${id}` : "", garminFallback[id ?? ""] ?? "");
+  if (src) {
+    return (
+      <div className="grid h-full min-h-[72px] w-full min-w-[72px] place-items-center overflow-hidden rounded-xl bg-[#f3f3f4]">
+        <img src={src} alt="" className="h-full w-full object-contain" />
+      </div>
+    );
+  }
   return (
     <div className="grid h-full min-h-[72px] w-full min-w-[72px] place-items-center rounded-xl bg-[#f3f3f4]">
       <RoundWatch face={face} time={time} size={size} />
@@ -135,7 +163,7 @@ const modelSrc: Record<string, string> = {
 };
 
 export function ModelThumb({ id }: { id: string }) {
-  const src = modelSrc[id];
+  const src = useMediaSrc(`model:${id}`, modelSrc[id] ?? "");
   if (src) {
     return <img src={src} alt="" className="h-[88px] w-[160px] shrink-0 rounded-xl bg-[#f4f4f5] object-contain" />;
   }
