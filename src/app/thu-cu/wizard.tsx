@@ -417,7 +417,7 @@ export function TradeInWizard() {
                 <input
                   value={serial}
                   onChange={(e) => setSerial(e.target.value.toUpperCase())}
-                  className="w-full rounded-xl border border-zinc-200 border-l-[5px] border-l-[#e11d2e] px-4 py-3 outline-none"
+                  className="w-full rounded-xl border border-zinc-200 px-4 py-3 outline-none"
                   placeholder="Ví dụ: L0XXXXXXXXXX hoặc 35XXXXXXXXXXXX"
                   maxLength={18}
                 />
@@ -853,7 +853,7 @@ export function TradeInWizard() {
                   Đã chọn: <b className="text-[#e11d2e]">{model?.name}</b>
                 </>
               )}
-              {step === 4 && (serial.trim() ? serial : "Có thể bỏ qua bước này")}
+              {step === 4 && (serial.trim() ? serial : "Không bắt buộc — bấm Bỏ qua để tiếp tục")}
               {step === 5 && (
                 <>
                   Đã chọn:{" "}
@@ -899,7 +899,13 @@ export function TradeInWizard() {
                   disabled={!canNext}
                   className="rounded-xl bg-[#e11d2e] px-8 py-3 font-semibold text-white disabled:bg-zinc-300"
                 >
-                  {step === 10 ? "GỬI YÊU CẦU ĐỔI MỚI  ›" : step === 52 ? "Xác nhận  ›" : "Tiếp tục  ›"}
+                  {step === 10
+                    ? "GỬI YÊU CẦU ĐỔI MỚI  ›"
+                    : step === 52
+                      ? "Xác nhận  ›"
+                      : step === 4 && !serial.trim()
+                        ? "Bỏ qua  ›"
+                        : "Tiếp tục  ›"}
                 </button>
                 {step === 10 && (
                   <p className="mt-2 max-w-[240px] text-[11px] leading-4 text-zinc-400">
