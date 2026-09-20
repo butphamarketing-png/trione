@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { StoreFooter, WizardHeader, Stepper, CheckBox } from "@/components/store-footer";
 import { LineThumb, WatchFace, GarminThumb, ModelThumb } from "@/components/watch-face";
 import { BrandMark } from "@/components/brand-mark";
@@ -35,8 +35,6 @@ export function TradeInWizard() {
   const [battery, setBattery] = useState("good");
   const [strap, setStrap] = useState("good");
   const [photos, setPhotos] = useState<Record<string, string>>({});
-  const galleryRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
   const [garminId, setGarminId] = useState("fenix8");
   const [series, setSeries] = useState("TẤT CẢ");
   const [agreed, setAgreed] = useState(false);
@@ -171,14 +169,20 @@ export function TradeInWizard() {
     setStep((s) => Math.max(1, s - 1));
   }
 
+  function isPhotoFile(file: File) {
+    if (file.type.startsWith("image/")) return true;
+    if (!file.type) return /\.(jpe?g|png|webp|gif|heic|heif|bmp)$/i.test(file.name);
+    return false;
+  }
+
   function assignFiles(fileList: FileList | File[]) {
-    const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+    const files = Array.from(fileList).filter(isPhotoFile);
     if (!files.length) return;
     setPhotos((prev) => {
       const next = { ...prev };
       const empty = photoSlots.filter((p) => !next[p.id]);
       files.forEach((file, i) => {
-        const slot = empty[i];
+        const slot = empty[i] ?? photoSlots.find((p) => !next[p.id]);
         if (!slot) return;
         if (next[slot.id]?.startsWith("blob:")) URL.revokeObjectURL(next[slot.id]);
         next[slot.id] = URL.createObjectURL(file);
@@ -188,11 +192,16 @@ export function TradeInWizard() {
   }
 
   function setSlotPhoto(id: string, file?: File) {
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!file || !isPhotoFile(file)) return;
     setPhotos((prev) => {
       if (prev[id]?.startsWith("blob:")) URL.revokeObjectURL(prev[id]);
       return { ...prev, [id]: URL.createObjectURL(file) };
     });
+  }
+
+  function onPickPhotos(e: ChangeEvent<HTMLInputElement>) {
+    if (e.target.files?.length) assignFiles(e.target.files);
+    e.target.value = "";
   }
 
   function clearSlotPhoto(id: string) {
@@ -597,45 +606,29 @@ export function TradeInWizard() {
             sub="Không bắt buộc. Có thể tải từ máy, chụp bằng điện thoại, hoặc bỏ qua."
             chip={<DeviceChip text={deviceLabel} />}
           >
-            <input
-              ref={galleryRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files) assignFiles(e.target.files);
-                e.target.value = "";
-              }}
-            />
-            <input
-              ref={cameraRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files) assignFiles(e.target.files);
-                e.target.value = "";
-              }}
-            />
             <div className="mb-4 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => galleryRef.current?.click()}
-                className="rounded-lg bg-[#e11d2e] px-4 py-2.5 text-sm font-semibold text-white"
-              >
-                + TẢI ẢNH TỪ MÁY
-              </button>
-              <button
-                type="button"
-                onClick={() => cameraRef.current?.click()}
-                className="rounded-lg border bg-white px-4 py-2.5 text-sm"
-              >
-                📱 CHỤP TRỰC TIẾP TRÊN ĐIỆN THOẠI
-              </button>
+              <label className="relative inline-flex cursor-pointer items-center overflow-hidden rounded-lg bg-[#e11d2e] px-4 py-2.5 text-sm font-semibold text-white">
+                <input
+                  type="file"
+                  accept="image/*,.heic,.heif"
+                  multiple
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                  onChange={onPickPhotos}
+                />
+                <span className="pointer-events-none">+ TẢI ẢNH TỪ MÁY</span>
+              </label>
+              <label className="relative inline-flex cursor-pointer items-center overflow-hidden rounded-lg border bg-white px-4 py-2.5 text-sm">
+                <input
+                  type="file"
+                  accept="image/*,.heic,.heif"
+                  capture="environment"
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                  onChange={onPickPhotos}
+                />
+                <span className="pointer-events-none">📱 CHỤP TRỰC TIẾP TRÊN ĐIỆN THOẠI</span>
+              </label>
               <span className="text-xs text-zinc-400">
-                JPG, PNG · Tối đa 10 MB/ảnh · Không bắt buộc
+                JPG, PNG, HEIC · Không bắt buộc
                 <span className="mt-0.5 block">Ảnh rõ nét, đủ sáng và không bị che khuất.</span>
               </span>
             </div>
@@ -1148,18 +1141,18 @@ function PhotoCard({
           </button>
         </div>
       ) : (
-        <label className="grid h-28 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-zinc-200 text-center text-sm text-[#e11d2e]">
+        <label className="relative grid h-28 cursor-pointer place-items-center overflow-hidden rounded-xl border-2 border-dashed border-zinc-200 text-center text-sm text-[#e11d2e]">
           <input
             type="file"
-            accept="image/*"
-            className="hidden"
+            accept="image/*,.heic,.heif"
+            className="absolute inset-0 cursor-pointer opacity-0"
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) onFile(file);
               e.target.value = "";
             }}
           />
-          <span>
+          <span className="pointer-events-none">
             <span className="mb-1 block text-2xl text-zinc-300">🖼</span>
             <span>{p.hint}</span>
           </span>
