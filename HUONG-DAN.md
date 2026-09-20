@@ -40,12 +40,12 @@ Dữ liệu phiên và đơn mới lưu trong **sessionStorage của tab trình 
 1. **Thương hiệu** — Apple, Samsung, Garmin, COROS, Suunto, Amazfit, Huawei, Xiaomi.
 2. **Dòng máy** — ví dụ Apple Watch Ultra / Series / SE.
 3. **Mẫu và kích thước** — chọn đúng model.
-4. **IMEI / số sê-ri** — **không bắt buộc**, có thể bỏ trống. Nút **+ Tải ảnh từ máy** trên bước ảnh dùng để điền demo, không bắt buộc file thật.
+4. **IMEI / số sê-ri** — **không bắt buộc**, có thể bỏ trống.
 5. **Chức năng** — hoạt động tốt / có vấn đề / không hoạt động.
    - Chọn **có vấn đề** → bước phụ chọn lỗi (GPS, nhịp tim, pin, cảm ứng…).
 6. **Màn hình** — xuất sắc / xước nhẹ / hư hỏng.
 7. **Thân máy** — xuất sắc / mòn nhẹ / hư nặng.
-8. **Ảnh** — đủ **5 ảnh bắt buộc** (mặt trước, mặt sau, ngang trái, ngang phải, số serial). Bấm **+ TẢI ẢNH TỪ MÁY** để gắn ảnh demo rồi **Tiếp tục**.
+8. **Ảnh** — **không bắt buộc**. **+ TẢI ẢNH TỪ MÁY** mở thư viện; **CHỤP TRỰC TIẾP** mở camera điện thoại. Có thể **Bỏ qua**.
 9. **Chọn Garmin đổi mới** — giá thu cũ trừ vào giá niêm yết. Số **cần trả thêm** = giá Garmin − giá thu cũ (không âm).
 
 Sau bước 9:
@@ -106,7 +106,7 @@ Nút **Export Excel** trên bảng CMS xuất file CSV (UTF-8).
 ## 6. Kịch bản test nhanh
 
 1. Mở `/thu-cu` → Apple → Ultra → Ultra 2 → có thể bỏ trống IMEI hoặc nhập `H1X9Q7ABCDEF`.
-2. Chức năng tốt → màn/thân xuất sắc → **+ TẢI ẢNH TỪ MÁY** → đủ 5/5 → Tiếp tục.
+2. Chức năng tốt → màn/thân xuất sắc → bước ảnh có thể **Bỏ qua** hoặc tải/chụp ảnh thật.
 3. Giữ fēnix 8 AMOLED → Xem báo giá → xác nhận → gửi. Ghi lại mã `TRI-…`.
 4. Cùng tab trình duyệt, mở `/nhan-vien` (hoặc bấm Xem cổng nhân viên): đơn mới trên cùng, KPI tổng > 128.
 5. Vào chi tiết đơn → đổi **Đang xử lý** → Cập nhật trạng thái → lưu ghi chú.
@@ -116,7 +116,7 @@ Nút **Export Excel** trên bảng CMS xuất file CSV (UTF-8).
 ## 7. Lưu ý demo
 
 - Không có backend / database thật. Đơn mới chỉ tồn tại trong tab hiện tại.
-- Ảnh thiết bị là placeholder; bấm tải ảnh là gắn cờ “đã thêm (demo)”.
+- Ảnh lưu trên trình duyệt (không gửi server). Có thể bỏ qua IMEI và ảnh.
 - Import Excel đầy đủ (xlsx) chưa có thư viện parse.
 - Catalog, persona pin/dây đeo chưa chốt theo file giá cuối cùng của TRIONE.
 - GitHub: [https://github.com/butphamarketing-png/trione](https://github.com/butphamarketing-png/trione)

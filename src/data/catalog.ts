@@ -298,11 +298,11 @@ export const strapOptions = [
 ];
 
 export const photoSlots = [
-  { id: "front", label: "Mặt trước", required: true, hint: "+ Thêm ảnh", icon: "🖼" },
-  { id: "back", label: "Mặt sau", required: true, hint: "+ Thêm ảnh", icon: "🖼" },
-  { id: "left", label: "Mặt ngang bên trái", required: true, hint: "+ Thêm ảnh", icon: "🖼" },
-  { id: "right", label: "Mặt ngang bên phải", required: true, hint: "+ Thêm ảnh", icon: "🖼" },
-  { id: "serial", label: "Số serial", required: true, hint: "+ Chụp rõ dây số", icon: "☰" },
+  { id: "front", label: "Mặt trước", required: false, hint: "+ Thêm ảnh", icon: "🖼" },
+  { id: "back", label: "Mặt sau", required: false, hint: "+ Thêm ảnh", icon: "🖼" },
+  { id: "left", label: "Mặt ngang bên trái", required: false, hint: "+ Thêm ảnh", icon: "🖼" },
+  { id: "right", label: "Mặt ngang bên phải", required: false, hint: "+ Thêm ảnh", icon: "🖼" },
+  { id: "serial", label: "Số serial", required: false, hint: "+ Chụp rõ dây số", icon: "☰" },
   { id: "defect", label: "Lỗi ngoại quan", required: false, hint: "+ Thêm ảnh cận cảnh", icon: "◌" },
   { id: "accessories", label: "Phụ kiện", required: false, hint: "+ Dây đeo, sạc, hộp…", icon: "▢" },
 ];

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { StoreFooter, WizardHeader, Stepper, CheckBox } from "@/components/store-footer";
 import { LineThumb, WatchFace, GarminThumb, ModelThumb } from "@/components/watch-face";
 import { BrandMark } from "@/components/brand-mark";
@@ -34,7 +34,9 @@ export function TradeInWizard() {
   const [body, setBody] = useState("excellent");
   const [battery, setBattery] = useState("good");
   const [strap, setStrap] = useState("good");
-  const [photos, setPhotos] = useState<Record<string, boolean>>({});
+  const [photos, setPhotos] = useState<Record<string, string>>({});
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [garminId, setGarminId] = useState("fenix8");
   const [series, setSeries] = useState("TẤT CẢ");
   const [agreed, setAgreed] = useState(false);
@@ -65,7 +67,7 @@ export function TradeInWizard() {
   });
   const tradeIn = model?.prices[grade] ?? 0;
   const due = Math.max(0, garmin.listPrice - tradeIn);
-  const requiredPhotos = photoSlots.filter((p) => p.required).filter((p) => photos[p.id]).length;
+  const photoCount = photoSlots.filter((p) => photos[p.id]).length;
   const visibleGarmin = garminNew.filter((g) => {
     const bySeries = series === "TẤT CẢ" || g.series === series;
     const byQ = !garminQ.trim() || `${g.name} ${g.specs} ${g.series}`.toLowerCase().includes(garminQ.toLowerCase());
@@ -87,11 +89,11 @@ export function TradeInWizard() {
     if (step === 52) return issueIds.length > 0;
     if (step === 6) return !!screen;
     if (step === 7) return !!body;
-    if (step === 8) return requiredPhotos >= 5;
+    if (step === 8) return true;
     if (step === 9) return !!garminId;
     if (step === 10) return agreed;
     return true;
-  }, [step, brandId, otherBrand, lineId, modelId, serial, fn, issueIds, screen, body, battery, strap, requiredPhotos, garminId, agreed]);
+  }, [step, brandId, otherBrand, lineId, modelId, serial, fn, issueIds, screen, body, battery, strap, garminId, agreed]);
 
   function next() {
     if (step === 1 && brandId === "other") {
@@ -138,7 +140,7 @@ export function TradeInWizard() {
         imeiOld: serial.trim() || "Chưa nhập",
         grade: `loại ${grade}`,
         tags,
-        photoCount: requiredPhotos,
+        photoCount,
         newDevice: garmin.name,
         newSpecs: garmin.specs,
         newPrice: garmin.listPrice,
@@ -167,6 +169,39 @@ export function TradeInWizard() {
       return;
     }
     setStep((s) => Math.max(1, s - 1));
+  }
+
+  function assignFiles(fileList: FileList | File[]) {
+    const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+    if (!files.length) return;
+    setPhotos((prev) => {
+      const next = { ...prev };
+      const empty = photoSlots.filter((p) => !next[p.id]);
+      files.forEach((file, i) => {
+        const slot = empty[i];
+        if (!slot) return;
+        if (next[slot.id]?.startsWith("blob:")) URL.revokeObjectURL(next[slot.id]);
+        next[slot.id] = URL.createObjectURL(file);
+      });
+      return next;
+    });
+  }
+
+  function setSlotPhoto(id: string, file?: File) {
+    if (!file || !file.type.startsWith("image/")) return;
+    setPhotos((prev) => {
+      if (prev[id]?.startsWith("blob:")) URL.revokeObjectURL(prev[id]);
+      return { ...prev, [id]: URL.createObjectURL(file) };
+    });
+  }
+
+  function clearSlotPhoto(id: string) {
+    setPhotos((prev) => {
+      if (prev[id]?.startsWith("blob:")) URL.revokeObjectURL(prev[id]);
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   }
 
   if (submitted) {
@@ -559,41 +594,71 @@ export function TradeInWizard() {
         {step === 8 && (
           <Section
             title="Chụp hình ảnh thiết bị"
-            sub="Ghi lại tình trạng thực tế của đồng hồ để kiểm tra và xác nhận giá thu cũ."
+            sub="Không bắt buộc. Có thể tải từ máy, chụp bằng điện thoại, hoặc bỏ qua."
             chip={<DeviceChip text={deviceLabel} />}
           >
+            <input
+              ref={galleryRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) assignFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <input
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) assignFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() =>
-                  setPhotos((prev) => {
-                    const next = { ...prev };
-                    photoSlots.filter((p) => p.required).forEach((p) => {
-                      next[p.id] = true;
-                    });
-                    return next;
-                  })
-                }
+                onClick={() => galleryRef.current?.click()}
                 className="rounded-lg bg-[#e11d2e] px-4 py-2.5 text-sm font-semibold text-white"
               >
                 + TẢI ẢNH TỪ MÁY
               </button>
-              <button type="button" className="rounded-lg border bg-white px-4 py-2.5 text-sm">
+              <button
+                type="button"
+                onClick={() => cameraRef.current?.click()}
+                className="rounded-lg border bg-white px-4 py-2.5 text-sm"
+              >
                 📱 CHỤP TRỰC TIẾP TRÊN ĐIỆN THOẠI
               </button>
               <span className="text-xs text-zinc-400">
-                JPG, PNG · Tối đa 10 MB/ảnh
+                JPG, PNG · Tối đa 10 MB/ảnh · Không bắt buộc
                 <span className="mt-0.5 block">Ảnh rõ nét, đủ sáng và không bị che khuất.</span>
               </span>
             </div>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               {photoSlots.slice(0, 4).map((p) => (
-                <PhotoCard key={p.id} p={p} on={!!photos[p.id]} onToggle={() => setPhotos((prev) => ({ ...prev, [p.id]: !prev[p.id] }))} />
+                <PhotoCard
+                  key={p.id}
+                  p={p}
+                  src={photos[p.id]}
+                  onFile={(file) => setSlotPhoto(p.id, file)}
+                  onClear={() => clearSlotPhoto(p.id)}
+                />
               ))}
             </div>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {photoSlots.slice(4).map((p) => (
-                <PhotoCard key={p.id} p={p} on={!!photos[p.id]} onToggle={() => setPhotos((prev) => ({ ...prev, [p.id]: !prev[p.id] }))} />
+                <PhotoCard
+                  key={p.id}
+                  p={p}
+                  src={photos[p.id]}
+                  onFile={(file) => setSlotPhoto(p.id, file)}
+                  onClear={() => clearSlotPhoto(p.id)}
+                />
               ))}
             </div>
             <p className="mt-3 text-xs text-zinc-400">Ảnh chỉ được dùng để kiểm tra và xác nhận giao dịch thu cũ.</p>
@@ -777,7 +842,7 @@ export function TradeInWizard() {
                       </span>
                     </div>
                     <p className="mt-2 text-xs text-zinc-500">
-                      Serial: {serial.trim() || "Chưa nhập"} · {requiredPhotos} ảnh đã tải lên
+                      Serial: {serial.trim() || "Chưa nhập"} · {photoCount} ảnh đã tải lên
                     </p>
                   </div>
                 </div>
@@ -874,7 +939,7 @@ export function TradeInWizard() {
               )}
               {step === 8 && (
                 <>
-                  Ảnh bắt buộc {requiredPhotos} / <b className="text-[#e11d2e]">5</b>
+                  {photoCount ? `${photoCount} ảnh đã thêm · không bắt buộc` : "Không bắt buộc — bấm Bỏ qua để tiếp tục"}
                 </>
               )}
               {step === 52 && (
@@ -903,7 +968,7 @@ export function TradeInWizard() {
                     ? "GỬI YÊU CẦU ĐỔI MỚI  ›"
                     : step === 52
                       ? "Xác nhận  ›"
-                      : step === 4 && !serial.trim()
+                      : (step === 4 && !serial.trim()) || (step === 8 && photoCount === 0)
                         ? "Bỏ qua  ›"
                         : "Tiếp tục  ›"}
                 </button>
@@ -1056,35 +1121,50 @@ function IssueGlyph({ id }: { id: string }) {
 
 function PhotoCard({
   p,
-  on,
-  onToggle,
+  src,
+  onFile,
+  onClear,
 }: {
-  p: { id: string; label: string; required: boolean; hint: string };
-  on: boolean;
-  onToggle: () => void;
+  p: { id: string; label: string; hint: string };
+  src?: string;
+  onFile: (file: File) => void;
+  onClear: () => void;
 }) {
   return (
-    <button onClick={onToggle} className="rounded-2xl bg-white p-3 text-left shadow-sm">
+    <div className="rounded-2xl bg-white p-3 text-left shadow-sm">
       <div className="mb-2 flex items-center justify-between text-[11px]">
         <span className="font-semibold">{p.label}</span>
-        <span className={`rounded-full px-2 py-0.5 ${p.required ? "bg-rose-50 text-trione" : "bg-zinc-100 text-zinc-400"}`}>
-          {p.required ? "BẮT BUỘC" : "TÙY CHỌN"}
-        </span>
+        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-zinc-400">TÙY CHỌN</span>
       </div>
-      <div
-        className={`grid h-28 place-items-center rounded-xl border-2 border-dashed text-center text-sm ${
-          on ? "border-emerald-400 bg-emerald-50 text-emerald-700" : "border-zinc-200 text-[#e11d2e]"
-        }`}
-      >
-        {on ? (
-          "Đã thêm (demo)"
-        ) : (
-          <>
+      {src ? (
+        <div className="relative">
+          <img src={src} alt={p.label} className="h-28 w-full rounded-xl object-cover" />
+          <button
+            type="button"
+            onClick={onClear}
+            className="absolute top-1 right-1 rounded bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-600"
+          >
+            Xóa
+          </button>
+        </div>
+      ) : (
+        <label className="grid h-28 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-zinc-200 text-center text-sm text-[#e11d2e]">
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onFile(file);
+              e.target.value = "";
+            }}
+          />
+          <span>
             <span className="mb-1 block text-2xl text-zinc-300">🖼</span>
             <span>{p.hint}</span>
-          </>
-        )}
-      </div>
-    </button>
+          </span>
+        </label>
+      )}
+    </div>
   );
 }
