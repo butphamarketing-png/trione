@@ -82,7 +82,7 @@ export function TradeInWizard() {
     if (step === 1) return brandId === "other" ? otherBrand.trim().length >= 2 : !!brandId;
     if (step === 2) return brandId === "other" || !!lineId;
     if (step === 3) return brandId === "other" || !!modelId;
-    if (step === 4) return serial.trim().length >= 6;
+    if (step === 4) return true;
     if (step === 5) return !!fn;
     if (step === 52) return issueIds.length > 0;
     if (step === 6) return !!screen;
@@ -135,7 +135,7 @@ export function TradeInWizard() {
           brandId === "other"
             ? `${otherBrand.trim()} · sẽ thẩm định tại cửa hàng`
             : `${model?.name ?? ""} · ${model?.specs ?? ""}`,
-        imeiOld: serial.trim(),
+        imeiOld: serial.trim() || "Chưa nhập",
         grade: `loại ${grade}`,
         tags,
         photoCount: requiredPhotos,
@@ -405,12 +405,14 @@ export function TradeInWizard() {
         {step === 4 && (
           <Section
             title="Nhập IMEI hoặc số sê-ri"
-            sub="Dùng số sê-ri cho đồng hồ GPS. Mẫu có kết nối di động có thể hiển thị thêm IMEI."
+            sub="Không bắt buộc. Có thể bỏ qua và bổ sung khi thẩm định tại cửa hàng."
             chip={<DeviceChip text={deviceLabel} />}
           >
             <div className="rounded-2xl bg-white p-6">
-              <p className="text-xs font-semibold tracking-wide text-zinc-500">IMEI HOẶC SỐ SÊ-RI</p>
-              <p className="mb-2 text-xs text-zinc-400">Nhập chính xác mã được hiển thị trên thiết bị hoặc hộp sản phẩm.</p>
+              <p className="text-xs font-semibold tracking-wide text-zinc-500">
+                IMEI HOẶC SỐ SÊ-RI <span className="font-medium text-zinc-400">· KHÔNG BẮT BUỘC</span>
+              </p>
+              <p className="mb-2 text-xs text-zinc-400">Nếu có mã trên thiết bị hoặc hộp sản phẩm, nhập để nhân viên đối chiếu nhanh hơn.</p>
               <div className="relative">
                 <input
                   value={serial}
@@ -775,7 +777,7 @@ export function TradeInWizard() {
                       </span>
                     </div>
                     <p className="mt-2 text-xs text-zinc-500">
-                      Serial: {serial.trim() || "H1X9***Q7"} · {requiredPhotos} ảnh đã tải lên
+                      Serial: {serial.trim() || "Chưa nhập"} · {requiredPhotos} ảnh đã tải lên
                     </p>
                   </div>
                 </div>
@@ -851,7 +853,7 @@ export function TradeInWizard() {
                   Đã chọn: <b className="text-[#e11d2e]">{model?.name}</b>
                 </>
               )}
-              {step === 4 && (serial.trim() ? serial : "Nhập mã để tiếp tục")}
+              {step === 4 && (serial.trim() ? serial : "Có thể bỏ qua bước này")}
               {step === 5 && (
                 <>
                   Đã chọn:{" "}
