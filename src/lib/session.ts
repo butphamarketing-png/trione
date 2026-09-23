@@ -1,3 +1,5 @@
+import { readAccounts, roleSession } from "@/lib/accounts";
+
 export type DemoRole = "admin" | "staff" | "ctv";
 
 export type DemoSession = {
@@ -27,13 +29,7 @@ export function clearSession() {
 }
 
 export function resolveLogin(user: string, pass: string): DemoSession | null {
-  if (pass !== "123456") return null;
-  const u = user.trim().toLowerCase();
-  if (u === "admin" || u.includes("admin")) {
-    return { user: "admin", role: "admin", name: "Admin TRIONE", title: "Quản trị hệ thống" };
-  }
-  if (u === "sala.hcm" || u.includes("ctv") || u.includes("sala")) {
-    return { user: "sala.hcm", role: "ctv", name: "CTV Sala", title: "Cộng tác viên" };
-  }
-  return { user: "nv.anh", role: "staff", name: "Nguyễn Minh Anh", title: "Nhân viên thẩm định" };
+  const account = readAccounts().find((item) => item.user.toLowerCase() === user.trim().toLowerCase());
+  if (!account || account.password !== pass || account.status !== "Hoạt động") return null;
+  return roleSession(account);
 }

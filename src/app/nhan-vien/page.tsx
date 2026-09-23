@@ -1,68 +1,73 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { StaffRequestTable } from "@/components/staff-request-table";
-import { useLiveKpis, useLiveRequests } from "@/lib/use-live-requests";
+import { readSession, type DemoSession } from "@/lib/session";
+import { useLiveRequests } from "@/lib/use-live-requests";
+
+const cards = [
+  { key: "all", label: "Yêu cầu", href: "/nhan-vien/yeu-cau", hint: "Toàn bộ yêu cầu thu cũ" },
+  { key: "dang-cho-duyet", label: "Đang chờ duyệt", href: "/nhan-vien/yeu-cau?trang-thai=dang-cho-duyet", hint: "Đơn mới, chưa được duyệt" },
+  { key: "chua-duyet", label: "Chưa duyệt", href: "/nhan-vien/yeu-cau?trang-thai=chua-duyet", hint: "Đơn không được duyệt" },
+  { key: "da-duyet", label: "Đã duyệt", href: "/nhan-vien/yeu-cau?trang-thai=da-duyet", hint: "Đơn đã duyệt" },
+] as const;
 
 export default function StaffDashboard() {
   const live = useLiveRequests();
-  const stats = useLiveKpis();
+  const [me, setMe] = useState<DemoSession | null>(null);
+  useEffect(() => {
+    setMe(readSession());
+  }, []);
+  const counts = {
+    all: live.length,
+    "dang-cho-duyet": live.filter((item) => item.status === "dang-cho-duyet").length,
+    "chua-duyet": live.filter((item) => item.status === "chua-duyet").length,
+    "da-duyet": live.filter((item) => item.status === "da-duyet").length,
+  };
+  const mine = live.filter((item) => {
+    if (!me) return false;
+    const source = item.source.toLowerCase();
+    return item.username === me.user || source.includes(me.user) || (source.includes("nhân viên") && source.includes(me.name.toLowerCase()));
+  });
+
   return (
     <div>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[26px] font-bold">Bảng điều khiển nhân viên</h1>
-          <p className="text-sm text-zinc-500">Tổng quan yêu cầu thu cũ và công việc xử lý hôm nay</p>
+          <h1 className="text-[26px] font-bold">Bảng điều khiển</h1>
+          <p className="text-sm text-zinc-500">Tạo yêu cầu thu cũ và theo dõi công việc của bạn</p>
         </div>
         <Link href="/thu-cu" className="rounded-lg bg-[#e11d2e] px-4 py-2.5 text-sm font-semibold text-white">
           ▣ Tạo yêu cầu mới
         </Link>
       </div>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          [stats.total, "Tổng yêu cầu", stats.totalDelta, "text-emerald-600"],
-          [stats.waiting, "Chờ thẩm định", stats.waitingHint, "text-amber-600"],
-          [stats.assessing, "Đang thẩm định", stats.assessingHint, "text-sky-700"],
-          [stats.doneMonth, "Hoàn tất trong tháng", stats.doneHint, "text-green-600"],
-        ].map(([n, l, h, c]) => (
-          <div key={String(l)} className="rounded-2xl bg-white px-5 py-4">
-            <p className="text-sm text-zinc-500">{l}</p>
-            <p className="mt-2 text-[32px] leading-none font-bold">{n}</p>
-            <p className={`mt-2 text-xs ${c}`}>{h}</p>
-          </div>
+        {cards.map((card) => (
+          <Link key={card.key} href={card.href} className="rounded-2xl bg-white px-5 py-4 hover:ring-1 hover:ring-[#e11d2e]">
+            <p className="text-sm text-zinc-500">{card.label}</p>
+            <p className="mt-2 text-[32px] leading-none font-bold">{counts[card.key]}</p>
+            <p className="mt-2 text-xs text-zinc-400">{card.hint}</p>
+          </Link>
         ))}
-      </div>
-      <div className="mt-5 flex items-center justify-between rounded-2xl bg-[#fff8ee] p-5">
-        <div>
-          <p className="font-semibold">Thao tác nhanh</p>
-          <p className="text-sm text-zinc-500">Tạo mới và tiếp nhận yêu cầu thu cũ của khách hàng</p>
-        </div>
-        <Link href="/thu-cu" className="rounded-lg bg-[#e11d2e] px-4 py-2.5 text-sm font-semibold text-white">
-          ▣ Tạo yêu cầu thu cũ
-        </Link>
       </div>
       <div className="mt-5 rounded-2xl bg-white p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="font-semibold">Yêu cầu gần đây</p>
-            <p className="text-xs text-zinc-500">Các yêu cầu thu cũ mới nhất được phân công cho bạn</p>
+            <p className="font-semibold">Lịch sử tạo yêu cầu</p>
+            <p className="text-xs text-zinc-500">Các yêu cầu thu cũ do tài khoản này tạo</p>
           </div>
-          <Link href="/nhan-vien/yeu-cau" className="text-sm text-zinc-600">
-            Xem tất cả →
+          <Link href="/nhan-vien/yeu-cau" className="text-sm font-medium text-[#e11d2e]">
+            Yêu cầu thu cũ →
           </Link>
         </div>
-        <StaffRequestTable />
-        <div className="mt-4 flex items-center justify-between text-xs text-zinc-400">
-          <span>Hiển thị {live.length} yêu cầu trên bảng này</span>
-          <span className="flex gap-2">
-            <button type="button" className="rounded-full border px-2 py-1">
-              ‹
-            </button>
-            <button type="button" className="rounded-full border px-2 py-1">
-              ›
-            </button>
-          </span>
-        </div>
+        {mine.length ? (
+          <StaffRequestTable items={mine} />
+        ) : (
+          <p className="rounded-xl bg-zinc-50 px-4 py-6 text-sm text-zinc-500">
+            Chưa có yêu cầu do bạn tạo. Bấm Tạo yêu cầu mới để lập yêu cầu thu cũ.
+          </p>
+        )}
       </div>
     </div>
   );

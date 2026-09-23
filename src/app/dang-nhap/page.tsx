@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { resolveLogin, saveSession } from "@/lib/session";
 import { useMediaSrc } from "@/lib/use-live-media";
+import { useSiteSettings } from "@/lib/site-settings";
 
 export default function LoginPage() {
   const router = useRouter();
   const loginBg = useMediaSrc("login-bg", "/login-bg.png");
+  const site = useSiteSettings();
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [show, setShow] = useState(false);
@@ -21,7 +23,7 @@ export default function LoginPage() {
     }
     const session = resolveLogin(user, pass);
     if (!session) {
-      setErr("Sai tài khoản hoặc mật khẩu demo (123456).");
+      setErr("Sai tài khoản, mật khẩu, hoặc tài khoản đã ngưng.");
       return;
     }
     saveSession(session);
@@ -65,15 +67,15 @@ export default function LoginPage() {
           <p className="mt-4 text-center text-[12px] leading-5 text-zinc-500">
             Trong trường hợp có vấn đề vui lòng truy cập
             <br />
-            <span className="font-bold text-[#e11d2e]">TRIONE.VN</span> để được hỗ trợ
+            <span className="font-bold text-[#e11d2e]">{site.company}</span> để được hỗ trợ
           </p>
           <p className="mt-3 text-center text-[11px] text-zinc-400">Demo: nv.anh · sala.hcm · admin / 123456</p>
         </form>
       </div>
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 bg-[#e11d2e] px-6 py-2.5 text-[11px] font-semibold tracking-wide text-white">
-        <span>TRIONE.VN</span>
-        <span className="text-center font-medium">275 Bùi Đình Túy, Bình Thạnh, TP. Hồ Chí Minh</span>
-        <span>CHẠY KHI CÒN CÓ THỂ</span>
+        <span>{site.company}</span>
+        <span className="text-center font-medium">{site.address}</span>
+        <span>{site.slogan}</span>
       </div>
     </div>
   );

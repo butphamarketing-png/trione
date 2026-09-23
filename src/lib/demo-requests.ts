@@ -1,4 +1,4 @@
-import { customers, kpis, requests, type RequestStatus, type TradeRequest } from "@/data/staff";
+import { customers, kpis, normalizeRequestStatus, requests, type RequestStatus, type TradeRequest } from "@/data/staff";
 
 const KEY = "trione-demo-requests";
 
@@ -30,9 +30,13 @@ function load(): Store {
   }
 }
 
+function withStatus(request: TradeRequest): TradeRequest {
+  return { ...request, status: normalizeRequestStatus(request.status) };
+}
+
 function computeAll(store: Store): TradeRequest[] {
-  const seeded = requests.map((r) => ({ ...r, ...store.overrides[r.id] }));
-  const extras = store.extra.map((r) => ({ ...r, ...store.overrides[r.id] }));
+  const seeded = requests.map((r) => withStatus({ ...r, ...store.overrides[r.id] }));
+  const extras = store.extra.map((r) => withStatus({ ...r, ...store.overrides[r.id] }));
   return [...extras, ...seeded];
 }
 
@@ -101,11 +105,11 @@ export function kpisFrom(live: TradeRequest[]) {
   return {
     total: kpis.total + extra,
     totalDelta: kpis.totalDelta,
-    waiting: Math.max(0, kpis.waiting + delta("cho-tham-dinh")),
+    waiting: Math.max(0, kpis.waiting + delta("dang-cho-duyet")),
     waitingHint: kpis.waitingHint,
-    assessing: Math.max(0, kpis.assessing + delta("dang-xu-ly")),
+    assessing: Math.max(0, kpis.assessing + delta("chua-duyet")),
     assessingHint: kpis.assessingHint,
-    doneMonth: Math.max(0, kpis.doneMonth + delta("hoan-tat")),
+    doneMonth: Math.max(0, kpis.doneMonth + delta("da-duyet")),
     doneHint: kpis.doneHint,
   };
 }

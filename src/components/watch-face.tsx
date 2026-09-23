@@ -1,5 +1,6 @@
 "use client";
 
+import { MarkedImage } from "@/components/store-footer";
 import { useMediaSrc } from "@/lib/use-live-media";
 
 export function WatchFace({
@@ -73,7 +74,7 @@ const lineFallback: Record<string, string> = {
 export function LineThumb({ kind }: { kind: string }) {
   const src = useMediaSrc(`line:${kind}`, lineFallback[kind] ?? "");
   if (src) {
-    return <img src={src} alt="" className="h-[92px] w-[120px] shrink-0 rounded-xl bg-[#f4f4f5] object-cover" />;
+    return <MarkedImage src={src} className="h-[92px] w-[120px] shrink-0 rounded-xl bg-[#f4f4f5] object-cover" />;
   }
   if (kind === "ultra") {
     return (
@@ -146,7 +147,7 @@ export function GarminThumb({
   if (src) {
     return (
       <div className="grid h-full min-h-[72px] w-full min-w-[72px] place-items-center overflow-hidden rounded-xl bg-[#f3f3f4]">
-        <img src={src} alt="" className="h-full w-full object-contain" />
+        <MarkedImage src={src} className="h-full w-full object-contain" />
       </div>
     );
   }
@@ -165,7 +166,7 @@ const modelSrc: Record<string, string> = {
 export function ModelThumb({ id }: { id: string }) {
   const src = useMediaSrc(`model:${id}`, modelSrc[id] ?? "");
   if (src) {
-    return <img src={src} alt="" className="h-[88px] w-[160px] shrink-0 rounded-xl bg-[#f4f4f5] object-contain" />;
+    return <MarkedImage src={src} className="h-[88px] w-[160px] shrink-0 rounded-xl bg-[#f4f4f5] object-contain" />;
   }
   return (
     <div className="flex h-[88px] w-[160px] shrink-0 items-center justify-center gap-1 rounded-xl bg-[#f4f4f5]">

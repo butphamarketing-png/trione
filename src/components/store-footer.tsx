@@ -1,5 +1,7 @@
 "use client";
 
+import { mapEmbedSrc, phoneHref, useSiteSettings } from "@/lib/site-settings";
+
 export function TrioneMark({
   size = 48,
   light = false,
@@ -85,18 +87,48 @@ export function Stepper({ current, doneAll }: { current: number; doneAll?: boole
   );
 }
 
+export function MarkedImage({ src, alt = "", className = "" }: { src: string; alt?: string; className?: string }) {
+  const watermark = useSiteSettings().watermark;
+  if (!watermark) return <img src={src} alt={alt} className={className} loading="lazy" decoding="async" />;
+  return (
+    <span className={`relative inline-flex overflow-hidden ${className}`}>
+      <img src={src} alt={alt} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+      <img src={watermark} alt="" className="pointer-events-none absolute right-1 bottom-1 h-5 w-5 object-contain" />
+    </span>
+  );
+}
+
+export function BrandLogo({ size = 48, light = false }: { size?: number; light?: boolean }) {
+  const site = useSiteSettings();
+  if (site.logo) {
+    return <img src={site.logo} alt={site.company} width={size} height={size} className="object-contain" style={{ width: size, height: size }} />;
+  }
+  return <TrioneMark size={size} light={light} />;
+}
+
 export function StoreFooter() {
+  const site = useSiteSettings();
+  const map = mapEmbedSrc(site.map);
+  const socials = [
+    { href: site.facebook, label: "Facebook", className: "bg-[#1877f2] text-white", text: "f", optional: false },
+    { href: site.zalo, label: "Zalo", className: "bg-[#0068ff] text-white text-[10px]", text: "Zalo", optional: false },
+    { href: site.youtube, label: "Youtube", className: "bg-[#ff0033] text-white", text: "▶", optional: true },
+    { href: site.instagram, label: "Instagram", className: "bg-gradient-to-br from-yellow-400 to-pink-600 text-white", text: "◎", optional: false },
+    { href: site.tiktok, label: "Tiktok", className: "bg-black text-white", text: "♪", optional: true },
+  ].filter((item) => item.href || !item.optional);
   return (
     <footer className="bg-[#0a0a0a] text-white mt-auto">
       <div className="mx-auto max-w-6xl px-8 py-12 grid gap-10 md:grid-cols-4">
         <div>
-          <div className="mb-5 grid h-[88px] w-[88px] place-items-center rounded-full border-[5px] border-[#e11d2e] bg-transparent">
-            <span className="text-center text-[11px] font-extrabold leading-tight">
-              TRIONE.VN
-            </span>
-          </div>
+          {site.logo ? (
+            <img src={site.logo} alt={site.company} className="mb-5 h-[88px] w-[88px] rounded-full object-contain" />
+          ) : (
+            <div className="mb-5 grid h-[88px] w-[88px] place-items-center rounded-full border-[5px] border-[#e11d2e] bg-transparent">
+              <span className="px-2 text-center text-[11px] font-extrabold leading-tight">{site.company}</span>
+            </div>
+          )}
           <p className="text-sm font-bold">ĐĂNG KÝ NHẬN TIN</p>
-          <p className="text-xs text-zinc-400 mt-1 mb-3">Nhận ưu đãi và tin tức mới nhất từ TRIONE</p>
+          <p className="text-xs text-zinc-400 mt-1 mb-3">Nhận ưu đãi và tin tức mới nhất từ {site.company}</p>
           <div className="flex border border-zinc-500 max-w-[220px]">
             <input className="flex-1 bg-transparent px-3 py-2 text-sm outline-none" placeholder="Email của bạn..." />
             <button className="px-3 text-lg" aria-label="Gửi">
@@ -105,18 +137,31 @@ export function StoreFooter() {
           </div>
         </div>
         <div>
-          <p className="font-bold mb-3">TRIONE.VN PHYSICAL STORE</p>
+          <p className="font-bold mb-3">{site.company} PHYSICAL STORE</p>
           <p className="text-[13px] text-zinc-400 leading-6">
-            Địa chỉ: 300/41/13A Nguyễn Thái Sơn,
+            Địa chỉ: {site.address}
             <br />
-            Phường Hạnh Thông, Thành phố Hồ Chí Minh, Việt Nam.
+            Email: {site.email}
             <br />
-            Email: trionevn@outlook.com
+            Điện thoại:{" "}
+            <a href={phoneHref(site.phone)} className="font-semibold text-white">
+              {site.phone}
+            </a>
             <br />
-            Hotline: <span className="text-white font-semibold">0705.825.888</span>
+            Hotline:{" "}
+            <a href={phoneHref(site.hotline)} className="font-semibold text-white">
+              {site.hotline}
+            </a>
             <br />
-            Website: https://trione.vn/
+            Website: {site.website}
+            {site.hours ? (
+              <>
+                <br />
+                Giờ mở cửa: {site.hours}
+              </>
+            ) : null}
           </p>
+          {map ? <iframe title="Bản đồ cửa hàng" src={map} className="mt-3 h-36 w-full rounded-lg border-0" loading="lazy" /> : null}
         </div>
         <div>
           <p className="font-bold mb-3">VỀ CHÚNG TÔI</p>
@@ -156,13 +201,28 @@ export function StoreFooter() {
       </div>
       <div className="border-t border-zinc-800">
         <div className="mx-auto max-w-6xl px-8 py-4 flex flex-wrap items-center justify-between gap-4 text-xs text-zinc-500">
-          <span>Copyright ©2026 Trione.vn.</span>
+          <span>{site.copyright}</span>
           <div className="text-center">
             <p className="mb-2 font-semibold text-white/80">KẾT NỐI VỚI CHÚNG TÔI</p>
             <div className="flex justify-center gap-2">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-[#1877f2] text-white">f</span>
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-[#0068ff] text-white text-[10px]">Zalo</span>
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-yellow-400 to-pink-600 text-white">◎</span>
+              {socials.map((item) =>
+                item.href ? (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={item.label}
+                    className={`grid h-8 min-w-8 place-items-center rounded-full px-1 ${item.className}`}
+                  >
+                    {item.text}
+                  </a>
+                ) : (
+                  <span key={item.label} className={`grid h-8 min-w-8 place-items-center rounded-full px-1 ${item.className}`}>
+                    {item.text}
+                  </span>
+                )
+              )}
             </div>
           </div>
           <div className="text-right">
@@ -175,12 +235,21 @@ export function StoreFooter() {
   );
 }
 
+export function SiteSupportNote() {
+  const site = useSiteSettings();
+  return (
+    <p className="mt-2 text-zinc-600">
+      Cần hỗ trợ trực tiếp, gọi hotline {site.hotline} hoặc đến {site.address}.
+    </p>
+  );
+}
+
 export function WizardHeader() {
   return (
     <header className="bg-black text-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
         <a href="/thu-cu" className="shrink-0">
-          <TrioneMark size={52} light />
+          <BrandLogo size={52} light />
         </a>
         <div className="text-center">
           <p className="text-[20px] font-extrabold tracking-[0.08em]">CHƯƠNG TRÌNH THU CŨ ĐỒNG HỒ</p>

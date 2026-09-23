@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { statusClass, statusLabel, type TradeRequest } from "@/data/staff";
+import { staffStatusLabel, statusClass, type TradeRequest } from "@/data/staff";
 import { useLiveRequests } from "@/lib/use-live-requests";
 import { vnd } from "@/lib/pricing";
 
@@ -43,7 +43,7 @@ export function StaffRequestTable({ items }: { items?: TradeRequest[] }) {
             <td className="font-medium">{vnd(r.tradeIn)}</td>
             <td>
               <span className={`rounded-full px-2.5 py-1 text-xs ${statusClass[r.status]}`}>
-                ● {statusLabel[r.status]}
+                ● {staffStatusLabel[r.status]}
               </span>
             </td>
             <td className="text-zinc-400">{r.updatedAt}</td>

@@ -109,6 +109,13 @@ export function resetMedia(id: string) {
   emit();
 }
 
+function compressedType() {
+  const probe = document.createElement("canvas");
+  probe.width = 1;
+  probe.height = 1;
+  return probe.toDataURL("image/webp").startsWith("data:image/webp") ? "image/webp" : "image/jpeg";
+}
+
 export function fileToDataUrl(file: File, max = 900): Promise<string> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -120,7 +127,8 @@ export function fileToDataUrl(file: File, max = 900): Promise<string> {
       canvas.height = Math.max(1, Math.round(img.height * scale));
       canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.82));
+      const type = compressedType();
+      resolve(canvas.toDataURL(type, type === "image/webp" ? 0.8 : 0.82));
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);

@@ -1,25 +1,24 @@
-export type RequestStatus =
-  | "cho-tham-dinh"
-  | "dang-xu-ly"
-  | "da-bao-gia"
-  | "hoan-tat"
-  | "tu-choi";
+export type RequestStatus = "da-duyet" | "chua-duyet" | "dang-cho-duyet";
 
 export const statusLabel: Record<RequestStatus, string> = {
-  "cho-tham-dinh": "Chờ thẩm định",
-  "dang-xu-ly": "Đang xử lý",
-  "da-bao-gia": "Đã gửi báo giá",
-  "hoan-tat": "Hoàn tất",
-  "tu-choi": "Từ chối",
+  "da-duyet": "Đã duyệt",
+  "chua-duyet": "Chưa duyệt",
+  "dang-cho-duyet": "Đang chờ duyệt",
 };
 
+export const staffStatusLabel = statusLabel;
+
 export const statusClass: Record<RequestStatus, string> = {
-  "cho-tham-dinh": "bg-amber-50 text-amber-700",
-  "dang-xu-ly": "bg-sky-50 text-sky-700",
-  "da-bao-gia": "bg-emerald-50 text-emerald-700",
-  "hoan-tat": "bg-green-50 text-green-700",
-  "tu-choi": "bg-rose-50 text-rose-700",
+  "da-duyet": "bg-green-50 text-green-700",
+  "chua-duyet": "bg-rose-50 text-rose-700",
+  "dang-cho-duyet": "bg-amber-50 text-amber-700",
 };
+
+export function normalizeRequestStatus(status: string): RequestStatus {
+  if (status === "da-duyet" || status === "hoan-tat") return "da-duyet";
+  if (status === "chua-duyet" || status === "tu-choi") return "chua-duyet";
+  return "dang-cho-duyet";
+}
 
 export type TradeRequest = {
   id: string;
@@ -74,7 +73,7 @@ export const requests: TradeRequest[] = [
     newPrice: 29_990_000,
     tradeIn: 8_500_000,
     note: "Khách hàng mang đầy đủ dây đeo và cáp sạc. Ưu tiên kiểm tra và phân hồi báo giá trong ngày.",
-    status: "cho-tham-dinh",
+    status: "dang-cho-duyet",
     source: "Tạo bởi khách hàng TRIONE.VN",
   },
   {
@@ -95,7 +94,7 @@ export const requests: TradeRequest[] = [
     newPrice: 14_990_000,
     tradeIn: 3_200_000,
     note: "",
-    status: "dang-xu-ly",
+    status: "dang-cho-duyet",
     source: "CTV sala.hcm",
   },
   {
@@ -116,7 +115,7 @@ export const requests: TradeRequest[] = [
     newPrice: 18_990_000,
     tradeIn: 7_100_000,
     note: "",
-    status: "da-bao-gia",
+    status: "dang-cho-duyet",
     source: "Tạo bởi khách hàng TRIONE.VN",
   },
   {
@@ -137,7 +136,7 @@ export const requests: TradeRequest[] = [
     newPrice: 8_490_000,
     tradeIn: 4_600_000,
     note: "",
-    status: "hoan-tat",
+    status: "da-duyet",
     source: "Tạo bởi khách hàng TRIONE.VN",
   },
   {
@@ -158,7 +157,7 @@ export const requests: TradeRequest[] = [
     newPrice: 12_990_000,
     tradeIn: 5_250_000,
     note: "Từ chối do lệch tình trạng thực tế.",
-    status: "tu-choi",
+    status: "chua-duyet",
     source: "CTV",
   },
 ];

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use, useEffect, useState, type ReactNode } from "react";
 import { WatchFace } from "@/components/watch-face";
-import { statusClass, statusLabel, type RequestStatus } from "@/data/staff";
+import { staffStatusLabel, statusClass, type RequestStatus } from "@/data/staff";
 import { patchRequest } from "@/lib/demo-requests";
 import { useLiveRequests } from "@/lib/use-live-requests";
 import { vnd } from "@/lib/pricing";
@@ -17,7 +17,7 @@ export default function RequestDetailPage({
   const live = useLiveRequests();
   const found = live.find((r) => r.id === id);
   const [ready, setReady] = useState(false);
-  const [draft, setDraft] = useState<RequestStatus>("cho-tham-dinh");
+  const [draft, setDraft] = useState<RequestStatus>("dang-cho-duyet");
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState("");
 
@@ -57,7 +57,7 @@ export default function RequestDetailPage({
             className="rounded-lg border bg-white px-3 py-2 text-sm"
             aria-label="Chọn trạng thái"
           >
-            {Object.entries(statusLabel).map(([k, v]) => (
+            {Object.entries(staffStatusLabel).map(([k, v]) => (
               <option key={k} value={k}>
                 {v}
               </option>
@@ -67,7 +67,7 @@ export default function RequestDetailPage({
             type="button"
             onClick={() => {
               patchRequest(found.id, { status: draft });
-              setSaved(`Đã cập nhật yêu cầu ${found.id} · trạng thái ${statusLabel[draft]}`);
+              setSaved(`Đã cập nhật yêu cầu ${found.id} · trạng thái ${staffStatusLabel[draft]}`);
             }}
             className="rounded-lg bg-[#e11d2e] px-4 py-2 text-sm font-semibold text-white"
           >
@@ -81,7 +81,7 @@ export default function RequestDetailPage({
         <Meta k="USERNAME" v={found.username} />
         <Meta k="NGÀY ĐẶT" v={found.createdAt} />
         <span className={`ml-auto rounded-full px-3 py-1 text-xs ${statusClass[found.status]}`}>
-          ● {statusLabel[found.status]}
+          ● {staffStatusLabel[found.status]}
         </span>
       </div>
 

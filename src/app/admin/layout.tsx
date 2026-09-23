@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { TrioneMark } from "@/components/store-footer";
+import { BrandLogo } from "@/components/store-footer";
+import { useSiteSettings } from "@/lib/site-settings";
 import { LogoutButton } from "@/components/logout-button";
 import { readSession } from "@/lib/session";
 
@@ -16,7 +17,7 @@ const groups: NavGroup[] = [
     label: "Quản lý Sản phẩm thu cũ",
     children: [
       { href: "/admin/danh-muc", label: "Danh mục cấp 1" },
-      { href: "/admin/hang", label: "Danh mục hãng" },
+      { href: "/admin/hang", label: "Danh mục cấp 2" },
       { href: "/admin/san-pham-thu-cu", label: "Sản phẩm thu cũ" },
       { href: "/admin/import", label: "Import" },
     ],
@@ -37,7 +38,7 @@ const groups: NavGroup[] = [
     label: "Quản lý đơn hàng",
     children: [
       { href: "/admin/don-hang", label: "Đơn hàng" },
-      { href: "/admin/trang-thai", label: "Trạng thái" },
+      { href: "/admin/trang-thai", label: "Tình trạng đơn hàng" },
     ],
   },
   {
@@ -63,6 +64,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const currentGroup = groups.find((g) => g.children.some((c) => isActive(path, c.href)));
   const [open, setOpen] = useState<string>(currentGroup?.label ?? "Quản lý Sản phẩm thu cũ");
   const [hello, setHello] = useState("admin");
+  const site = useSiteSettings();
   useEffect(() => {
     const s = readSession();
     if (s) setHello(s.user);
@@ -71,18 +73,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-[#f4f6f8]">
       <div className="flex">
-        <aside className="w-[232px] min-h-screen bg-[#15171c] text-zinc-300 p-3">
+        <aside className="min-h-screen w-[248px] border-r border-zinc-200 bg-white p-3 text-zinc-700">
           <Link href="/" className="mb-5 flex items-center gap-2 px-1 py-2">
-            <TrioneMark size={42} />
+            <BrandLogo size={42} />
             <span>
-              <span className="block text-[10px] tracking-[0.2em] text-zinc-500">CMS</span>
-              <span className="font-extrabold text-white">TRIONE</span>
+              <span className="block text-[10px] tracking-[0.2em] text-zinc-400">CMS</span>
+              <span className="font-extrabold text-zinc-900">{site.company}</span>
             </span>
           </Link>
           <Link
             href={dashboard.href}
-            className={`mb-0.5 flex items-center gap-2 rounded px-3 py-2 text-[13px] ${
-              isActive(path, dashboard.href) ? "bg-[#2f6fed] text-white" : "hover:bg-white/5"
+            className={`mb-0.5 flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] ${
+              isActive(path, dashboard.href) ? "bg-[#fff4c2] font-medium text-zinc-900" : "hover:bg-zinc-50"
             }`}
           >
             ▦ {dashboard.label}
@@ -95,21 +97,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <button
                   type="button"
                   onClick={() => setOpen(expanded && open === g.label ? "" : g.label)}
-                  className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-[13px] ${
-                    childActive ? "bg-[#2f6fed] text-white" : "hover:bg-white/5"
+                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[13px] ${
+                    childActive ? "bg-[#fff4c2] font-medium text-zinc-900" : "hover:bg-zinc-50"
                   }`}
                 >
                   <span>{g.label}</span>
                   <span className="text-[10px]">{expanded ? "▾" : "▸"}</span>
                 </button>
                 {expanded && (
-                  <div className="ml-3 border-l border-white/10 pl-2 py-1">
+                  <div className="ml-3 border-l border-zinc-200 py-1 pl-2">
                     {g.children.map((c) => (
                       <Link
                         key={c.href}
                         href={c.href}
                         className={`mb-0.5 flex items-center rounded px-2 py-1.5 text-[12px] ${
-                          isActive(path, c.href) ? "bg-white/10 text-white" : "text-zinc-400 hover:text-white"
+                          isActive(path, c.href) ? "border-l-2 border-[#f6c445] font-medium text-zinc-900" : "text-zinc-500 hover:text-zinc-900"
                         }`}
                       >
                         {c.label}
@@ -124,8 +126,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link
               key={i.href}
               href={i.href}
-              className={`mb-0.5 flex items-center gap-2 rounded px-3 py-2 text-[13px] ${
-                isActive(path, i.href) ? "bg-[#2f6fed] text-white" : "hover:bg-white/5"
+              className={`mb-0.5 flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] ${
+                isActive(path, i.href) ? "bg-[#fff4c2] font-medium text-zinc-900" : "hover:bg-zinc-50"
               }`}
             >
               {i.label}
@@ -144,10 +146,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <LogoutButton className="text-[#2f6fed]" />
             </div>
           </header>
-          <div className="px-6 pt-3 text-sm text-[#2f6fed]">
-            Bảng điều khiển
-            {currentGroup ? ` / ${currentGroup.label}` : ""}
-            {current && current.href !== "/admin" ? ` / ${current.label}` : ""}
+          <div className="px-6 pt-4">
+            <p className="inline-block border-b-2 border-[#f6c445] pb-1 text-sm font-medium text-zinc-800">
+              Bảng điều khiển
+              {currentGroup ? ` / ${currentGroup.label}` : ""}
+              {current && current.href !== "/admin" ? ` / ${current.label}` : ""}
+            </p>
           </div>
           <div className="p-6 pt-3">{children}</div>
         </div>

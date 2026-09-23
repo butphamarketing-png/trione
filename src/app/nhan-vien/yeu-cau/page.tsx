@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StaffRequestTable } from "@/components/staff-request-table";
-import { statusLabel, type RequestStatus } from "@/data/staff";
+import { staffStatusLabel, type RequestStatus } from "@/data/staff";
 import { useLiveRequests } from "@/lib/use-live-requests";
 
 export default function RequestListPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<RequestStatus | "all">("all");
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get("trang-thai");
+    if (value && value in staffStatusLabel) setStatus(value as RequestStatus);
+  }, []);
   const all = useLiveRequests();
   const items = useMemo(
     () =>
@@ -46,7 +50,7 @@ export default function RequestListPage() {
           >
             Tất cả
           </button>
-          {(Object.keys(statusLabel) as RequestStatus[]).map((k) => (
+          {(Object.keys(staffStatusLabel) as RequestStatus[]).map((k) => (
             <button
               key={k}
               type="button"
@@ -55,7 +59,7 @@ export default function RequestListPage() {
                 status === k ? "bg-[#e11d2e] text-white" : "bg-zinc-100"
               }`}
             >
-              {statusLabel[k]}
+              {staffStatusLabel[k]}
             </button>
           ))}
           <span className="ml-auto text-xs text-zinc-400">Hiển thị {items.length} yêu cầu</span>

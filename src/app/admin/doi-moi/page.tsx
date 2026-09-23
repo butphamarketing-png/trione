@@ -5,10 +5,20 @@ import { vndComma } from "@/lib/pricing";
 export default function NewProductsPage() {
   return (
     <AdminTable
-      title="Sản phẩm đổi mới (2 cấp: hãng → sản phẩm)"
-      redFrom={3}
-      columns={["STT", "Tên", "Series", "Giá niêm yết"]}
-      rows={garminNew.map((g, i) => [String(i + 1), g.name, g.series, vndComma(g.listPrice)])}
+      title="Sản phẩm đổi mới"
+      redFrom={5}
+      columns={["STT", "Hình", "Tiêu đề", "Danh mục cấp 1", "Series", "Giá niêm yết", "Hiển thị"]}
+      codes={garminNew.map((item) => item.id)}
+      parents={garminNew.map(() => "garmin")}
+      rows={garminNew.map((item, index) => [
+        String(index + 1),
+        "",
+        item.name,
+        "Garmin",
+        item.series,
+        vndComma(item.listPrice),
+        "✓",
+      ])}
     />
   );
 }

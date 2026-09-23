@@ -3,20 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { TrioneMark } from "@/components/store-footer";
+import { BrandLogo } from "@/components/store-footer";
+import { useSiteSettings } from "@/lib/site-settings";
 import { LogoutButton } from "@/components/logout-button";
-import { statusLabel } from "@/data/staff";
+import { staffStatusLabel } from "@/data/staff";
 import { useLiveRequests } from "@/lib/use-live-requests";
 import { readSession, type DemoSession } from "@/lib/session";
 
 const nav = [
   { href: "/nhan-vien", label: "Bảng điều khiển", icon: GridIcon },
   { href: "/nhan-vien/yeu-cau", label: "Yêu cầu thu cũ", icon: ClipIcon },
-  { href: "/nhan-vien/khach-hang", label: "Khách hàng", icon: UserIcon },
+  { href: "/nhan-vien/tai-khoan", label: "Tài khoản", icon: UserIcon },
 ];
 
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
   const path = usePathname();
+  const site = useSiteSettings();
   const [notes, setNotes] = useState(false);
   const [me, setMe] = useState<DemoSession>({
     user: "nv.anh",
@@ -28,7 +30,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
     const s = readSession();
     if (s && s.role !== "admin") setMe(s);
   }, []);
-  const waiting = useLiveRequests().filter((r) => r.status === "cho-tham-dinh" || r.status === "dang-xu-ly");
+  const waiting = useLiveRequests().filter((r) => r.status === "dang-cho-duyet");
   const initials = me.name
     .split(" ")
     .slice(-2)
@@ -40,9 +42,9 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
       <header className="bg-[#1c1c1f] text-white">
         <div className="flex items-center justify-between px-4 py-2.5">
           <div className="flex items-center gap-3">
-            <TrioneMark size={40} />
+            <BrandLogo size={40} />
             <div>
-              <p className="text-sm font-bold tracking-wide">TRIONE.VN</p>
+              <p className="text-sm font-bold tracking-wide">{site.company}</p>
               <p className="text-[11px] text-zinc-400">Hệ thống quản lý chương trình thu cũ</p>
             </div>
           </div>
@@ -64,21 +66,21 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
                     >
                       <span className="font-semibold">{r.id}</span>
                       <span className="mt-0.5 block text-xs text-zinc-500">
-                        {r.oldDevice} · {statusLabel[r.status]}
+                        {r.oldDevice} · {staffStatusLabel[r.status]}
                       </span>
                     </Link>
                   ))}
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <Link href="/nhan-vien/tai-khoan" className="flex items-center gap-2">
               <span className="grid h-8 w-8 place-items-center rounded-full bg-zinc-600 text-xs">{initials}</span>
               <div>
                 <p className="leading-tight font-medium">{me.name}</p>
-                <p className="text-[11px] text-zinc-400">{me.title}</p>
+                <p className="text-[11px] text-zinc-400">Tài khoản</p>
               </div>
-              <LogoutButton className="text-xs text-zinc-400 hover:text-white" />
-            </div>
+            </Link>
+            <LogoutButton className="text-xs text-zinc-400 hover:text-white" />
           </div>
         </div>
         <div className="h-[3px] bg-[#e11d2e]" />

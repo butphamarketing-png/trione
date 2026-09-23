@@ -1,3 +1,10 @@
+export type AdminAlbumImage = {
+  id: string;
+  src: string;
+  order: string;
+  title: string;
+};
+
 export type AdminExtra = {
   seoTitle: string;
   keywords: string;
@@ -6,6 +13,23 @@ export type AdminExtra = {
   order: string;
   image: string;
   featured: boolean;
+  slug: string;
+  robots: "index" | "noindex";
+  canonical: string;
+  ogSite: string;
+  ogType: string;
+  ogUrl: string;
+  shortDesc: string;
+  body: string;
+  sku: string;
+  category: string;
+  subCategory: string;
+  salePrice: string;
+  newPrice: string;
+  gradePrices: string[][];
+  screenPrices: string[];
+  bodyPrices: string[];
+  album: AdminAlbumImage[];
 };
 
 export type AdminRecord = {
@@ -21,7 +45,52 @@ function storageKey(key: string) {
 }
 
 export function blankExtra(order = ""): AdminExtra {
-  return { seoTitle: "", keywords: "", description: "", summary: "", order, image: "", featured: false };
+  return {
+    seoTitle: "",
+    keywords: "",
+    description: "",
+    summary: "",
+    order,
+    image: "",
+    featured: false,
+    slug: "",
+    robots: "index",
+    canonical: "",
+    ogSite: "",
+    ogType: "",
+    ogUrl: "",
+    shortDesc: "",
+    body: "",
+    sku: "",
+    category: "",
+    subCategory: "",
+    salePrice: "",
+    newPrice: "",
+    gradePrices: emptyGradePrices(),
+    screenPrices: emptyConditionPrices(),
+    bodyPrices: emptyConditionPrices(),
+    album: [],
+  };
+}
+
+export function emptyGradePrices() {
+  return Array.from({ length: 4 }, () => ["", "", "", ""]);
+}
+
+export function emptyConditionPrices() {
+  return ["", "", ""];
+}
+
+export function normalizeConditionPrices(value: string[] | undefined) {
+  const blank = emptyConditionPrices();
+  if (!Array.isArray(value)) return blank;
+  return blank.map((_, index) => String(value[index] ?? ""));
+}
+
+export function normalizeGradePrices(value: string[][] | undefined) {
+  const blank = emptyGradePrices();
+  if (!Array.isArray(value)) return blank;
+  return blank.map((row, grade) => row.map((_, issue) => String(value[grade]?.[issue] ?? "")));
 }
 
 export function normalizeRecord(record: Partial<AdminRecord> | null | undefined, index = 0): AdminRecord {
@@ -38,6 +107,30 @@ export function normalizeRecord(record: Partial<AdminRecord> | null | undefined,
       order: extra?.order ?? cells[0] ?? String(index + 1),
       image: extra?.image ?? "",
       featured: Boolean(extra?.featured),
+      slug: extra?.slug ?? "",
+      robots: extra?.robots === "noindex" ? "noindex" : "index",
+      canonical: extra?.canonical ?? "",
+      ogSite: extra?.ogSite ?? "",
+      ogType: extra?.ogType ?? "",
+      ogUrl: extra?.ogUrl ?? "",
+      shortDesc: extra?.shortDesc ?? "",
+      body: extra?.body ?? "",
+      sku: extra?.sku ?? "",
+      category: extra?.category ?? "",
+      subCategory: extra?.subCategory ?? "",
+      salePrice: extra?.salePrice ?? "",
+      newPrice: extra?.newPrice ?? "",
+      gradePrices: normalizeGradePrices(extra?.gradePrices),
+      screenPrices: normalizeConditionPrices(extra?.screenPrices),
+      bodyPrices: normalizeConditionPrices(extra?.bodyPrices),
+      album: Array.isArray(extra?.album)
+        ? extra.album.map((item, imageIndex) => ({
+            id: item?.id ? String(item.id) : String(imageIndex + 1),
+            src: item?.src ?? "",
+            order: item?.order ?? String(imageIndex + 1),
+            title: item?.title ?? "",
+          }))
+        : [],
     },
   };
 }
@@ -56,7 +149,17 @@ export function seedRecords(rows: string[][]): AdminRecord[] {
 }
 
 export function cloneRecord(record: AdminRecord): AdminRecord {
-  return { id: record.id, cells: [...record.cells], extra: { ...record.extra } };
+  return {
+    id: record.id,
+    cells: [...record.cells],
+    extra: {
+      ...record.extra,
+      gradePrices: normalizeGradePrices(record.extra.gradePrices).map((row) => [...row]),
+      screenPrices: normalizeConditionPrices(record.extra.screenPrices),
+      bodyPrices: normalizeConditionPrices(record.extra.bodyPrices),
+      album: (record.extra.album ?? []).map((item) => ({ ...item })),
+    },
+  };
 }
 
 export function reindex(list: AdminRecord[]): AdminRecord[] {

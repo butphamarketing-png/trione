@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56">
+  <rect width="56" height="56" rx="16" fill="#fff"/>
+  <circle cx="16" cy="28" r="5.5" fill="none" stroke="#e11d2e" stroke-width="2"/>
+  <path d="M16 24.6v6.8M13.4 28h5.2" stroke="#e11d2e" stroke-width="1.5"/>
+  <text x="36" y="31" text-anchor="middle" font-size="8" font-weight="800" fill="#e11d2e" font-family="Arial, sans-serif">COROS</text>
+</svg>
