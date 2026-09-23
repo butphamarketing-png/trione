@@ -4,6 +4,8 @@ export type AdminExtra = {
   description: string;
   summary: string;
   order: string;
+  image: string;
+  featured: boolean;
 };
 
 export type AdminRecord = {
@@ -19,15 +21,38 @@ function storageKey(key: string) {
 }
 
 export function blankExtra(order = ""): AdminExtra {
-  return { seoTitle: "", keywords: "", description: "", summary: "", order };
+  return { seoTitle: "", keywords: "", description: "", summary: "", order, image: "", featured: false };
+}
+
+export function normalizeRecord(record: Partial<AdminRecord> | null | undefined, index = 0): AdminRecord {
+  const extra = record?.extra;
+  const cells = Array.isArray(record?.cells) ? record.cells.map((cell) => String(cell ?? "")) : [];
+  return {
+    id: record?.id ? String(record.id) : String(index + 1),
+    cells,
+    extra: {
+      seoTitle: extra?.seoTitle ?? "",
+      keywords: extra?.keywords ?? "",
+      description: extra?.description ?? "",
+      summary: extra?.summary ?? "",
+      order: extra?.order ?? cells[0] ?? String(index + 1),
+      image: extra?.image ?? "",
+      featured: Boolean(extra?.featured),
+    },
+  };
 }
 
 export function seedRecords(rows: string[][]): AdminRecord[] {
-  return rows.map((cells, i) => ({
-    id: String(i + 1),
-    cells: [...cells],
-    extra: { ...blankExtra(cells[0] ?? String(i + 1)), seoTitle: cells[1] ?? "" },
-  }));
+  return rows.map((cells, i) =>
+    normalizeRecord(
+      {
+        id: String(i + 1),
+        cells: [...cells],
+        extra: { ...blankExtra(cells[0] ?? String(i + 1)), seoTitle: cells[1] ?? "" },
+      },
+      i
+    )
+  );
 }
 
 export function cloneRecord(record: AdminRecord): AdminRecord {
@@ -35,7 +60,7 @@ export function cloneRecord(record: AdminRecord): AdminRecord {
 }
 
 export function reindex(list: AdminRecord[]): AdminRecord[] {
-  const sorted = [...list].sort((a, b) => {
+  const sorted = list.map((record, index) => normalizeRecord(record, index)).sort((a, b) => {
     const ao = Number(a.extra.order);
     const bo = Number(b.extra.order);
     const aOk = Number.isFinite(ao);
@@ -53,27 +78,28 @@ export function reindex(list: AdminRecord[]): AdminRecord[] {
 
 export function peekRecords(key: string): AdminRecord[] | null {
   const hit = memory.get(key);
-  return hit?.dirty ? hit.records : null;
+  return hit?.dirty ? hit.records.map((record, index) => normalizeRecord(record, index)) : null;
 }
 
 export function loadRecords(key: string): AdminRecord[] | null {
   const hit = memory.get(key);
-  if (hit?.dirty) return hit.records;
+  if (hit?.dirty) return hit.records.map((record, index) => normalizeRecord(record, index));
   if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(storageKey(key));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as AdminRecord[];
     if (!Array.isArray(parsed)) return null;
-    memory.set(key, { dirty: true, records: parsed });
-    return parsed;
+    const records = reindex(parsed.map((record, index) => normalizeRecord(record, index)));
+    memory.set(key, { dirty: true, records });
+    return records;
   } catch {
     return null;
   }
 }
 
 export function saveRecords(key: string, records: AdminRecord[]) {
-  const next = reindex(records);
+  const next = reindex(records.map((record, index) => normalizeRecord(record, index)));
   memory.set(key, { dirty: true, records: next });
   if (typeof window !== "undefined") {
     sessionStorage.setItem(storageKey(key), JSON.stringify(next));

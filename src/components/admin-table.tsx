@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AdminRecordForm } from "@/components/admin-record-form";
@@ -8,6 +7,7 @@ import {
   blankExtra,
   cloneRecord,
   loadRecords,
+  normalizeRecord,
   peekRecords,
   reindex,
   saveRecords,
@@ -77,20 +77,19 @@ function AdminTableInner({
   const mode = act === "add" || act === "edit" || act === "view" ? act : null;
   const signature = JSON.stringify(rows);
   const visibleIndex = columns.indexOf("Hiển thị");
-  const [records, setRecords] = useState<AdminRecord[]>(() => seedRecords(rows));
-  const [ready, setReady] = useState(false);
+  const [records, setRecords] = useState<AdminRecord[] | null>(null);
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [pendingDelete, setPendingDelete] = useState<string[] | null>(null);
+  const [alertText, setAlertText] = useState("");
   const keepNotice = useRef(false);
 
   useEffect(() => {
     const parsed = JSON.parse(signature) as string[][];
     const saved = loadRecords(title);
-    setRecords(saved ? reindex(saved) : seedRecords(parsed));
-    setReady(true);
+    setRecords(saved ? reindex(saved.map((record, index) => normalizeRecord(record, index))) : seedRecords(parsed));
   }, [title, signature]);
 
   useEffect(() => {
@@ -103,7 +102,7 @@ function AdminTableInner({
   }, [mode, editId]);
 
   const visible = useMemo(
-    () => records.filter((record) => !q.trim() || record.cells.join(" ").toLowerCase().includes(q.toLowerCase())),
+    () => (records ?? []).filter((record) => !q.trim() || record.cells.join(" ").toLowerCase().includes(q.toLowerCase())),
     [records, q]
   );
   const allChecked = visible.length > 0 && visible.every((record) => selected.includes(record.id));
@@ -117,7 +116,7 @@ function AdminTableInner({
 
   function exit() {
     setError("");
-    window.history.pushState(null, "", pathname);
+    router.push(pathname);
   }
 
   function commit(next: AdminRecord[], message: string) {
@@ -137,7 +136,7 @@ function AdminTableInner({
       return;
     }
     const nextDraft = { ...current, cells: current.cells.map((cell, index) => (index === 1 ? name : cell)) };
-    const pool = peekRecords(title) ?? records;
+    const pool = peekRecords(title) ?? records ?? [];
     if (mode === "add") {
       commit([...pool.filter((record) => record.id !== nextDraft.id), nextDraft], "Đã lưu.");
       if (exitAfter) exit();
@@ -156,18 +155,20 @@ function AdminTableInner({
       ...cloneRecord(record),
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       cells: record.cells.map((cell, index) => (index === 1 ? `${cell} (copy)` : cell)),
-      extra: { ...record.extra, order: String(records.length + 1) },
+      extra: { ...record.extra, order: String((records?.length ?? 0) + 1) },
     };
-    commit([...records, duplicate], `Đã sao chép «${record.cells[1]}».`);
+    commit([...(records ?? []), duplicate], `Đã sao chép «${record.cells[1]}».`);
   }
 
   function askRemove(ids: string[]) {
     if (!ids.length) {
-      setError("Bạn chưa chọn mục nào.");
       setNotice("");
+      setError("");
+      setAlertText("Bạn chưa chọn mục nào.");
       return;
     }
     setError("");
+    setAlertText("");
     setPendingDelete(ids);
   }
 
@@ -175,7 +176,7 @@ function AdminTableInner({
     if (!pendingDelete?.length) return;
     const ids = pendingDelete;
     commit(
-      records.filter((record) => !ids.includes(record.id)),
+      (records ?? []).filter((record) => !ids.includes(record.id)),
       ids.length === 1 ? "Đã xóa." : `Đã xóa ${ids.length} mục.`
     );
     setSelected((current) => current.filter((id) => !ids.includes(id)));
@@ -185,7 +186,7 @@ function AdminTableInner({
   function toggleVisible(record: AdminRecord) {
     if (visibleIndex < 0) return;
     commit(
-      records.map((item) =>
+      (records ?? []).map((item) =>
         item.id === record.id
           ? {
               ...item,
@@ -207,7 +208,9 @@ function AdminTableInner({
     setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   }
 
-  if (mode && !ready) return null;
+  if (!records) {
+    return <div className="rounded-sm border-t-4 border-[#2f6fed] bg-white p-4 text-sm text-zinc-500">Đang tải...</div>;
+  }
 
   if (mode) {
     const pool = peekRecords(title) ?? records;
@@ -215,8 +218,12 @@ function AdminTableInner({
       mode === "add"
         ? blankRecord(columns, String(pool.length + 1))
         : pool.find((record) => record.id === editId) ?? null;
+    const screen = mode === "add" ? "Thêm mới" : mode === "view" ? "Xem chi tiết" : "Chỉnh sửa";
     return (
       <div>
+        <p className="mb-3 text-sm text-[#2f6fed]">
+          {title} / {screen}
+        </p>
         <Status notice={notice} error={error} />
         <RecordEditor
           key={`${mode}:${editId ?? "new"}`}
@@ -287,12 +294,12 @@ function AdminTableInner({
                       <div>
                         <p>{cell}</p>
                         <p className="mt-1 text-[11px]">
-                          <Link href={href("view", record.id)} className="mr-2 text-[#2f6fed] hover:underline">
+                          <a href={href("view", record.id)} className="mr-2 text-[#2f6fed] hover:underline">
                             👁 View
-                          </Link>
-                          <Link href={href("edit", record.id)} className="mr-2 text-emerald-600 hover:underline">
+                          </a>
+                          <a href={href("edit", record.id)} className="mr-2 text-emerald-600 hover:underline">
                             Edit
-                          </Link>
+                          </a>
                           <button type="button" onClick={() => copy(record)} className="mr-2 text-[#2f6fed] hover:underline">
                             Copy
                           </button>
@@ -307,9 +314,9 @@ function AdminTableInner({
                   </td>
                 ))}
                 <td className="whitespace-nowrap px-4">
-                  <Link href={href("edit", record.id)} title="Chỉnh sửa" className="text-[#2f6fed] hover:underline">
+                  <a href={href("edit", record.id)} title="Chỉnh sửa" aria-label="Chỉnh sửa" className="text-[#2f6fed] hover:underline">
                     ✎
-                  </Link>
+                  </a>
                   <button
                     type="button"
                     title="Xóa"
@@ -328,19 +335,35 @@ function AdminTableInner({
         </p>
       </div>
       <Toolbar onAddHref={href("add")} onDelete={() => askRemove(selected)} bottom />
+      {alertText && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded bg-white p-5 shadow-lg">
+            <p className="text-sm">{alertText}</p>
+            <div className="mt-4 flex justify-end">
+              <button type="button" onClick={() => setAlertText("")} className="rounded bg-[#2f6fed] px-3 py-1.5 text-sm text-white">
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {pendingDelete && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded border border-[#e11d2e]/30 bg-red-50 px-3 py-2 text-sm">
-          <span>
-            {pendingDelete.length === 1
-              ? `Xóa «${records.find((record) => record.id === pendingDelete[0])?.cells[1] || "mục này"}»?`
-              : `Xóa ${pendingDelete.length} mục đã chọn?`}
-          </span>
-          <button type="button" onClick={confirmRemove} className="rounded bg-[#e11d2e] px-3 py-1.5 text-white">
-            Xóa
-          </button>
-          <button type="button" onClick={() => setPendingDelete(null)} className="rounded bg-white px-3 py-1.5">
-            Hủy
-          </button>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded bg-white p-5 shadow-lg">
+            <p className="text-sm">
+              {pendingDelete.length === 1
+                ? `Xóa «${records.find((record) => record.id === pendingDelete[0])?.cells[1] || "mục này"}»?`
+                : `Xóa ${pendingDelete.length} mục đã chọn?`}
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setPendingDelete(null)} className="rounded bg-zinc-200 px-3 py-1.5 text-sm">
+                Hủy
+              </button>
+              <button type="button" onClick={confirmRemove} className="rounded bg-[#e11d2e] px-3 py-1.5 text-sm text-white">
+                Xóa
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -403,9 +426,9 @@ function Toolbar({
 }) {
   return (
     <div className={`${bottom ? "mt-3" : "mb-3"} flex flex-wrap items-center gap-2`}>
-      <Link href={onAddHref} className="rounded bg-[#2f6fed] px-3 py-2 text-sm text-white">
+      <a href={onAddHref} className="rounded bg-[#2f6fed] px-3 py-2 text-sm text-white">
         + Thêm mới
-      </Link>
+      </a>
       <button type="button" onClick={onDelete} className="rounded bg-[#e11d2e] px-3 py-2 text-sm text-white">
         🗑 Xóa tất cả
       </button>
