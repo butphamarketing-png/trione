@@ -63,6 +63,10 @@ export function fallbackExchangeProducts(): ExchangeProduct[] {
   return garminNew.map((item) => toProduct(item));
 }
 
+function plainText(value: string) {
+  return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export function readExchangeProducts(parent = ""): ExchangeProduct[] {
   const saved = readSavedExchange();
   const mapped = saved?.length
@@ -81,7 +85,7 @@ export function readExchangeProducts(parent = ""): ExchangeProduct[] {
             parent: parentCode,
             brandName: brand?.name || (record.cells[parentIndex] ?? "").trim() || "Garmin",
             series: (record.cells[seriesIndex] ?? "").trim() || known?.series || "",
-            specs: record.extra.shortDesc || known?.specs || "",
+            specs: record.extra.shortDesc || plainText(record.extra.description) || known?.specs || "",
             price: money(record.cells[priceIndex] ?? ""),
             image: record.extra.image || "",
             face: known?.face || "#222",

@@ -60,6 +60,10 @@ function parentCode(record: AdminRecord) {
   return brands.find((brand) => brand.name === name)?.id ?? "";
 }
 
+function plainText(value: string) {
+  return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export function readLevel2Categories(parent = ""): Level2Category[] {
   const saved = readSavedLevel2();
   if (!saved?.length) return fallbackLevel2(parent);
@@ -68,15 +72,14 @@ export function readLevel2Categories(parent = ""): Level2Category[] {
     const name = record.cells[titleIndex].trim();
     const code = record.extra.sku || `custom:${record.id}`;
     const known = lines.find((line) => line.id === code);
-    const uploaded = record.extra.image && !record.extra.image.startsWith("/brands/");
     return {
       key: record.id,
       code,
       name,
       slug: record.extra.slug || slugify(name),
       parent: parentCode(record),
-      blurb: record.extra.shortDesc || known?.blurb || "",
-      image: uploaded ? record.extra.image : "",
+      blurb: record.extra.shortDesc || plainText(record.extra.description) || known?.blurb || "",
+      image: record.extra.image || "",
       thumb: known?.thumb ?? "",
       seoTitle: record.extra.seoTitle || "",
       keywords: record.extra.keywords || "",

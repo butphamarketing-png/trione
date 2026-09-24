@@ -150,6 +150,10 @@ export function fallbackTradeProducts(line = ""): TradeProduct[] {
   return list.map((model) => toProduct(model));
 }
 
+function plainText(value: string) {
+  return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export function readTradeProducts(line = ""): TradeProduct[] {
   const saved = readSavedProducts();
   if (!saved?.length) return fallbackTradeProducts(line);
@@ -170,7 +174,7 @@ export function readTradeProducts(line = ""): TradeProduct[] {
         parent,
         line: productLine,
         specs: known?.specs || "",
-        blurb: record.extra.shortDesc || known?.blurb || "",
+        blurb: record.extra.shortDesc || plainText(record.extra.description) || known?.blurb || "",
         image: record.extra.image || "",
         gradePrices: normalizeGradePrices(record.extra.gradePrices).map((row) => row.map((cell) => money(cell))),
         screenPrices: normalizeConditionPrices(record.extra.screenPrices).map((cell) => money(cell)),

@@ -206,6 +206,17 @@ export function saveRecords(key: string, records: AdminRecord[]) {
   memory.set(key, { dirty: true, records: next });
   if (typeof window !== "undefined") {
     sessionStorage.setItem(storageKey(key), JSON.stringify(next));
+    void import("@/lib/catalog-sync").then((mod) => mod.publishCatalog());
   }
   return next;
+}
+
+export function ingestStored(fullKey: string, raw: string) {
+  if (!fullKey.startsWith("trione-admin:")) return;
+  const title = fullKey.slice("trione-admin:".length);
+  const parsed = JSON.parse(raw) as AdminRecord[];
+  if (!Array.isArray(parsed)) return;
+  const records = reindex(parsed.map((record, index) => normalizeRecord(record, index)));
+  memory.set(title, { dirty: true, records });
+  if (typeof window !== "undefined") sessionStorage.setItem(fullKey, JSON.stringify(records));
 }

@@ -193,6 +193,13 @@ function AdminTableInner({
   const keepNotice = useRef(false);
 
   useEffect(() => {
+    let cancelled = false;
+    void import("@/lib/catalog-sync").then(async (mod) => {
+      await mod.ensureCatalog();
+      if (cancelled) return;
+      loadTable();
+    });
+    function loadTable() {
     const parsed = JSON.parse(signature) as string[][];
     const saved = loadRecords(title);
     const width = columnKey.split("|").length;
@@ -228,6 +235,10 @@ function AdminTableInner({
           record.cells.join("\u0000") !== base[index]?.cells.join("\u0000")
       );
     setRecords(changed ? saveRecords(title, coded) : reindex(coded));
+    }
+    return () => {
+      cancelled = true;
+    };
   }, [title, signature, columnKey, defaultImages, presetVersion, blankColumns, codes, parents, subs, live]);
 
   useEffect(() => {

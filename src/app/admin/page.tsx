@@ -25,7 +25,7 @@ export default function AdminHome() {
   return (
     <div>
       <h1 className="mb-4 text-xl font-bold">Bảng điều khiển</h1>
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat n={live.length} l="Yêu cầu thu cũ" href="/admin/don-hang" />
         <Stat n={waiting} l="Đang chờ duyệt" href="/admin/don-hang" />
         <Stat n={tradeCount} l="SP thu cũ" href="/admin/san-pham-thu-cu" />
@@ -36,19 +36,19 @@ export default function AdminHome() {
         <table className="w-full text-sm">
           <thead className="text-left text-xs text-zinc-500">
             <tr>
-              <th className="px-4 py-2">Mã</th>
-              <th className="px-4 py-2">Username</th>
-              <th className="px-4 py-2">Máy cũ</th>
-              <th className="px-4 py-2">Trạng thái</th>
+              <th className="px-3 py-2">Mã</th>
+              <th className="hidden px-3 py-2 sm:table-cell">Username</th>
+              <th className="px-3 py-2">Máy cũ</th>
+              <th className="px-3 py-2">Trạng thái</th>
             </tr>
           </thead>
           <tbody>
             {recent.map((r) => (
               <tr key={r.id} className="border-t border-zinc-100">
-                <td className="px-4 py-2 font-medium">{r.id}</td>
-                <td className="px-4 py-2">{r.username}</td>
-                <td className="px-4 py-2">{r.oldDevice}</td>
-                <td className="px-4 py-2">{statusLabel[r.status]}</td>
+                <td className="px-3 py-2 font-medium whitespace-nowrap">{r.id}</td>
+                <td className="hidden px-3 py-2 sm:table-cell">{r.username}</td>
+                <td className="px-3 py-2">{r.oldDevice}</td>
+                <td className="px-3 py-2">{statusLabel[r.status]}</td>
               </tr>
             ))}
           </tbody>

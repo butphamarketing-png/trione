@@ -43,7 +43,7 @@ export function CheckBox({ on }: { on: boolean }) {
 
 export function Stepper({ current, doneAll }: { current: number; doneAll?: boolean }) {
   return (
-    <ol className="flex items-start justify-between mb-10 px-2" suppressHydrationWarning>
+    <ol className="mb-6 flex items-start justify-between px-0 sm:mb-10 sm:px-2" suppressHydrationWarning>
       {Array.from({ length: 9 }, (_, i) => i + 1).map((n) => {
         const done = doneAll || current > n;
         const active = !doneAll && current === n;
@@ -51,13 +51,13 @@ export function Stepper({ current, doneAll }: { current: number; doneAll?: boole
           <li key={n} className="flex-1 flex flex-col items-center relative" suppressHydrationWarning>
             {n < 9 && (
               <span
-                className={`absolute left-[50%] top-[18px] h-[2px] w-full ${
+                className={`absolute left-[50%] top-3.5 h-[2px] w-full sm:top-[18px] ${
                   done ? "bg-[#e11d2e]" : "bg-zinc-200"
                 }`}
               />
             )}
             <span
-              className={`relative z-10 grid h-9 w-9 place-items-center rounded-full text-sm font-bold ${
+              className={`relative z-10 grid h-7 w-7 place-items-center rounded-full text-xs font-bold sm:h-9 sm:w-9 sm:text-sm ${
                 done
                   ? "bg-[#e11d2e] text-white"
                   : active
@@ -74,11 +74,11 @@ export function Stepper({ current, doneAll }: { current: number; doneAll?: boole
               )}
             </span>
             <span
-              className={`mt-2 text-[10px] font-bold tracking-wide ${
+              className={`mt-1 text-[9px] font-bold tracking-wide sm:mt-2 sm:text-[10px] ${
                 active || done ? "text-[#e11d2e]" : "text-zinc-400"
               }`}
             >
-              BƯỚC {n}
+              <span className="hidden sm:inline">BƯỚC {n}</span>
             </span>
           </li>
         );
@@ -247,13 +247,13 @@ export function SiteSupportNote() {
 export function WizardHeader() {
   return (
     <header className="bg-black text-white">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
         <a href="/thu-cu" className="shrink-0">
-          <BrandLogo size={52} light />
+          <BrandLogo size={40} light />
         </a>
-        <div className="text-center">
-          <p className="text-[20px] font-extrabold tracking-[0.08em]">CHƯƠNG TRÌNH THU CŨ ĐỒNG HỒ</p>
-          <p className="text-[11px] tracking-[0.28em] text-zinc-400">ĐỊNH GIÁ NHANH · QUY TRÌNH MINH BẠCH</p>
+        <div className="min-w-0 text-center">
+          <p className="text-xs font-extrabold leading-tight tracking-wide sm:text-[20px] sm:tracking-[0.08em]">CHƯƠNG TRÌNH THU CŨ ĐỒNG HỒ</p>
+          <p className="mt-1 hidden text-[11px] tracking-[0.28em] text-zinc-400 sm:block">ĐỊNH GIÁ NHANH · QUY TRÌNH MINH BẠCH</p>
         </div>
         <a href="/dang-nhap" className="flex items-center gap-2 text-sm">
           <span className="grid h-9 w-9 place-items-center rounded-full border border-white/30">
@@ -262,7 +262,7 @@ export function WizardHeader() {
               <path d="M5 19c1.5-3 4-4.5 7-4.5s5.5 1.5 7 4.5" />
             </svg>
           </span>
-          <span>
+          <span className="hidden sm:block">
             <span className="block text-[12px] font-bold">
               TÀI KHOẢN <span className="text-[10px]">▾</span>
             </span>

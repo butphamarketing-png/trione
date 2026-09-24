@@ -63,17 +63,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [path]);
   const currentGroup = groups.find((g) => g.children.some((c) => isActive(path, c.href)));
   const [open, setOpen] = useState<string>(currentGroup?.label ?? "Quản lý Sản phẩm thu cũ");
+  const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => {
+    setNavOpen(false);
+  }, [path]);
   const [hello, setHello] = useState("admin");
   const site = useSiteSettings();
   useEffect(() => {
     const s = readSession();
     if (s) setHello(s.user);
   }, []);
+  useEffect(() => {
+    void import("@/lib/catalog-sync").then((mod) => mod.ensureCatalog());
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#f4f6f8]">
       <div className="flex">
-        <aside className="min-h-screen w-[248px] border-r border-zinc-200 bg-white p-3 text-zinc-700">
+        {navOpen ? (
+          <button type="button" aria-label="Đóng menu" className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setNavOpen(false)} />
+        ) : null}
+        <aside
+          className={`${navOpen ? "fixed inset-y-0 left-0 z-40 flex" : "hidden"} w-[min(280px,88vw)] flex-col overflow-y-auto border-r border-zinc-200 bg-white p-3 text-zinc-700 md:static md:flex md:min-h-screen md:w-[248px]`}
+        >
           <Link href="/" className="mb-5 flex items-center gap-2 px-1 py-2">
             <BrandLogo size={42} />
             <span>
@@ -135,25 +147,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </aside>
         <div className="min-w-0 flex-1">
-          <header className="flex items-center justify-between border-b bg-white px-6 py-2.5 text-sm">
-            <span className="text-zinc-500">☰ &nbsp; Xin chào, {hello}!</span>
-            <div className="flex items-center gap-4 text-zinc-500">
-              <span>SEO</span>
-              <span>⚙</span>
+          <header className="flex items-center justify-between gap-3 border-b bg-white px-4 py-2.5 text-sm md:px-6">
+            <span className="min-w-0 truncate text-zinc-500">
+              <button type="button" className="mr-2 md:hidden" aria-label="Mở menu" onClick={() => setNavOpen(true)}>
+                ☰
+              </button>
+              Xin chào, {hello}!
+            </span>
+            <div className="flex shrink-0 items-center gap-3 text-zinc-500">
+              <span className="hidden sm:inline">SEO</span>
+              <span className="hidden sm:inline">⚙</span>
               <span className="relative">
                 🔔<span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#e11d2e]" />
               </span>
               <LogoutButton className="text-[#2f6fed]" />
             </div>
           </header>
-          <div className="px-6 pt-4">
+          <div className="px-4 pt-4 md:px-6">
             <p className="inline-block border-b-2 border-[#f6c445] pb-1 text-sm font-medium text-zinc-800">
               Bảng điều khiển
               {currentGroup ? ` / ${currentGroup.label}` : ""}
               {current && current.href !== "/admin" ? ` / ${current.label}` : ""}
             </p>
           </div>
-          <div className="p-6 pt-3">{children}</div>
+          <div className="p-4 pt-3 md:p-6">{children}</div>
         </div>
       </div>
     </div>

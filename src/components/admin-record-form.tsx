@@ -154,6 +154,13 @@ export function AdminRecordForm({
         return;
       }
       setExtra("image", dataUrl);
+      const blob = await (await fetch(dataUrl)).blob();
+      const body = new FormData();
+      body.set("id", `record-${draft.id}-${Date.now()}`);
+      body.set("file", new File([blob], "photo.webp", { type: blob.type || "image/webp" }));
+      const uploaded = await fetch("/api/media", { method: "POST", body });
+      const saved = (await uploaded.json()) as { url?: string };
+      if (uploaded.ok && saved.url) setExtra("image", saved.url);
     } catch {
       setFileError("Không đọc được ảnh. Hãy chọn file JPG hoặc PNG.");
     } finally {

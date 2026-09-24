@@ -198,14 +198,26 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       if (!list.length) setBrandId("");
     }
     sync();
-    const onFocus = () => sync();
+    void import("@/lib/catalog-sync").then(async (mod) => {
+      const changed = await mod.ensureCatalog();
+      if (changed) sync();
+    });
+    const onCatalog = () => sync();
+    const onFocus = () => {
+      void import("@/lib/catalog-sync").then(async (mod) => {
+        await mod.hydrateCatalog();
+        sync();
+      });
+    };
     const onVisible = () => {
       if (document.visibilityState === "visible") sync();
     };
     window.addEventListener("focus", onFocus);
+    window.addEventListener("trione-catalog", onCatalog);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.removeEventListener("focus", onFocus);
+      window.removeEventListener("trione-catalog", onCatalog);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
@@ -444,7 +456,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#f7f7f8]">
         <div className="pointer-events-none absolute top-40 right-[-120px] h-[520px] w-[520px] rounded-full border-[40px] border-rose-100/70" />
         <WizardHeader />
-        <div className="relative mx-auto w-full max-w-5xl px-6 py-8">
+        <div className="relative mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
           <Stepper current={9} doneAll />
           <section>
             <div className="mb-6 flex items-start justify-between gap-4">
@@ -490,7 +502,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     <div className="min-h-screen flex flex-col bg-[#f7f7f8] relative overflow-hidden">
       <div className="pointer-events-none absolute right-[-120px] top-40 h-[520px] w-[520px] rounded-full border-[40px] border-rose-100/70" />
       <WizardHeader />
-      <div className="relative mx-auto w-full max-w-5xl px-6 py-8">
+      <div className="relative mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <Stepper current={displayStep} doneAll={step === 10} />
 
         {step === 1 && (
@@ -594,17 +606,17 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                       setModelId(nextModel?.code ?? "");
                     }}
                     aria-pressed={lineId === l.code}
-                    className={`pick flex gap-4 rounded-2xl border bg-white p-4 text-left ${
+                    className={`pick flex gap-3 rounded-2xl border bg-white p-3 text-left sm:gap-4 sm:p-4 ${
                       lineId === l.code ? "is-on border-[#e11d2e] bg-rose-50/50" : "border-transparent"
                     }`}
                   >
                     {l.image ? (
-                      <MarkedImage src={l.image} className="h-[92px] w-[120px] shrink-0 rounded-xl bg-[#f4f4f5] object-cover" />
+                      <MarkedImage src={l.image} className="h-16 w-16 shrink-0 rounded-xl bg-[#f4f4f5] object-cover sm:h-[92px] sm:w-[120px]" />
                     ) : (
                       <LineThumb kind={l.thumb || "android"} />
                     )}
-                    <span className="flex-1">
-                      <h2 className="block text-lg font-semibold">{l.name}</h2>
+                    <span className="min-w-0 flex-1">
+                      <h2 className="block text-base font-semibold leading-snug sm:text-lg">{l.name}</h2>
                       {l.blurb ? <span className="mt-1 block text-sm text-zinc-500">{l.blurb}</span> : null}
                       {lineId === l.code && (
                         <span className="mt-3 inline-block rounded-full bg-rose-50 px-3 py-1 text-xs text-trione">
@@ -651,8 +663,8 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
               </span>
             }
           >
-            <div className="mb-2 flex flex-wrap gap-3">
-              <div className="relative min-w-[240px] flex-1">
+            <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <div className="relative min-w-0 flex-1">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">⌕</span>
                 <input
                   value={modelQ}
@@ -686,25 +698,23 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                     key={m.key}
                     onClick={() => setModelId(m.code)}
                     aria-pressed={modelId === m.code}
-                    className={`pick flex w-full items-center gap-4 rounded-2xl border bg-white p-4 text-left ${
+                    className={`pick flex w-full items-center gap-3 rounded-2xl border bg-white p-3 text-left sm:gap-4 sm:p-4 ${
                       modelId === m.code ? "is-on border-[#e11d2e] bg-rose-50/40" : "border-zinc-100"
                     }`}
                   >
-                    <div className="h-[88px] w-[120px] shrink-0 overflow-hidden rounded-xl bg-[#f4f4f5]">
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#f4f4f5] sm:h-[88px] sm:w-[120px]">
                       {m.image ? <MarkedImage src={m.image} className="h-full w-full object-cover" /> : <ModelThumb id={m.code} />}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-lg font-semibold">{m.name}</h3>
-                      <p className="text-sm text-zinc-500">{m.blurb || m.specs || "Chưa có mô tả"}</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-base font-semibold leading-snug">{m.name}</h3>
+                        <CheckBox on={modelId === m.code} />
+                      </div>
+                      <p className="mt-1 text-sm leading-5 text-zinc-500">{m.blurb || m.specs || "Chưa có mô tả"}</p>
+                      {modelId === m.code ? (
+                        <span className="mt-2 inline-block rounded-full bg-rose-50 px-3 py-1 text-xs text-trione">ĐÃ CHỌN</span>
+                      ) : null}
                     </div>
-                    {modelId === m.code ? (
-                      <>
-                        <span className="rounded-full bg-rose-50 px-3 py-1 text-xs text-trione">ĐÃ CHỌN</span>
-                        <CheckBox on />
-                      </>
-                    ) : (
-                      <CheckBox on={false} />
-                    )}
                   </button>
                 ))
               ) : (
@@ -1334,10 +1344,10 @@ function Section({
 }) {
   return (
     <section>
-      <div className="flex items-start justify-between gap-4 mb-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="border-l-4 border-[#e11d2e] pl-4">
-          <h1 className="text-[28px] font-bold leading-tight">{title}</h1>
-          <p className="text-zinc-500 mt-1">{sub}</p>
+          <h1 className="text-2xl font-bold leading-tight sm:text-[28px]">{title}</h1>
+          <p className="mt-1 text-sm leading-6 text-zinc-500 sm:text-base">{sub}</p>
         </div>
         {chip}
       </div>
