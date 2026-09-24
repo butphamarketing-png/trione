@@ -35,7 +35,9 @@ function applyDefaultImages(
   if (!defaults) return records;
   return records.map((record) => {
     const preset = defaults[record.cells[titleAt] ?? ""];
-    if (!preset || (!replaceExisting && record.extra.image) || record.extra.image === preset) return record;
+    const current = record.extra.image;
+    const catalogImage = current.startsWith("/watches/") || current.startsWith("/brands/");
+    if (!preset || current === preset || (!replaceExisting && current && !catalogImage)) return record;
     return { ...record, extra: { ...record.extra, image: preset } };
   });
 }

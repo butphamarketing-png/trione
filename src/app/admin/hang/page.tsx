@@ -9,10 +9,10 @@ const linePhotos: Record<string, string> = {
   Forerunner: "/watches/forerunner-970.jpg",
   "Galaxy Watch": "/watches/galaxy-watch-6.jpg",
   "COROS PACE": "/watches/coros-pace-3.jpg",
-  "Suunto Race": "/watches/suunto-t6c.jpg",
-  "Amazfit GTR / GTS": "/watches/amazfit-bip.jpg",
+  "Suunto Race": "/watches/suunto-9.jpg",
+  "Amazfit GTR / GTS": "/watches/amazfit-band.jpg",
   "Huawei Watch GT": "/watches/huawei-gt5.jpg",
-  "Xiaomi Watch / Redmi Watch": "/brands/xiaomi.svg",
+  "Xiaomi Watch / Redmi Watch": "/watches/xiaomi-watch.jpg",
 };
 const lineImages = Object.fromEntries(lines.map((line) => [line.name, linePhotos[line.name] || `/brands/${line.brandId}.svg`]));
 

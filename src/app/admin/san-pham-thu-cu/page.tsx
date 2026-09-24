@@ -18,10 +18,10 @@ const productPhotos: Record<string, string> = {
   "Garmin Forerunner 970": "/watches/forerunner-970.jpg",
   "Samsung Galaxy Watch6": "/watches/galaxy-watch-6.jpg",
   "COROS PACE 3": "/watches/coros-pace-3.jpg",
-  "Suunto Race 2": "/watches/suunto-t6c.jpg",
-  "Amazfit GTR 4": "/watches/amazfit-bip.jpg",
+  "Suunto Race 2": "/watches/suunto-9.jpg",
+  "Amazfit GTR 4": "/watches/amazfit-band.jpg",
   "Huawei Watch GT 5 Pro": "/watches/huawei-gt5.jpg",
-  "Redmi Watch 5": "/brands/xiaomi.svg",
+  "Redmi Watch 5": "/watches/xiaomi-watch.jpg",
 };
 
 export default function TradeInProductsPage() {
