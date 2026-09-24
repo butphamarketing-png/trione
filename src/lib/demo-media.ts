@@ -59,7 +59,7 @@ export function subscribeMedia(onStoreChange: () => void) {
 }
 
 export function getMediaSnapshot(): Record<string, string> {
-  if (typeof window === "undefined") return {};
+  if (typeof window === "undefined") return emptyMedia;
   const raw = localStorage.getItem(KEY);
   if (raw === cachedRaw) return cached;
   cachedRaw = raw;
@@ -67,8 +67,10 @@ export function getMediaSnapshot(): Record<string, string> {
   return cached;
 }
 
+const emptyMedia: Record<string, string> = {};
+
 export function getServerMediaSnapshot(): Record<string, string> {
-  return {};
+  return emptyMedia;
 }
 
 export function mediaSrc(id: string, fallback: string, overrides = getMediaSnapshot()) {

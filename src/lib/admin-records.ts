@@ -206,7 +206,10 @@ export function saveRecords(key: string, records: AdminRecord[]) {
   memory.set(key, { dirty: true, records: next });
   if (typeof window !== "undefined") {
     sessionStorage.setItem(storageKey(key), JSON.stringify(next));
-    void import("@/lib/catalog-sync").then((mod) => mod.publishCatalog());
+    void import("@/lib/catalog-sync").then((mod) => {
+      mod.touchCatalogKey(storageKey(key));
+      return mod.publishCatalog();
+    });
   }
   return next;
 }

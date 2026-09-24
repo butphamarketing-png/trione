@@ -55,8 +55,12 @@ export function saveStaffProfile(user: string, profile: StaffProfile) {
     address: profile.address.trim(),
     phone: profile.phone.trim(),
   };
-  sessionStorage.setItem(key(user), JSON.stringify(next));
-  void import("@/lib/catalog-sync").then((mod) => mod.publishCatalog());
+  const storageKey = key(user);
+  sessionStorage.setItem(storageKey, JSON.stringify(next));
+  void import("@/lib/catalog-sync").then((mod) => {
+    mod.touchCatalogKey(storageKey);
+    return mod.publishCatalog();
+  });
   const session = readSession();
   if (session && session.user === user) saveSession({ ...session, name: next.name });
   const accounts = readAccounts();

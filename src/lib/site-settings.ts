@@ -130,7 +130,10 @@ export function saveSiteSettings(next: SiteSettings) {
   cache = saved;
   sessionStorage.setItem(KEY, JSON.stringify(saved));
   listeners.forEach((listener) => listener());
-  void import("@/lib/catalog-sync").then((mod) => mod.publishCatalog());
+  void import("@/lib/catalog-sync").then((mod) => {
+    mod.touchCatalogKey(KEY);
+    return mod.publishCatalog();
+  });
   return saved;
 }
 

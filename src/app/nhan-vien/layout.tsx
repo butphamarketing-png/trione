@@ -29,7 +29,10 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     const s = readSession();
     if (s && s.role !== "admin") setMe(s);
-    void import("@/lib/catalog-sync").then((mod) => mod.ensureCatalog());
+    const pull = () => void import("@/lib/catalog-sync").then((mod) => mod.hydrateCatalog());
+    pull();
+    window.addEventListener("focus", pull);
+    return () => window.removeEventListener("focus", pull);
   }, []);
   const waiting = useLiveRequests().filter((r) => r.status === "dang-cho-duyet");
   const initials = me.name

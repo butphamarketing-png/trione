@@ -48,7 +48,10 @@ function emit() {
 function save(store: Store) {
   sessionStorage.setItem(KEY, JSON.stringify(store));
   emit();
-  void import("@/lib/catalog-sync").then((mod) => mod.publishCatalog());
+  void import("@/lib/catalog-sync").then((mod) => {
+    mod.touchCatalogKey(KEY);
+    return mod.publishCatalog();
+  });
 }
 
 export function importRequestStore(raw: string) {

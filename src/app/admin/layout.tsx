@@ -74,7 +74,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (s) setHello(s.user);
   }, []);
   useEffect(() => {
-    void import("@/lib/catalog-sync").then((mod) => mod.ensureCatalog());
+    const pull = () => void import("@/lib/catalog-sync").then((mod) => mod.hydrateCatalog());
+    pull();
+    window.addEventListener("focus", pull);
+    return () => window.removeEventListener("focus", pull);
   }, []);
 
   return (

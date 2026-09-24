@@ -12,6 +12,16 @@ function kept(key: string) {
   );
 }
 
+const timeStore = "trione-catalog-times";
+const dirtyStore = "trione-catalog-dirty";
+
+export function touchCatalogKey(key: string) {
+  if (typeof window === "undefined") return;
+  const dirty = JSON.parse(sessionStorage.getItem(dirtyStore) || "{}") as Record<string, number>;
+  dirty[key] = Date.now();
+  sessionStorage.setItem(dirtyStore, JSON.stringify(dirty));
+}
+
 let publishing = false;
 let pending = false;
 
@@ -24,12 +34,18 @@ export async function publishCatalog() {
   publishing = true;
   try {
     const payload: Record<string, string> = {};
+    const dirty = JSON.parse(sessionStorage.getItem(dirtyStore) || "{}") as Record<string, number>;
+    const known = JSON.parse(sessionStorage.getItem(timeStore) || "{}") as Record<string, number>;
+    const times: Record<string, number> = {};
     for (let i = 0; i < sessionStorage.length; i++) {
       const key = sessionStorage.key(i);
       if (!key || !kept(key)) continue;
       const raw = sessionStorage.getItem(key);
-      if (raw) payload[key] = raw;
+      if (!raw) continue;
+      payload[key] = raw;
+      times[key] = dirty[key] || known[key] || 0;
     }
+    payload.__times = JSON.stringify(times);
     await fetch("/api/catalog", {
       method: "PUT",
       headers: { "content-type": "application/json" },
@@ -75,6 +91,9 @@ export async function hydrateCatalog() {
       const orders = await import("@/lib/demo-requests");
       orders.importRequestStore(requests);
     }
+    const known = JSON.parse(sessionStorage.getItem(timeStore) || "{}") as Record<string, number>;
+    for (const key of keys) known[key] = known[key] || Date.now();
+    sessionStorage.setItem(timeStore, JSON.stringify(known));
     window.dispatchEvent(new Event(catalogEvent));
     return true;
   } catch {
