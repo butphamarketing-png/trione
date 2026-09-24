@@ -1,7 +1,9 @@
 "use client";
 
 import { AdminTable } from "@/components/admin-table";
-import { statusLabel, type TradeRequest } from "@/data/staff";
+import { statusLabel, type RequestStatus, type TradeRequest } from "@/data/staff";
+import { patchRequest } from "@/lib/demo-requests";
+import type { AdminRecord } from "@/lib/admin-records";
 import { useLiveRequests } from "@/lib/use-live-requests";
 import { vnd } from "@/lib/pricing";
 
@@ -27,8 +29,29 @@ function suggestedOption(request: TradeRequest) {
   return specs || "—";
 }
 
+function statusFromLabel(label: string): RequestStatus {
+  if (label.includes("Đã duyệt")) return "da-duyet";
+  if (label.includes("Chưa duyệt")) return "chua-duyet";
+  return "dang-cho-duyet";
+}
+
 export default function OrdersAdminPage() {
-  const rows = useLiveRequests().map((request, index) => [
+  const live = useLiveRequests();
+  function sync(records: AdminRecord[]) {
+    for (const record of records) {
+      const id = record.cells[1]?.trim();
+      if (!id || !live.some((item) => item.id === id)) continue;
+      const imeiNew = record.cells[12]?.trim();
+      patchRequest(id, {
+        name: record.cells[2]?.trim() || "",
+        address: record.cells[3]?.trim() || "",
+        imeiOld: record.cells[8]?.trim() || "",
+        imeiNew: !imeiNew || imeiNew === "Chưa nhập" ? "" : imeiNew,
+        status: statusFromLabel(record.cells[14] ?? ""),
+      });
+    }
+  }
+  const rows = live.map((request, index) => [
     String(index + 1),
     request.id,
     request.name,
@@ -51,6 +74,7 @@ export default function OrdersAdminPage() {
       titleLinks={false}
       live
       wide
+      onCommit={sync}
       redIndexes={[4]}
       columns={[
         "STT",

@@ -44,7 +44,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-3">
             <BrandLogo size={40} />
             <div>
-              <p className="text-sm font-bold tracking-wide">{site.company}</p>
+              <p className="text-sm font-bold tracking-wide" suppressHydrationWarning>{site.company}</p>
               <p className="text-[11px] text-zinc-400">Hệ thống quản lý chương trình thu cũ</p>
             </div>
           </div>

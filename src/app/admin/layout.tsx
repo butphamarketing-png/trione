@@ -78,7 +78,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <BrandLogo size={42} />
             <span>
               <span className="block text-[10px] tracking-[0.2em] text-zinc-400">CMS</span>
-              <span className="font-extrabold text-zinc-900">{site.company}</span>
+              <span className="font-extrabold text-zinc-900" suppressHydrationWarning>{site.company}</span>
             </span>
           </Link>
           <Link

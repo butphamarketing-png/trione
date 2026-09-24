@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { models, garminNew } from "@/data/catalog";
 import { statusLabel } from "@/data/staff";
-import { useLiveKpis, useLiveRequests } from "@/lib/use-live-requests";
+import { useLiveRequests } from "@/lib/use-live-requests";
 
 export default function AdminHome() {
-  const stats = useLiveKpis();
   const live = useLiveRequests();
   const recent = live.slice(0, 8);
   const waiting = live.filter((item) => item.status === "dang-cho-duyet").length;
@@ -14,7 +13,7 @@ export default function AdminHome() {
     <div>
       <h1 className="mb-4 text-xl font-bold">Bảng điều khiển</h1>
       <div className="grid gap-4 sm:grid-cols-4">
-        <Stat n={stats.total} l="Yêu cầu thu cũ" href="/admin/don-hang" />
+        <Stat n={live.length} l="Yêu cầu thu cũ" href="/admin/don-hang" />
         <Stat n={waiting} l="Đang chờ duyệt" href="/admin/don-hang" />
         <Stat n={models.length} l="SP thu cũ" href="/admin/san-pham-thu-cu" />
         <Stat n={garminNew.length} l="SP đổi mới" href="/admin/doi-moi" />
