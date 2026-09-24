@@ -5,6 +5,11 @@ import { staffStatusLabel, statusClass, type TradeRequest } from "@/data/staff";
 import { useLiveRequests } from "@/lib/use-live-requests";
 import { vnd } from "@/lib/pricing";
 
+function gradeLabel(grade: string) {
+  const level = grade.match(/[1-5]/)?.[0];
+  return level ? `Loại ${level}` : grade || "—";
+}
+
 export function StaffRequestTable({ items }: { items?: TradeRequest[] }) {
   const live = useLiveRequests();
   const rows = items ?? live;
@@ -37,7 +42,7 @@ export function StaffRequestTable({ items }: { items?: TradeRequest[] }) {
             </td>
             <td>
               {r.oldDevice}
-              <div className="text-[11px] text-zinc-400">{r.grade}</div>
+              <div className="text-[11px] text-zinc-400">{gradeLabel(r.grade)}</div>
             </td>
             <td>{r.newDevice}</td>
             <td className="font-medium">{vnd(r.tradeIn)}</td>

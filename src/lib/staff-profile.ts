@@ -1,5 +1,6 @@
 "use client";
 
+import { readAccounts, saveAccounts } from "@/lib/accounts";
 import { readSession, saveSession } from "@/lib/session";
 
 export type StaffProfile = {
@@ -57,5 +58,11 @@ export function saveStaffProfile(user: string, profile: StaffProfile) {
   sessionStorage.setItem(key(user), JSON.stringify(next));
   const session = readSession();
   if (session && session.user === user) saveSession({ ...session, name: next.name });
+  const accounts = readAccounts();
+  const index = accounts.findIndex((item) => item.user.toLowerCase() === user.toLowerCase());
+  if (index >= 0 && accounts[index].name !== next.name) {
+    const nextAccounts = accounts.map((item, itemIndex) => (itemIndex === index ? { ...item, name: next.name } : item));
+    saveAccounts(nextAccounts);
+  }
   return next;
 }

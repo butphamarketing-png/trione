@@ -22,6 +22,7 @@ import { fallbackExchangeProducts, readExchangeProducts, type ExchangeProduct } 
 import { resolveGrade, vnd } from "@/lib/pricing";
 import { formatCreatedAt, makeRequestCode, saveTradeRequest } from "@/lib/demo-requests";
 import { readSession } from "@/lib/session";
+import { readStaffProfile } from "@/lib/staff-profile";
 import { phoneHref, setPageSeo, useSiteSettings } from "@/lib/site-settings";
 
 type FunctionStatus = "ok" | "issues" | "dead";
@@ -347,13 +348,14 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       ];
       const session = readSession();
       const byStaff = session && session.role !== "admin";
+      const profile = byStaff ? readStaffProfile(session.user, session.name) : null;
       saveTradeRequest({
         id: code,
         username: byStaff ? session.user : "khach.trione",
-        name: byStaff ? session.name : `Khách ${site.company}`,
+        name: byStaff ? profile?.name || session.name : `Khách ${site.company}`,
         createdAt: formatCreatedAt(now),
         updatedAt: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
-        address: site.address,
+        address: profile?.address || site.address,
         brand: chosenName || "Khác",
         oldDevice:
           brandId === "other"

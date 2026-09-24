@@ -1,12 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { models, garminNew } from "@/data/catalog";
+import { useEffect, useState } from "react";
 import { statusLabel } from "@/data/staff";
+import { readExchangeProducts } from "@/lib/exchange-products";
+import { readTradeProducts } from "@/lib/trade-products";
 import { useLiveRequests } from "@/lib/use-live-requests";
 
 export default function AdminHome() {
   const live = useLiveRequests();
+  const [tradeCount, setTradeCount] = useState(0);
+  const [exchangeCount, setExchangeCount] = useState(0);
+  useEffect(() => {
+    const sync = () => {
+      setTradeCount(readTradeProducts().length);
+      setExchangeCount(readExchangeProducts().length);
+    };
+    sync();
+    window.addEventListener("focus", sync);
+    return () => window.removeEventListener("focus", sync);
+  }, []);
   const recent = live.slice(0, 8);
   const waiting = live.filter((item) => item.status === "dang-cho-duyet").length;
   return (
@@ -15,8 +28,8 @@ export default function AdminHome() {
       <div className="grid gap-4 sm:grid-cols-4">
         <Stat n={live.length} l="Yêu cầu thu cũ" href="/admin/don-hang" />
         <Stat n={waiting} l="Đang chờ duyệt" href="/admin/don-hang" />
-        <Stat n={models.length} l="SP thu cũ" href="/admin/san-pham-thu-cu" />
-        <Stat n={garminNew.length} l="SP đổi mới" href="/admin/doi-moi" />
+        <Stat n={tradeCount} l="SP thu cũ" href="/admin/san-pham-thu-cu" />
+        <Stat n={exchangeCount} l="SP đổi mới" href="/admin/doi-moi" />
       </div>
       <div className="mt-6 overflow-hidden rounded-sm border-t-4 border-[#2f6fed] bg-white">
         <h2 className="p-4 font-semibold">Đơn gần đây</h2>

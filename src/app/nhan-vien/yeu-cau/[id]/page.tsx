@@ -8,6 +8,11 @@ import { patchRequest } from "@/lib/demo-requests";
 import { useLiveRequests } from "@/lib/use-live-requests";
 import { vnd } from "@/lib/pricing";
 
+function gradeLabel(grade: string) {
+  const level = grade.match(/[1-5]/)?.[0];
+  return level ? `Loại ${level}` : grade || "—";
+}
+
 export default function RequestDetailPage({
   params,
 }: {
@@ -100,8 +105,9 @@ export default function RequestDetailPage({
           <p className="mb-3 text-[11px] text-zinc-400">THÔNG TIN THIẾT BỊ KHÁCH HÀNG GỬI</p>
           <Row k="Hãng" v={found.brand} />
           <Row k="Tên thu cũ" v={found.oldDevice} />
-          <Row k="IMEI thu cũ" v={found.imeiOld} />
-          <p className="mt-2 mb-1 text-xs text-zinc-500">Tình trạng máy</p>
+          <Row k="IMEI thu cũ" v={found.imeiOld || "Chưa nhập"} />
+          <Row k="Tình trạng máy" v={gradeLabel(found.grade)} />
+          <p className="mt-2 mb-1 text-xs text-zinc-500">Chi tiết tình trạng</p>
           <div className="flex flex-wrap gap-1">
             {found.tags.map((t) => (
               <span key={t} className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] text-emerald-700">
@@ -115,7 +121,7 @@ export default function RequestDetailPage({
           <p className="font-semibold">Sản phẩm đổi mới</p>
           <p className="mb-3 text-[11px] text-zinc-400">SẢN PHẨM GARMIN ĐÃ CHỌN</p>
           <Row k="Tên đổi mới" v={found.newDevice} />
-          <Row k="IMEI máy đổi mới" v={found.imeiNew ?? "Chưa cập nhật"} accent={!found.imeiNew} />
+          <Row k="IMEI máy đổi mới" v={found.imeiNew || "Chưa nhập"} accent={!found.imeiNew} />
           <Row k="Giá sản phẩm mới" v={vnd(found.newPrice)} />
           <Row k="Khấu trừ máy cũ" v={`− ${vnd(found.tradeIn)}`} />
           <p className="mt-3 flex justify-between rounded-lg bg-rose-50 px-3 py-2 font-bold text-[#e11d2e]">

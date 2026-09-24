@@ -36,7 +36,7 @@ export default function StaffDashboard() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-[26px] font-bold">Bảng điều khiển</h1>
-          <p className="text-sm text-zinc-500">Tạo yêu cầu thu cũ và theo dõi công việc của bạn</p>
+          <p className="text-sm text-zinc-500">Số yêu cầu giống bảng đơn của admin. Lịch sử bên dưới là yêu cầu do tài khoản này tạo.</p>
         </div>
         <Link href="/thu-cu" className="rounded-lg bg-[#e11d2e] px-4 py-2.5 text-sm font-semibold text-white">
           ▣ Tạo yêu cầu mới

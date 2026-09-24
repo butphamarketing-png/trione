@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { readAccounts } from "@/lib/accounts";
 import { readSession } from "@/lib/session";
 import { readStaffProfile, saveStaffProfile, type StaffProfile } from "@/lib/staff-profile";
 
@@ -14,8 +15,10 @@ export default function StaffAccountPage() {
   useEffect(() => {
     const session = readSession();
     const account = session?.user || "nv.anh";
+    const official = readAccounts().find((item) => item.user.toLowerCase() === account.toLowerCase());
     setUser(account);
-    setProfile(readStaffProfile(account, session?.name || ""));
+    const stored = readStaffProfile(account, official?.name || session?.name || "");
+    setProfile({ ...stored, name: official?.name || stored.name });
   }, []);
 
   function save(event: React.FormEvent) {

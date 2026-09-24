@@ -29,7 +29,7 @@ export default function RequestListPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-[26px] font-bold">Yêu cầu thu cũ</h1>
-          <p className="text-sm text-zinc-500">Danh sách yêu cầu được phân công cho bạn</p>
+          <p className="text-sm text-zinc-500">Cùng danh sách đơn với admin. Đổi trạng thái ở đây thì bảng đơn admin cập nhật theo.</p>
         </div>
         <Link href="/thu-cu" className="rounded-lg bg-[#e11d2e] px-4 py-2.5 text-sm font-semibold text-white">
           ▣ Tạo yêu cầu mới

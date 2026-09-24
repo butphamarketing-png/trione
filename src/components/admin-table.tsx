@@ -483,7 +483,11 @@ function AdminTableInner({
                         className="accent-[#f6c445]"
                       />
                     ) : titleLinks && index === titleIndex ? (
-                      <div>
+                      <div className="flex items-center gap-3">
+                        {imageIndex < 0 && record.extra.image ? (
+                          <img src={record.extra.image} alt="" className="h-12 w-12 shrink-0 rounded object-cover" />
+                        ) : null}
+                        <div>
                         <a href={href("edit", record.id)} className="font-medium hover:underline">
                           {cell}
                         </a>
@@ -500,6 +504,7 @@ function AdminTableInner({
                             </button>
                           </p>
                         ) : null}
+                        </div>
                       </div>
                     ) : (
                       cell

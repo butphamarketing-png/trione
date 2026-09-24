@@ -82,7 +82,7 @@ export function readExchangeProducts(parent = ""): ExchangeProduct[] {
             brandName: brand?.name || (record.cells[parentIndex] ?? "").trim() || "Garmin",
             series: (record.cells[seriesIndex] ?? "").trim() || known?.series || "",
             specs: record.extra.shortDesc || known?.specs || "",
-            price: money(record.cells[priceIndex] ?? "", known?.listPrice ?? 0),
+            price: money(record.cells[priceIndex] ?? ""),
             image: record.extra.image || "",
             face: known?.face || "#222",
             strap: known?.strap || "#444",
