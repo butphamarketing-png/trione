@@ -54,7 +54,7 @@ export function readAccounts(): Account[] {
   }
 }
 
-export function saveAccounts(list: Array<Partial<Account> & { role?: string }>) {
+export function saveAccounts(list: Array<Partial<Omit<Account, "role">> & { role?: string }>) {
   const next = list.map((item, index) => normalizeAccount(item, index)).filter((item) => item.user && item.name);
   sessionStorage.setItem(KEY, JSON.stringify(next));
   return next;
