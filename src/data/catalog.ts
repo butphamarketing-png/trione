@@ -14,6 +14,7 @@ export type ProductLine = {
   name: string;
   blurb: string;
   thumb: string;
+  image: string;
 };
 
 export type TradeInModel = {
@@ -54,6 +55,7 @@ export const lines: ProductLine[] = [
     name: "Apple Watch Ultra",
     blurb: "Dòng cao cấp, thiết kế titanium bền bỉ dành cho thể thao và hoạt động ngoài trời.",
     thumb: "ultra",
+    image: "/watches/ultra-2.jpg",
   },
   {
     id: "series",
@@ -61,6 +63,7 @@ export const lines: ProductLine[] = [
     name: "Apple Watch Series",
     blurb: "Dòng tiêu chuẩn với các tính năng sức khỏe, luyện tập và kết nối hằng ngày.",
     thumb: "series",
+    image: "/watches/series-10.jpg",
   },
   {
     id: "se",
@@ -68,6 +71,7 @@ export const lines: ProductLine[] = [
     name: "Apple Watch SE",
     blurb: "Dòng thiết yếu, dễ sử dụng và phù hợp với nhu cầu theo dõi sức khỏe cơ bản.",
     thumb: "se",
+    image: "/watches/se-2.jpg",
   },
   {
     id: "fenix-old",
@@ -75,6 +79,7 @@ export const lines: ProductLine[] = [
     name: "fēnix",
     blurb: "Đồng hồ đa thể thao ngoài trời, GPS và pin lâu.",
     thumb: "garmin",
+    image: "/watches/fenix-6x.jpg",
   },
   {
     id: "fr-old",
@@ -82,6 +87,7 @@ export const lines: ProductLine[] = [
     name: "Forerunner",
     blurb: "Đồng hồ chạy bộ GPS, theo dõi luyện tập chuyên sâu.",
     thumb: "garmin",
+    image: "/watches/forerunner-970.jpg",
   },
   {
     id: "gw",
@@ -89,6 +95,7 @@ export const lines: ProductLine[] = [
     name: "Galaxy Watch",
     blurb: "Đồng hồ thông minh Android, sức khỏe và Wear OS.",
     thumb: "android",
+    image: "/watches/galaxy-watch-6.jpg",
   },
   {
     id: "coros-pace",
@@ -96,6 +103,7 @@ export const lines: ProductLine[] = [
     name: "COROS PACE",
     blurb: "Đồng hồ chạy bộ nhẹ, pin lâu, GPS kép.",
     thumb: "sport",
+    image: "/watches/coros-pace-3.jpg",
   },
   {
     id: "suunto-race",
@@ -103,6 +111,7 @@ export const lines: ProductLine[] = [
     name: "Suunto Race",
     blurb: "Đồng hồ đa thể thao ngoài trời, bản đồ và pin bền.",
     thumb: "sport",
+    image: "/watches/suunto-9.jpg",
   },
   {
     id: "amazfit-gtr",
@@ -110,6 +119,7 @@ export const lines: ProductLine[] = [
     name: "Amazfit GTR / GTS",
     blurb: "Smartwatch pin lâu, theo dõi sức khỏe hàng ngày.",
     thumb: "android",
+    image: "/watches/amazfit-band.jpg",
   },
   {
     id: "huawei-gt",
@@ -117,6 +127,7 @@ export const lines: ProductLine[] = [
     name: "Huawei Watch GT",
     blurb: "Đồng hồ thể thao pin lâu ngày, GPS và theo dõi sức khỏe.",
     thumb: "sport",
+    image: "/watches/huawei-gt5.jpg",
   },
   {
     id: "mi-watch",
@@ -124,6 +135,7 @@ export const lines: ProductLine[] = [
     name: "Xiaomi Watch / Redmi Watch",
     blurb: "Smartwatch giá tốt, theo dõi vận động cơ bản.",
     thumb: "android",
+    image: "/watches/xiaomi-watch.jpg",
   },
 ];
 

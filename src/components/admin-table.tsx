@@ -37,7 +37,8 @@ function applyDefaultImages(
     const preset = defaults[record.cells[titleAt] ?? ""];
     const current = record.extra.image;
     const catalogImage = current.startsWith("/watches/") || current.startsWith("/brands/");
-    if (!preset || current === preset || (!replaceExisting && current && !catalogImage)) return record;
+    const uploaded = current.startsWith("http") || current.startsWith("data:");
+    if (!preset || current === preset || uploaded || (!replaceExisting && current && !catalogImage)) return record;
     return { ...record, extra: { ...record.extra, image: preset } };
   });
 }

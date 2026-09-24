@@ -1,20 +1,7 @@
 import { AdminTable } from "@/components/admin-table";
 import { brands, lines } from "@/data/catalog";
 
-const linePhotos: Record<string, string> = {
-  "Apple Watch Ultra": "/watches/ultra-2.jpg",
-  "Apple Watch Series": "/watches/series-10.jpg",
-  "Apple Watch SE": "/watches/se-2.jpg",
-  "fēnix": "/watches/fenix-6x.jpg",
-  Forerunner: "/watches/forerunner-970.jpg",
-  "Galaxy Watch": "/watches/galaxy-watch-6.jpg",
-  "COROS PACE": "/watches/coros-pace-3.jpg",
-  "Suunto Race": "/watches/suunto-9.jpg",
-  "Amazfit GTR / GTS": "/watches/amazfit-band.jpg",
-  "Huawei Watch GT": "/watches/huawei-gt5.jpg",
-  "Xiaomi Watch / Redmi Watch": "/watches/xiaomi-watch.jpg",
-};
-const lineImages = Object.fromEntries(lines.map((line) => [line.name, linePhotos[line.name] || `/brands/${line.brandId}.svg`]));
+const lineImages = Object.fromEntries(lines.map((line) => [line.name, line.image]));
 
 export default function HangPage() {
   return (

@@ -39,6 +39,29 @@ function brandCode(value: string) {
   return brands.find((brand) => brand.id === clean || brand.name === clean)?.id ?? clean;
 }
 
+const exchangePhotos: Record<string, string> = {
+  "fēnix 8 AMOLED": "/watches/fenix-6x.jpg",
+  "fēnix 8 Solar": "/watches/fenix-6x.jpg",
+  "fēnix 7 Pro": "/watches/fenix-6x.jpg",
+  "Forerunner 970": "/watches/forerunner-970.jpg",
+  "Forerunner 570": "/watches/forerunner-265.jpg",
+  "Forerunner 265": "/watches/forerunner-265.jpg",
+  "Venu 4": "/watches/venu-3.jpg",
+  "Venu 3": "/watches/venu-3.jpg",
+  "Venu 3S": "/watches/venu-3.jpg",
+  "Instinct 3 AMOLED": "/watches/instinct-2-solar.png",
+  "Instinct 2X Solar": "/watches/instinct-2-solar.png",
+  "Instinct 2S": "/watches/instinct-2s.jpg",
+  "vivoactive 6": "/watches/vivoactive.jpg",
+  "vivoactive 5": "/watches/vivoactive.jpg",
+  "Lily 2 Active": "/watches/instinct-2s.jpg",
+  "Lily 2 Classic": "/watches/instinct-2s.jpg",
+  "epix Pro Gen 2": "/watches/fenix-6x.jpg",
+  "Forerunner 965": "/watches/forerunner-965.jpg",
+};
+
+export { exchangePhotos };
+
 function toProduct(item: (typeof garminNew)[number], key = item.id): ExchangeProduct {
   return {
     key,
@@ -49,7 +72,7 @@ function toProduct(item: (typeof garminNew)[number], key = item.id): ExchangePro
     series: item.series,
     specs: item.specs,
     price: item.listPrice,
-    image: "",
+    image: exchangePhotos[item.name] || "",
     face: item.face,
     strap: item.strap,
     time: item.time,

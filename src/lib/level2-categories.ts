@@ -40,7 +40,7 @@ function toCategory(line: (typeof lines)[number], key = line.id): Level2Category
     slug: slugify(line.name),
     parent: line.brandId,
     blurb: line.blurb,
-    image: "",
+    image: line.image,
     thumb: line.thumb,
     seoTitle: "",
     keywords: "",

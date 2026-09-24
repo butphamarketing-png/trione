@@ -21,6 +21,7 @@ import { conditionAmount, quoteTradeIn, readTradeProducts, type TradeProduct } f
 import { fallbackExchangeProducts, readExchangeProducts, type ExchangeProduct } from "@/lib/exchange-products";
 import { resolveGrade, vnd } from "@/lib/pricing";
 import { formatCreatedAt, makeRequestCode, saveTradeRequest } from "@/lib/demo-requests";
+import { fileToDataUrl } from "@/lib/demo-media";
 import { readSession } from "@/lib/session";
 import { readStaffProfile } from "@/lib/staff-profile";
 import { phoneHref, setPageSeo, useSiteSettings } from "@/lib/site-settings";
@@ -55,6 +56,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const [battery, setBattery] = useState("good");
   const [strap, setStrap] = useState("good");
   const [photos, setPhotos] = useState<Record<string, string>>({});
+  const photoFiles = useRef<Record<string, File>>({});
+  const sendingLock = useRef(false);
+  const [sending, setSending] = useState(false);
   const [garminId, setGarminId] = useState("");
   const [series, setSeries] = useState("TẤT CẢ");
   const [agreed, setAgreed] = useState(false);
@@ -332,7 +336,29 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     return () => setPageSeo(null);
   }, [site, step, activeKey, categories, level2, lineId, pickedExchange, pickedProduct, chosenName]);
 
-  function next() {
+  async function uploadRequestPhotos(code: string) {
+    const files = photoSlots.map((slot) => photoFiles.current[slot.id]).filter((file): file is File => Boolean(file));
+    const urls: string[] = [];
+    for (const file of files) {
+      try {
+        const dataUrl = await fileToDataUrl(file, 900);
+        if (!dataUrl.startsWith("data:image/")) continue;
+        const blob = await (await fetch(dataUrl)).blob();
+        const body = new FormData();
+        body.set("id", `yeucau-${code}-${urls.length}`);
+        body.set("file", new File([blob], "photo.webp", { type: blob.type || "image/webp" }));
+        const uploaded = await fetch("/api/media", { method: "POST", body });
+        const saved = (await uploaded.json()) as { url?: string };
+        if (uploaded.ok && saved.url) urls.push(saved.url);
+      } catch {
+        /* keep the request even if one photo fails */
+      }
+    }
+    return urls;
+  }
+
+  async function next() {
+    if (sendingLock.current) return;
     if (step === 1 && brandId === "other") {
       setStep(11);
       return;
@@ -352,6 +378,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     }
     if (step === 10 && agreed) {
       const code = requestCode || makeRequestCode();
+      sendingLock.current = true;
+      setSending(true);
+      const uploadedPhotos = await uploadRequestPhotos(code);
       const now = new Date();
       const tags = [
         fn === "ok" ? "CHỨC NĂNG TỐT" : fn === "dead" ? "KHÔNG HOẠT ĐỘNG" : "CÓ VẤN ĐỀ",
@@ -376,7 +405,8 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         imeiOld: serial.trim() || "Chưa nhập",
         grade: `loại ${grade}`,
         tags,
-        photoCount,
+        photoCount: uploadedPhotos.length,
+        photos: uploadedPhotos,
         newDevice: garmin.name,
         newSpecs: garmin.specs,
         newPrice: garmin.listPrice,
@@ -387,6 +417,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       });
       setRequestCode(code);
       setSubmitted(true);
+      setSending(false);
       return;
     }
     setStep((s) => Math.min(10, s + 1));
@@ -423,6 +454,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         const slot = empty[i] ?? photoSlots.find((p) => !next[p.id]);
         if (!slot) return;
         if (next[slot.id]?.startsWith("blob:")) URL.revokeObjectURL(next[slot.id]);
+        photoFiles.current[slot.id] = file;
         next[slot.id] = URL.createObjectURL(file);
       });
       return next;
@@ -431,6 +463,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
 
   function setSlotPhoto(id: string, file?: File) {
     if (!file || !isPhotoFile(file)) return;
+    photoFiles.current[id] = file;
     setPhotos((prev) => {
       if (prev[id]?.startsWith("blob:")) URL.revokeObjectURL(prev[id]);
       return { ...prev, [id]: URL.createObjectURL(file) };
@@ -445,6 +478,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   function clearSlotPhoto(id: string) {
     setPhotos((prev) => {
       if (prev[id]?.startsWith("blob:")) URL.revokeObjectURL(prev[id]);
+      delete photoFiles.current[id];
       const next = { ...prev };
       delete next[id];
       return next;
@@ -1218,10 +1252,10 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 <button
                   type="button"
                   onClick={next}
-                  disabled={!agreed}
+                  disabled={!agreed || sending}
                   className="rounded-xl bg-[#e11d2e] px-6 py-3 font-semibold text-white disabled:bg-zinc-300"
                 >
-                  Gửi yêu cầu về admin
+                  {sending ? "Đang gửi…" : "Gửi yêu cầu về admin"}
                 </button>
               </div>
             </div>

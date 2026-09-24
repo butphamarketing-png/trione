@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   getMediaSnapshot,
   getServerMediaSnapshot,
@@ -11,10 +11,12 @@ import {
 
 export function useMediaSrc(id: string | undefined, fallback: string) {
   const overrides = useSyncExternalStore(subscribeMedia, getMediaSnapshot, getServerMediaSnapshot);
+  const [ready, setReady] = useState(false);
   useEffect(() => {
+    setReady(true);
     void hydrateMediaFromCloud();
   }, []);
-  if (!id) return fallback;
+  if (!id || !ready) return fallback;
   return mediaSrc(id, fallback, overrides);
 }
 

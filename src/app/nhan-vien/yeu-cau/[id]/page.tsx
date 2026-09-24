@@ -22,6 +22,7 @@ export default function RequestDetailPage({
   const live = useLiveRequests();
   const found = live.find((r) => r.id === id);
   const [ready, setReady] = useState(false);
+  const [catalogReady, setCatalogReady] = useState(false);
   const [draft, setDraft] = useState<RequestStatus>("dang-cho-duyet");
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState("");
@@ -31,19 +32,31 @@ export default function RequestDetailPage({
   }, [id]);
 
   useEffect(() => {
+    let cancel = false;
+    void import("@/lib/catalog-sync").then(async (mod) => {
+      await mod.ensureCatalog();
+      if (!cancel) setCatalogReady(true);
+    });
+    return () => {
+      cancel = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
     if (!found) return;
     setDraft(found.status);
     setNote(found.note);
   }, [id, found?.id, found?.status, found?.note]);
 
   if (!found) {
-    if (!ready) {
+    if (!ready || !catalogReady) {
       return <p className="text-sm text-zinc-400">Đang tải yêu cầu…</p>;
     }
     return <p className="text-sm text-zinc-500">Không tìm thấy yêu cầu {id}.</p>;
   }
 
   const due = found.newPrice - found.tradeIn;
+  const shots = (found.photos ?? []).filter((src) => src.startsWith("http") || src.startsWith("/"));
 
   return (
     <div>
@@ -96,6 +109,7 @@ export default function RequestDetailPage({
           <p className="mb-3 text-[11px] text-zinc-400">THÔNG TIN TÀI KHOẢN VÀ GIAO DỊCH</p>
           <Row k="Mã đơn hàng" v={found.id} />
           <Row k="Username" v={found.username} />
+          <Row k="Họ tên" v={found.name} />
           <Row k="Ngày đặt" v={found.createdAt} />
           <Row k="Địa chỉ" v={found.address} />
           <Row k="Nguồn" v={found.source} />
@@ -157,30 +171,42 @@ export default function RequestDetailPage({
       <div className="mt-4 rounded-2xl bg-white p-5">
         <div className="mb-3 flex justify-between">
           <p className="text-sm font-semibold">Hình ảnh thiết bị</p>
-          <span className="text-xs text-[#e11d2e]">Xem toàn bộ {found.photoCount} ảnh →</span>
+          {shots.length ? <span className="text-xs text-zinc-400">{shots.length} ảnh khách đã gửi</span> : null}
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <PhotoSlot label="MẶT TRƯỚC" tone="ok">
-            <WatchFace face="#222" strap="#c45a28" time="10:09" size={92} />
-          </PhotoSlot>
-          <PhotoSlot label="MẶT SAU" tone="ok">
-            <WatchFace face="#c8c4bc" strap="#d9d3c7" time="" size={92} />
-          </PhotoSlot>
-          <PhotoSlot label="SỐ SERIAL" tone="ok">
-            <div className="flex h-16 w-[70%] flex-col justify-center gap-1.5 rounded bg-white px-3 py-2">
-              <span className="block h-1.5 w-full bg-zinc-800" />
-              <span className="block h-1.5 w-[85%] bg-zinc-800" />
-              <span className="block h-1.5 w-[70%] bg-zinc-800" />
-              <span className="mt-1 h-2 w-8 self-end bg-zinc-900" />
-            </div>
-          </PhotoSlot>
-          <PhotoSlot label="LỖI NGOẠI QUAN" tone="warn">
-            <div className="relative">
-              <WatchFace face="#1c1c1c" strap="#2a2a2a" time="" size={92} />
-              <span className="absolute top-6 right-2 h-3 w-3 rounded-full bg-[#e11d2e]" />
-            </div>
-          </PhotoSlot>
-        </div>
+        {shots.length ? (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {shots.map((src, index) => (
+              <a key={src} href={src} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl bg-[#f3f3f4]">
+                <img src={src} alt={`Ảnh thiết bị ${index + 1}`} className="aspect-[5/4] w-full object-cover" />
+              </a>
+            ))}
+          </div>
+        ) : found.photoCount > 0 ? (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <PhotoSlot label="MẶT TRƯỚC" tone="ok">
+              <WatchFace face="#222" strap="#c45a28" time="10:09" size={92} />
+            </PhotoSlot>
+            <PhotoSlot label="MẶT SAU" tone="ok">
+              <WatchFace face="#c8c4bc" strap="#d9d3c7" time="" size={92} />
+            </PhotoSlot>
+            <PhotoSlot label="SỐ SERIAL" tone="ok">
+              <div className="flex h-16 w-[70%] flex-col justify-center gap-1.5 rounded bg-white px-3 py-2">
+                <span className="block h-1.5 w-full bg-zinc-800" />
+                <span className="block h-1.5 w-[85%] bg-zinc-800" />
+                <span className="block h-1.5 w-[70%] bg-zinc-800" />
+                <span className="mt-1 h-2 w-8 self-end bg-zinc-900" />
+              </div>
+            </PhotoSlot>
+            <PhotoSlot label="LỖI NGOẠI QUAN" tone="warn">
+              <div className="relative">
+                <WatchFace face="#1c1c1c" strap="#2a2a2a" time="" size={92} />
+                <span className="absolute top-6 right-2 h-3 w-3 rounded-full bg-[#e11d2e]" />
+              </div>
+            </PhotoSlot>
+          </div>
+        ) : (
+          <p className="rounded-xl bg-zinc-50 px-4 py-6 text-sm text-zinc-500">Khách chưa tải ảnh thiết bị.</p>
+        )}
       </div>
     </div>
   );

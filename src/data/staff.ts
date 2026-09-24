@@ -33,6 +33,7 @@ export type TradeRequest = {
   grade: string;
   tags: string[];
   photoCount: number;
+  photos?: string[];
   newDevice: string;
   newSpecs: string;
   imeiNew?: string;
