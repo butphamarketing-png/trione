@@ -15,12 +15,14 @@ export default function LoginPage() {
   const [show, setShow] = useState(false);
   const [err, setErr] = useState("");
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!user.trim() || !pass) {
       setErr("Nhập tài khoản và mật khẩu.");
       return;
     }
+    const catalog = await import("@/lib/catalog-sync");
+    await catalog.hydrateCatalog();
     const session = resolveLogin(user, pass);
     if (!session) {
       setErr("Sai tài khoản, mật khẩu, hoặc tài khoản đã ngưng.");

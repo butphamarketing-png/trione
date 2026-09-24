@@ -118,11 +118,19 @@ export function readSiteSettings(): SiteSettings {
   return cache;
 }
 
+export function importSiteSettings(raw: string) {
+  cache = normalize(JSON.parse(raw) as Partial<SiteSettings>);
+  sessionStorage.setItem(KEY, JSON.stringify(cache));
+  listeners.forEach((listener) => listener());
+  return cache;
+}
+
 export function saveSiteSettings(next: SiteSettings) {
   const saved = normalize(next);
   cache = saved;
   sessionStorage.setItem(KEY, JSON.stringify(saved));
   listeners.forEach((listener) => listener());
+  void import("@/lib/catalog-sync").then((mod) => mod.publishCatalog());
   return saved;
 }
 

@@ -48,6 +48,17 @@ function emit() {
 function save(store: Store) {
   sessionStorage.setItem(KEY, JSON.stringify(store));
   emit();
+  void import("@/lib/catalog-sync").then((mod) => mod.publishCatalog());
+}
+
+export function importRequestStore(raw: string) {
+  const parsed = JSON.parse(raw) as Store;
+  const store = {
+    extra: Array.isArray(parsed.extra) ? parsed.extra : [],
+    overrides: parsed.overrides && typeof parsed.overrides === "object" ? parsed.overrides : {},
+  };
+  sessionStorage.setItem(KEY, JSON.stringify(store));
+  emit();
 }
 
 export function subscribeRequests(onStoreChange: () => void) {
