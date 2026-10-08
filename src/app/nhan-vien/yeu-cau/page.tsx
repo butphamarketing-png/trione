@@ -10,8 +10,11 @@ export default function RequestListPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<RequestStatus | "all">("all");
   useEffect(() => {
-    const value = new URLSearchParams(window.location.search).get("trang-thai");
+    const params = new URLSearchParams(window.location.search);
+    const value = params.get("trang-thai");
     if (value && value in staffStatusLabel) setStatus(value as RequestStatus);
+    const query = params.get("q");
+    if (query) setQ(query);
   }, []);
   const all = useLiveRequests();
   const items = useMemo(
@@ -64,7 +67,7 @@ export default function RequestListPage() {
           ))}
           <span className="ml-auto text-xs text-zinc-400">Hiển thị {items.length} yêu cầu</span>
         </div>
-        <StaffRequestTable items={items} />
+        {items.length ? <StaffRequestTable items={items} /> : <p className="rounded-xl bg-zinc-50 px-4 py-6 text-sm text-zinc-500">Không có yêu cầu phù hợp.</p>}
       </div>
     </div>
   );

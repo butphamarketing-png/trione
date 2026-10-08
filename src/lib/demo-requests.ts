@@ -135,28 +135,25 @@ export function liveKpis() {
 export type CustomerRow = (typeof customers)[number];
 
 export function customersFrom(live: TradeRequest[]): CustomerRow[] {
-  const extra = live.filter((r) => !requests.some((s) => s.id === r.id));
-  const extraCount = new Map<string, number>();
-  const extraSample = new Map<string, TradeRequest>();
-  for (const r of extra) {
-    extraCount.set(r.username, (extraCount.get(r.username) ?? 0) + 1);
-    if (!extraSample.has(r.username)) extraSample.set(r.username, r);
+  const counts = new Map<string, number>();
+  const sample = new Map<string, TradeRequest>();
+  for (const request of live) {
+    counts.set(request.username, (counts.get(request.username) ?? 0) + 1);
+    if (!sample.has(request.username)) sample.set(request.username, request);
   }
-  const list = customers.map((c) => ({
-    ...c,
-    orders: c.orders + (extraCount.get(c.username) ?? 0),
-  }));
-  for (const [username, n] of extraCount) {
-    if (customers.some((c) => c.username === username)) continue;
-    const r = extraSample.get(username);
-    if (!r) continue;
+  const seen = new Set(customers.map((item) => item.username));
+  const list = customers.map((item) => ({ ...item, orders: counts.get(item.username) ?? 0 }));
+  for (const [username, orders] of counts) {
+    if (seen.has(username)) continue;
+    const request = sample.get(username);
+    if (!request) continue;
     list.unshift({
       username,
-      name: r.name,
+      name: request.name,
       phone: "—",
-      address: r.address.split(",")[0]?.trim() || r.address,
-      orders: n,
-      type: r.source.toLowerCase().includes("ctv") ? "CTV" : "Khách",
+      address: request.address.split(",")[0]?.trim() || request.address,
+      orders,
+      type: request.source.toLowerCase().includes("ctv") ? "CTV" : "Khách",
     });
   }
   return list;

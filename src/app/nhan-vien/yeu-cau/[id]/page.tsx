@@ -6,7 +6,7 @@ import { WatchFace } from "@/components/watch-face";
 import { staffStatusLabel, statusClass, type RequestStatus } from "@/data/staff";
 import { patchRequest } from "@/lib/demo-requests";
 import { useLiveRequests } from "@/lib/use-live-requests";
-import { vnd } from "@/lib/pricing";
+import { exchangeDue, vnd } from "@/lib/pricing";
 
 function gradeLabel(grade: string) {
   const level = grade.match(/[1-5]/)?.[0];
@@ -55,17 +55,18 @@ export default function RequestDetailPage({
     return <p className="text-sm text-zinc-500">Không tìm thấy yêu cầu {id}.</p>;
   }
 
-  const due = found.newPrice - found.tradeIn;
+  const support = found.supportPrice ?? 0;
+  const due = exchangeDue(found.newPrice, found.tradeIn, support);
   const shots = (found.photos ?? []).filter((src) => src.startsWith("http") || src.startsWith("/"));
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-[26px] font-bold">Chi tiết yêu cầu thu cũ</h1>
           <p className="text-sm text-zinc-500">Thông tin đầy đủ của yêu cầu {found.id}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link href="/nhan-vien/yeu-cau" className="rounded-lg border bg-white px-4 py-2 text-sm">
             ← Trở về
           </Link>
@@ -133,14 +134,18 @@ export default function RequestDetailPage({
         </div>
         <div className="rounded-2xl bg-white p-5">
           <p className="font-semibold">Sản phẩm đổi mới</p>
-          <p className="mb-3 text-[11px] text-zinc-400">SẢN PHẨM GARMIN ĐÃ CHỌN</p>
+          <p className="mb-3 text-[11px] text-zinc-400">SẢN PHẨM ĐỔI MỚI ĐÃ CHỌN</p>
           <Row k="Tên đổi mới" v={found.newDevice} />
           <Row k="IMEI máy đổi mới" v={found.imeiNew || "Chưa nhập"} accent={!found.imeiNew} />
           <Row k="Giá sản phẩm mới" v={vnd(found.newPrice)} />
           <Row k="Khấu trừ máy cũ" v={`− ${vnd(found.tradeIn)}`} />
+          <Row k="Trợ giá" v={`− ${vnd(support)}`} />
           <p className="mt-3 flex justify-between rounded-lg bg-rose-50 px-3 py-2 font-bold text-[#e11d2e]">
-            <span>TỔNG GIÁ</span>
+            <span>GIÁ THỰC</span>
             <span>{vnd(due)}</span>
+          </p>
+          <p className="mt-1 text-xs text-zinc-400">
+            {vnd(found.newPrice)} − {vnd(found.tradeIn)} − {vnd(support)}
           </p>
         </div>
       </div>

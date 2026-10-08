@@ -14,6 +14,8 @@ import {
   seedRecords,
   type AdminRecord,
 } from "@/lib/admin-records";
+import { brands } from "@/data/catalog";
+import { exchangeStorageKey, migrateExchangeRecord } from "@/lib/exchange-products";
 
 function slugify(value: string) {
   return value
@@ -127,6 +129,7 @@ export function AdminTable(props: {
   live?: boolean;
   wide?: boolean;
   redIndexes?: number[];
+  brandFilter?: boolean;
   onCommit?: (records: AdminRecord[]) => void;
 }) {
   return (
@@ -152,6 +155,7 @@ function AdminTableInner({
   live = false,
   wide = false,
   redIndexes,
+  brandFilter = false,
   onCommit,
 }: {
   title: string;
@@ -169,6 +173,7 @@ function AdminTableInner({
   live?: boolean;
   wide?: boolean;
   redIndexes?: number[];
+  brandFilter?: boolean;
   onCommit?: (records: AdminRecord[]) => void;
 }) {
   const router = useRouter();
@@ -186,6 +191,7 @@ function AdminTableInner({
   const columnKey = columns.join("|");
   const [records, setRecords] = useState<AdminRecord[] | null>(null);
   const [q, setQ] = useState("");
+  const [brand, setBrand] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -202,7 +208,12 @@ function AdminTableInner({
     });
     function loadTable() {
     const parsed = JSON.parse(signature) as string[][];
-    const saved = loadRecords(title);
+    const savedRaw = loadRecords(title);
+    const saved =
+      savedRaw && title === exchangeStorageKey ? savedRaw.map((record) => migrateExchangeRecord(record)) : savedRaw;
+    const migrated = Boolean(
+      savedRaw && saved?.some((record, index) => record.cells.join("\u0000") !== savedRaw[index]?.cells.join("\u0000"))
+    );
     const width = columnKey.split("|").length;
     const names = columnKey.split("|");
     const featuredAt = names.indexOf("Nổi bật");
@@ -226,7 +237,8 @@ function AdminTableInner({
     const coded = applySubs(applyParents(applyCodes(prepared, parsed, codes, titleAt), parsed, parents, titleAt), parsed, subs, titleAt);
     if (presetVersion && replaceExisting) sessionStorage.setItem(versionKey, presetVersion);
     const changed =
-      !saved ||
+      !savedRaw ||
+      migrated ||
       coded.some(
         (record, index) =>
           record.extra.image !== base[index]?.extra.image ||
@@ -251,9 +263,19 @@ function AdminTableInner({
     setError("");
   }, [mode, editId]);
 
+  const brandOptions = useMemo(() => {
+    const ids = [...new Set((records ?? []).map((record) => record.extra.category).filter(Boolean))];
+    return ids
+      .map((id) => ({ id, name: brands.find((item) => item.id === id)?.name ?? id }))
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  }, [records]);
   const visible = useMemo(
-    () => (records ?? []).filter((record) => !q.trim() || record.cells.join(" ").toLowerCase().includes(q.toLowerCase())),
-    [records, q]
+    () =>
+      (records ?? []).filter((record) => {
+        if (brand && record.extra.category !== brand) return false;
+        return !q.trim() || record.cells.join(" ").toLowerCase().includes(q.toLowerCase());
+      }),
+    [records, q, brand]
   );
   const allChecked = visible.length > 0 && visible.every((record) => selected.includes(record.id));
 
@@ -424,7 +446,26 @@ function AdminTableInner({
       <Status notice={notice} error={error} />
       <Toolbar onAddHref={href("add")} onDelete={() => askRemove(selected)} q={q} onQuery={setQ} />
       <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
-        {filters && <div className="flex flex-wrap gap-2 px-4 pt-4">{filters}</div>}
+        {filters || brandFilter ? (
+          <div className="flex flex-wrap gap-2 px-4 pt-4">
+            {filters}
+            {brandFilter ? (
+              <select
+                value={brand}
+                onChange={(event) => setBrand(event.target.value)}
+                aria-label="Lọc theo hãng"
+                className="rounded border bg-white px-3 py-2 text-sm"
+              >
+                <option value="">Tất cả hãng</option>
+                {brandOptions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+          </div>
+        ) : null}
         <h2 className="p-4 text-base font-semibold">{title}</h2>
         <table className={`${wide ? "min-w-max" : "w-full"} text-sm`}>
           <thead className="bg-[#f7d354] text-left text-zinc-900">
@@ -441,6 +482,13 @@ function AdminTableInner({
             </tr>
           </thead>
           <tbody>
+            {visible.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length + 2} className="px-4 py-8 text-center text-sm text-zinc-500">
+                  Không có dòng phù hợp.
+                </td>
+              </tr>
+            ) : null}
             {visible.map((record) => (
               <tr key={record.id} className="border-t border-zinc-100">
                 <td className="px-4 py-3">

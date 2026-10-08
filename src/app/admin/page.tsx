@@ -9,8 +9,8 @@ import { useLiveRequests } from "@/lib/use-live-requests";
 
 export default function AdminHome() {
   const live = useLiveRequests();
-  const [tradeCount, setTradeCount] = useState(0);
-  const [exchangeCount, setExchangeCount] = useState(0);
+  const [tradeCount, setTradeCount] = useState<number | null>(null);
+  const [exchangeCount, setExchangeCount] = useState<number | null>(null);
   useEffect(() => {
     const sync = () => {
       setTradeCount(readTradeProducts().length);
@@ -18,7 +18,11 @@ export default function AdminHome() {
     };
     sync();
     window.addEventListener("focus", sync);
-    return () => window.removeEventListener("focus", sync);
+    window.addEventListener("trione-catalog", sync);
+    return () => {
+      window.removeEventListener("focus", sync);
+      window.removeEventListener("trione-catalog", sync);
+    };
   }, []);
   const recent = live.slice(0, 8);
   const waiting = live.filter((item) => item.status === "dang-cho-duyet").length;
@@ -57,11 +61,11 @@ export default function AdminHome() {
     </div>
   );
 }
-function Stat({ n, l, href }: { n: number; l: string; href: string }) {
+function Stat({ n, l, href }: { n: number | null; l: string; href: string }) {
   return (
     <Link href={href} className="rounded-xl bg-white p-4">
       <p className="text-sm text-zinc-500">{l}</p>
-      <p className="text-2xl font-bold">{n}</p>
+      <p className="text-2xl font-bold">{n === null ? "…" : n}</p>
     </Link>
   );
 }

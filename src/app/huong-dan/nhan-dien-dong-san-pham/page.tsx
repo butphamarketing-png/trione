@@ -16,7 +16,7 @@ export default function LineGuidePage() {
         </p>
         <h1 className="mt-3 text-3xl font-bold">Không biết dòng sản phẩm nào? Làm theo các bước này</h1>
         <p className="mt-3 text-zinc-600">
-          Bài viết giúp bạn nhận đúng dòng đồng hồ trước khi chọn ở bước 2. Bạn không cần tháo máy. Chỉ cần xem mặt lưng, hộp, hoặc ứng dụng đang kết nối.
+          Bài viết giúp bạn nhận đúng dòng đồng hồ trước khi chọn trong bước chọn máy. Bạn không cần tháo máy. Chỉ cần xem mặt lưng, hộp, hoặc ứng dụng đang kết nối.
         </p>
 
         <article className="mt-8 space-y-8 rounded-2xl bg-white p-6 shadow-sm">
@@ -49,7 +49,7 @@ export default function LineGuidePage() {
           <section>
             <h2 className="text-xl font-semibold">4. Vẫn chưa chắc</h2>
             <p className="mt-2 text-zinc-600">
-              Quay lại trang thu cũ, chọn đúng thương hiệu ở bước 1, rồi chọn dòng gần giống nhất. Nếu máy không thuộc các hãng trong danh sách, chọn Thương hiệu khác và ghi tên bạn nhìn thấy trên vỏ. Nhân viên TRIONE.VN sẽ đối chiếu lại khi nhận máy.
+              Quay lại trang thu cũ, chọn đúng thương hiệu, rồi chọn dòng gần giống nhất. Nếu máy không thuộc các hãng trong danh sách, chọn Thương hiệu khác và ghi tên bạn nhìn thấy trên vỏ. Nhân viên TRIONE.VN sẽ đối chiếu lại khi nhận máy.
             </p>
             <SiteSupportNote />
           </section>
@@ -59,7 +59,7 @@ export default function LineGuidePage() {
           href="/thu-cu"
           className="mt-8 inline-block rounded-xl bg-[#e11d2e] px-6 py-3 font-semibold text-white"
         >
-          Quay lại chọn dòng sản phẩm
+          Quay lại chọn đồng hồ
         </Link>
       </main>
       <StoreFooter />

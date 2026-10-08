@@ -39,6 +39,7 @@ export type TradeRequest = {
   imeiNew?: string;
   newPrice: number;
   tradeIn: number;
+  supportPrice?: number;
   note: string;
   status: RequestStatus;
   source: string;

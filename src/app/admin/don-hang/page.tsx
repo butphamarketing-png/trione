@@ -4,29 +4,45 @@ import { AdminTable } from "@/components/admin-table";
 import { statusLabel, type RequestStatus, type TradeRequest } from "@/data/staff";
 import { patchRequest } from "@/lib/demo-requests";
 import type { AdminRecord } from "@/lib/admin-records";
+import { useEffect, useState } from "react";
 import { useLiveRequests } from "@/lib/use-live-requests";
-import { vnd } from "@/lib/pricing";
+import { exchangeDue, vnd } from "@/lib/pricing";
 
-const optionRules: { label: string; test: RegExp }[] = [
-  { label: "GPS", test: /\bgps\b/i },
-  { label: "Cellular / LTE", test: /cellular|\blte\b/i },
-  { label: "Sapphire", test: /sapphire/i },
-  { label: "AMOLED", test: /amoled/i },
-  { label: "Titanium", test: /titanium/i },
-  { label: "Solar", test: /solar/i },
-  { label: "MIP", test: /\bmip\b/i },
-];
+const optionSeed = ["GPS", "Cellular / LTE", "Sapphire", "AMOLED", "Titanium", "Solar", "MIP", "Pin", "Dây đeo"];
+
+function readOptionTitles() {
+  if (typeof window === "undefined") return optionSeed;
+  try {
+    const raw = sessionStorage.getItem("trione-admin:Quản lý Option");
+    if (!raw) return optionSeed;
+    const rows = JSON.parse(raw) as { cells?: string[] }[];
+    if (!Array.isArray(rows)) return optionSeed;
+    const titles = rows
+      .filter((row) => (row.cells ?? []).at(-1) === "✓")
+      .map((row) => (row.cells?.[1] ?? "").trim())
+      .filter(Boolean);
+    return titles.length ? titles : optionSeed;
+  } catch {
+    return optionSeed;
+  }
+}
 
 function gradeLabel(grade: string) {
   const level = grade.match(/[1-5]/)?.[0];
   return level ? `Loại ${level}` : grade || "—";
 }
 
-function suggestedOption(request: TradeRequest) {
-  const specs = `${request.newDevice} ${request.newSpecs}`;
-  const matched = optionRules.filter((rule) => rule.test.test(specs)).map((rule) => rule.label);
+function suggestedOption(request: TradeRequest, titles: string[]) {
+  const specs = `${request.newDevice} ${request.newSpecs}`.toLowerCase();
+  const matched = titles.filter((title) =>
+    title
+      .split("/")
+      .map((part) => part.trim().toLowerCase())
+      .filter((part) => part.length >= 2)
+      .some((part) => specs.includes(part))
+  );
   if (matched.length) return matched.join(", ");
-  return specs || "—";
+  return `${request.newDevice} ${request.newSpecs}`.trim() || "—";
 }
 
 function statusFromLabel(label: string): RequestStatus {
@@ -37,6 +53,13 @@ function statusFromLabel(label: string): RequestStatus {
 
 export default function OrdersAdminPage() {
   const live = useLiveRequests();
+  const [options, setOptions] = useState(optionSeed);
+  useEffect(() => {
+    const sync = () => setOptions(readOptionTitles());
+    sync();
+    window.addEventListener("trione-catalog", sync);
+    return () => window.removeEventListener("trione-catalog", sync);
+  }, []);
   function sync(records: AdminRecord[]) {
     for (const record of records) {
       const id = record.cells[1]?.trim();
@@ -56,7 +79,7 @@ export default function OrdersAdminPage() {
     request.id,
     request.name,
     request.address,
-    vnd(request.tradeIn),
+    vnd(exchangeDue(request.newPrice, request.tradeIn, request.supportPrice ?? 0)),
     request.createdAt,
     request.brand,
     request.oldDevice,
@@ -65,8 +88,10 @@ export default function OrdersAdminPage() {
     request.newDevice ? "Thu cũ đổi mới" : "Thu cũ",
     request.newDevice || "—",
     request.imeiNew || "Chưa nhập",
-    suggestedOption(request),
+    suggestedOption(request, options),
     statusLabel[request.status],
+    vnd(request.supportPrice ?? 0),
+    vnd(request.tradeIn),
   ]);
   return (
     <AdminTable
@@ -79,9 +104,9 @@ export default function OrdersAdminPage() {
       columns={[
         "STT",
         "Mã đơn hàng",
-        "Tên nhân viên",
+        "Người gửi",
         "Địa chỉ",
-        "Giá",
+        "Giá thực",
         "Ngày đặt",
         "Hãng",
         "Tên máy",
@@ -92,6 +117,8 @@ export default function OrdersAdminPage() {
         "IMEI máy đổi mới",
         "Option được đề xuất",
         "Tình trạng đơn hàng",
+        "Trợ giá",
+        "Giá thu cũ",
       ]}
       rows={rows}
     />

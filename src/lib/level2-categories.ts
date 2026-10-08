@@ -79,9 +79,9 @@ export function readLevel2Categories(parent = ""): Level2Category[] {
       slug: record.extra.slug || slugify(name),
       parent: parentCode(record),
       blurb: record.extra.shortDesc || plainText(record.extra.description) || known?.blurb || "",
-      image: record.extra.image || "",
+      image: record.extra.image || known?.image || "",
       thumb: known?.thumb ?? "",
-      seoTitle: record.extra.seoTitle || "",
+      seoTitle: record.extra.seoTitle && record.extra.seoTitle !== name ? record.extra.seoTitle : "",
       keywords: record.extra.keywords || "",
       description: record.extra.description || "",
     };

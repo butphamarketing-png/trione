@@ -79,7 +79,7 @@ export function readLevel1Categories(includeHidden = false): Level1Category[] {
       slug: categorySlug(code, name, record.extra.slug),
       line: brand?.line ?? "",
       image: record.extra.image || (brand ? `/brands/${brand.id}.svg` : code === "other" ? "/brands/other.svg" : ""),
-      seoTitle: record.extra.seoTitle || "",
+      seoTitle: record.extra.seoTitle && record.extra.seoTitle !== name ? record.extra.seoTitle : "",
       keywords: record.extra.keywords || "",
       description: record.extra.description || "",
     };

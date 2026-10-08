@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local catalog when the shared store is offline
+.data/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

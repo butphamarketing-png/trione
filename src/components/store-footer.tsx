@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { mapEmbedSrc, phoneHref, useSiteSettings } from "@/lib/site-settings";
 
 export function TrioneMark({
@@ -41,15 +42,15 @@ export function CheckBox({ on }: { on: boolean }) {
   );
 }
 
-export function Stepper({ current, doneAll }: { current: number; doneAll?: boolean }) {
+export function Stepper({ current, total = 7, doneAll }: { current: number; total?: number; doneAll?: boolean }) {
   return (
     <ol className="mb-6 flex items-start justify-between px-0 sm:mb-10 sm:px-2" suppressHydrationWarning>
-      {Array.from({ length: 9 }, (_, i) => i + 1).map((n) => {
+      {Array.from({ length: total }, (_, i) => i + 1).map((n) => {
         const done = doneAll || current > n;
         const active = !doneAll && current === n;
         return (
           <li key={n} className="flex-1 flex flex-col items-center relative" suppressHydrationWarning>
-            {n < 9 && (
+            {n < total && (
               <span
                 className={`absolute left-[50%] top-3.5 h-[2px] w-full sm:top-[18px] ${
                   done ? "bg-[#e11d2e]" : "bg-zinc-200"
@@ -100,7 +101,9 @@ export function MarkedImage({ src, alt = "", className = "" }: { src: string; al
 
 export function BrandLogo({ size = 48, light = false }: { size?: number; light?: boolean }) {
   const site = useSiteSettings();
-  if (site.logo) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+  if (ready && site.logo) {
     return <img src={site.logo} alt={site.company} width={size} height={size} className="object-contain" style={{ width: size, height: size }} />;
   }
   return <TrioneMark size={size} light={light} />;
@@ -245,6 +248,7 @@ export function SiteSupportNote() {
 }
 
 export function WizardHeader() {
+  const site = useSiteSettings();
   return (
     <header className="bg-black text-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
@@ -253,7 +257,7 @@ export function WizardHeader() {
         </a>
         <div className="min-w-0 text-center">
           <p className="text-xs font-extrabold leading-tight tracking-wide sm:text-[20px] sm:tracking-[0.08em]">CHƯƠNG TRÌNH THU CŨ ĐỒNG HỒ</p>
-          <p className="mt-1 hidden text-[11px] tracking-[0.28em] text-zinc-400 sm:block">ĐỊNH GIÁ NHANH · QUY TRÌNH MINH BẠCH</p>
+          <p className="mt-1 hidden text-[11px] tracking-[0.28em] text-zinc-400 sm:block">{site.slogan || "ĐỊNH GIÁ NHANH · QUY TRÌNH MINH BẠCH"}</p>
         </div>
         <a href="/dang-nhap" className="flex items-center gap-2 text-sm">
           <span className="grid h-9 w-9 place-items-center rounded-full border border-white/30">

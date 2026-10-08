@@ -44,9 +44,6 @@ function money(value: string, fallback = 0) {
   return Number(digits);
 }
 
-const issueOrder = ["hr", "gps", "spo2", "other"];
-const screenOrder = ["excellent", "light", "broken"];
-const bodyOrder = ["excellent", "light", "heavy"];
 const screenGrade: Record<string, 1 | 2 | 4> = { excellent: 1, light: 2, broken: 4 };
 const bodyGrade: Record<string, 1 | 2 | 4> = { excellent: 1, light: 2, heavy: 4 };
 
@@ -60,55 +57,18 @@ export function quoteTradeIn(input: {
   body?: string;
 }) {
   const status = input.functionStatus ?? "ok";
-  const grade = Math.min(5, Math.max(1, input.grade)) as 1 | 2 | 3 | 4 | 5;
-  const product = input.product;
   const stored = (level: 1 | 2 | 3 | 4 | 5) => {
-    if (product) return product.prices[level] || 0;
+    if (input.product) return input.product.prices[level] || 0;
     return input.fallback?.[level] ?? 0;
   };
   if (status === "dead") return stored(5);
-  if (status === "ok") return conditionQuote(product, input.fallback, input.screen, input.body);
-  const level = Math.min(4, grade) as 1 | 2 | 3 | 4;
-  const row = product?.gradePrices[level - 1] ?? [];
-  const picked = (input.issueIds ?? [])
-    .map((id) => issueOrder.indexOf(id))
-    .filter((index) => index >= 0)
-    .map((index) => row[index] ?? 0)
-    .filter((amount) => amount > 0);
-  if (picked.length) return Math.min(...picked);
+  if (status === "ok") {
+    const screenLevel = screenGrade[input.screen ?? "excellent"] ?? 1;
+    const bodyLevel = bodyGrade[input.body ?? "excellent"] ?? 1;
+    return stored(Math.max(screenLevel, bodyLevel) as 1 | 2 | 4);
+  }
+  const grade = Math.min(5, Math.max(1, input.grade)) as 1 | 2 | 3 | 4 | 5;
   return stored(grade);
-}
-
-export function conditionAmount(product: TradeProduct | undefined, kind: "screen" | "body", id: string) {
-  const level = (kind === "screen" ? screenGrade[id] : bodyGrade[id]) ?? 1;
-  const list = kind === "screen" ? product?.screenPrices : product?.bodyPrices;
-  const order = kind === "screen" ? screenOrder : bodyOrder;
-  const specific = list?.[order.indexOf(id)] ?? 0;
-  if (specific > 0) return specific;
-  return product?.prices[level] || 0;
-}
-
-function conditionQuote(
-  product: TradeProduct | undefined,
-  fallback: TradeProduct["prices"] | undefined,
-  screen = "excellent",
-  body = "excellent",
-) {
-  const screenLevel = screenGrade[screen] ?? 1;
-  const bodyLevel = bodyGrade[body] ?? 1;
-  const worst = Math.max(screenLevel, bodyLevel) as 1 | 2 | 4;
-  const amounts: number[] = [];
-  if (screenLevel === worst) {
-    const amount = product?.screenPrices[screenOrder.indexOf(screen)] ?? 0;
-    if (amount > 0) amounts.push(amount);
-  }
-  if (bodyLevel === worst) {
-    const amount = product?.bodyPrices[bodyOrder.indexOf(body)] ?? 0;
-    if (amount > 0) amounts.push(amount);
-  }
-  if (amounts.length) return Math.min(...amounts);
-  if (product) return product.prices[worst] || 0;
-  return fallback?.[worst] ?? 0;
 }
 
 function brandCode(value: string) {

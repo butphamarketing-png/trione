@@ -9,7 +9,7 @@ export default function NewProductsPage() {
     <AdminTable
       title="Sản phẩm đổi mới"
       redFrom={5}
-      columns={["STT", "Hình", "Tiêu đề", "Danh mục cấp 1", "Series", "Giá niêm yết", "Hiển thị"]}
+      columns={["STT", "Hình", "Tiêu đề", "Danh mục cấp 1", "Series", "Giá niêm yết", "Trợ giá", "Hiển thị"]}
       defaultImages={exchangePhotos}
       codes={garminNew.map((item) => item.id)}
       parents={garminNew.map(() => "garmin")}
@@ -20,6 +20,7 @@ export default function NewProductsPage() {
         "Garmin",
         item.series,
         vndComma(item.listPrice),
+        "0",
         "✓",
       ])}
     />

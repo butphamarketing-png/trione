@@ -36,6 +36,10 @@ export function resolveGrade(input: {
   return Math.min(5, worst) as Grade;
 }
 
+export function exchangeDue(newPrice: number, tradeIn: number, support = 0) {
+  return Math.max(0, newPrice - tradeIn - Math.max(0, support));
+}
+
 export function vnd(n: number) {
   return `${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} đ`;
 }

@@ -19,12 +19,14 @@ const groups: NavGroup[] = [
       { href: "/admin/danh-muc", label: "Danh mục cấp 1" },
       { href: "/admin/hang", label: "Danh mục cấp 2" },
       { href: "/admin/san-pham-thu-cu", label: "Sản phẩm thu cũ" },
-      { href: "/admin/import", label: "Import" },
     ],
   },
   {
     label: "Quản lý Sản phẩm đổi mới",
-    children: [{ href: "/admin/doi-moi", label: "Sản phẩm đổi mới" }],
+    children: [
+      { href: "/admin/doi-moi", label: "Sản phẩm đổi mới" },
+      { href: "/admin/import", label: "Import trợ giá" },
+    ],
   },
   {
     label: "Quản lý Tình trạng máy",

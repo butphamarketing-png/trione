@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 export type SiteSettings = {
   company: string;
@@ -142,8 +142,20 @@ export function subscribeSiteSettings(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
+let settingsHydrated = false;
+
+function readSettingsSnapshot() {
+  if (!settingsHydrated) return defaultSiteSettings;
+  return readSiteSettings();
+}
+
 export function useSiteSettings() {
-  return useSyncExternalStore(subscribeSiteSettings, readSiteSettings, () => defaultSiteSettings);
+  const value = useSyncExternalStore(subscribeSiteSettings, readSettingsSnapshot, () => defaultSiteSettings);
+  useEffect(() => {
+    settingsHydrated = true;
+    listeners.forEach((listener) => listener());
+  }, []);
+  return value;
 }
 
 export function phoneHref(value: string) {

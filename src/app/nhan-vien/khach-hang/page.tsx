@@ -28,7 +28,8 @@ export default function CustomersPage() {
           className="mb-4 w-64 rounded-full border px-4 py-1.5 text-sm"
           placeholder="Tìm username..."
         />
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="text-left text-[11px] tracking-wide text-zinc-400">
             <tr>
               <th className="py-2 font-medium">USERNAME</th>
@@ -53,7 +54,7 @@ export default function CustomersPage() {
                 <td>{c.address}</td>
                 <td>{c.type}</td>
                 <td>
-                  <Link href="/nhan-vien/yeu-cau" className="font-medium text-[#e11d2e]">
+                  <Link href={`/nhan-vien/yeu-cau?q=${encodeURIComponent(c.username)}`} className="font-medium text-[#e11d2e]">
                     {c.orders}
                   </Link>
                 </td>
@@ -61,6 +62,7 @@ export default function CustomersPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

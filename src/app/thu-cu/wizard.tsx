@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { MarkedImage, StoreFooter, WizardHeader, Stepper, CheckBox } from "@/components/store-footer";
-import { LineThumb, WatchFace, GarminThumb, ModelThumb } from "@/components/watch-face";
-import { BrandMark } from "@/components/brand-mark";
+import { GarminThumb } from "@/components/watch-face";
 import {
   bodyOptions,
   brands,
@@ -17,9 +16,9 @@ import {
 } from "@/data/catalog";
 import { fallbackLevel1, readLevel1Categories, type Level1Category } from "@/lib/level1-categories";
 import { fallbackLevel2, readLevel2Categories, type Level2Category } from "@/lib/level2-categories";
-import { conditionAmount, quoteTradeIn, readTradeProducts, type TradeProduct } from "@/lib/trade-products";
+import { fallbackTradeProducts, quoteTradeIn, readTradeProducts, type TradeProduct } from "@/lib/trade-products";
 import { fallbackExchangeProducts, readExchangeProducts, type ExchangeProduct } from "@/lib/exchange-products";
-import { resolveGrade, vnd } from "@/lib/pricing";
+import { exchangeDue, resolveGrade, vnd } from "@/lib/pricing";
 import { formatCreatedAt, makeRequestCode, saveTradeRequest } from "@/lib/demo-requests";
 import { fileToDataUrl } from "@/lib/demo-media";
 import { readSession } from "@/lib/session";
@@ -30,6 +29,24 @@ type FunctionStatus = "ok" | "issues" | "dead";
 
 const lineGuideHref = "/huong-dan/nhan-dien-dong-san-pham";
 const allGenerations = "Tất cả thế hệ";
+
+function openingFromSlug(slug: string[]) {
+  const categories = fallbackLevel1();
+  const [brandSlug, lineSlug, productSlug] = slug;
+  const brand = brandSlug ? categories.find((item) => item.slug === brandSlug || item.code === brandSlug) : undefined;
+  if (!brand) return { brandId: "apple", activeKey: "apple", lineId: "ultra", modelId: "ultra2", step: 1 };
+  if (brand.code === "other") return { brandId: "other", activeKey: brand.key, lineId: "", modelId: "", step: 1 };
+  const line = lineSlug ? fallbackLevel2(brand.code).find((item) => item.slug === lineSlug || item.code === lineSlug) : undefined;
+  const product =
+    line && productSlug ? fallbackTradeProducts(line.code).find((item) => item.slug === productSlug || item.code === productSlug) : undefined;
+  return {
+    brandId: brand.code,
+    activeKey: brand.key,
+    lineId: line?.code ?? "",
+    modelId: product?.code ?? "",
+    step: product ? 4 : 1,
+  };
+}
 
 function modelGeneration(name: string) {
   const year = name.match(/\((20\d{2})\)/);
@@ -42,12 +59,15 @@ function modelGeneration(name: string) {
 export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) {
   const router = useRouter();
   const site = useSiteSettings();
-  const [step, setStep] = useState(1);
-  const [brandId, setBrandId] = useState("apple");
+  const [opening] = useState(() => openingFromSlug(initialSlug));
+  const [step, setStep] = useState(opening.step);
+  const [brandId, setBrandId] = useState(opening.brandId);
   const [otherBrand, setOtherBrand] = useState("");
-  const [lineId, setLineId] = useState("ultra");
-  const [modelId, setModelId] = useState("ultra2");
+  const [lineId, setLineId] = useState(opening.lineId);
+  const [modelId, setModelId] = useState(opening.modelId);
   const [serial, setSerial] = useState("");
+  const [newSerial, setNewSerial] = useState("");
+  const [openMenu, setOpenMenu] = useState<"brand" | "line" | "model" | "">("");
   const [fn, setFn] = useState<FunctionStatus>("ok");
   const [issueIds, setIssueIds] = useState<string[]>([]);
   const [issueNote, setIssueNote] = useState("");
@@ -68,11 +88,13 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const [garminQ, setGarminQ] = useState("");
   const [requestCode, setRequestCode] = useState("");
   const [categories, setCategories] = useState<Level1Category[]>(fallbackLevel1);
-  const [level2, setLevel2] = useState<Level2Category[]>(() => fallbackLevel2("apple"));
-  const [products, setProducts] = useState<TradeProduct[]>(() => readTradeProducts("ultra"));
+  const [level2, setLevel2] = useState<Level2Category[]>(() => fallbackLevel2(opening.brandId === "other" ? "" : opening.brandId));
+  const [products, setProducts] = useState<TradeProduct[]>(() => (opening.lineId ? fallbackTradeProducts(opening.lineId) : []));
   const [exchangeProducts, setExchangeProducts] = useState<ExchangeProduct[]>(fallbackExchangeProducts);
   const [exchangeBrand, setExchangeBrand] = useState("garmin");
-  const [activeKey, setActiveKey] = useState("apple");
+  const [activeKey, setActiveKey] = useState(opening.activeKey);
+  const brandRef = useRef(brandId);
+  brandRef.current = brandId;
   const [routeApplied, setRouteApplied] = useState(initialSlug.length === 0);
   const appliedKey = useRef("");
   const openedRoute = useRef(false);
@@ -104,12 +126,13 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         specs: pickedExchange.specs,
         series: pickedExchange.series,
         listPrice: pickedExchange.price,
+        supportPrice: pickedExchange.supportPrice,
         face: pickedExchange.face,
         strap: pickedExchange.strap,
         time: pickedExchange.time,
         image: pickedExchange.image,
       }
-    : { ...catalogExchange, image: "" };
+    : { ...catalogExchange, image: "", supportPrice: 0 };
   const deviceLabel =
     brandId === "other"
       ? otherBrand.trim() || "Thương hiệu khác"
@@ -133,7 +156,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     screen,
     body,
   });
-  const due = Math.max(0, garmin.listPrice - tradeIn);
+  const due = exchangeDue(garmin.listPrice, tradeIn, garmin.supportPrice);
   const photoCount = photoSlots.filter((p) => photos[p.id]).length;
   const exchangeBrands = categories.filter((item) => exchangeProducts.some((product) => product.parent === item.code));
   const exchangeSeries = ["TẤT CẢ", ...new Set(exchangeProducts.filter((item) => item.parent === exchangeBrand).map((item) => item.series).filter(Boolean))];
@@ -152,9 +175,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     return byGen && byQ;
   });
 
-  const displayStep = step === 52 ? 5 : step === 11 ? 1 : step >= 10 ? 9 : step;
+  const displayStep = step === 11 || step <= 3 ? 1 : step === 4 ? 2 : step === 5 || step === 52 ? 3 : step === 6 ? 4 : step === 7 ? 5 : step === 8 ? 6 : 7;
   const canNext = useMemo(() => {
-    if (step === 1) return brandId === "other" ? otherBrand.trim().length >= 2 : !!brandId;
+    if (step === 1) return brandId === "other" ? otherBrand.trim().length >= 2 : !!modelId;
     if (step === 2) return brandId === "other" || !!lineId;
     if (step === 3) return brandId === "other" || !!modelId;
     if (step === 4) return true;
@@ -180,15 +203,8 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     }
     setBrandId(item.code);
     setOtherBrand("");
-    const first = readLevel2Categories(item.code)[0];
-    if (!first) {
-      setLineId("");
-      setModelId("");
-      return;
-    }
-    setLineId(first.code);
-    const nextModel = readTradeProducts(first.code)[0];
-    setModelId(nextModel?.code ?? "");
+    setLineId("");
+    setModelId("");
   }
 
   useEffect(() => {
@@ -197,6 +213,8 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       setCategories(list);
       setActiveKey((current) => {
         if (list.some((item) => item.key === current)) return current;
+        const sameBrand = list.find((item) => item.code === brandRef.current);
+        if (sameBrand) return sameBrand.key;
         return (list.find((item) => item.code === "apple") ?? list[0])?.key ?? "";
       });
       if (!list.length) setBrandId("");
@@ -237,18 +255,22 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   }, [activeKey, categories, brandId]);
 
   useEffect(() => {
-    setLevel2(readLevel2Categories(brandId));
+    const reload = () => setLevel2(readLevel2Categories(brandId));
+    reload();
+    window.addEventListener("trione-catalog", reload);
+    return () => window.removeEventListener("trione-catalog", reload);
   }, [brandId, categories]);
 
   useEffect(() => {
-    setProducts(readTradeProducts(lineId));
-  }, [lineId, level2]);
-
-  useEffect(() => {
     const reload = () => setProducts(readTradeProducts(lineId));
+    reload();
+    window.addEventListener("trione-catalog", reload);
     window.addEventListener("focus", reload);
-    return () => window.removeEventListener("focus", reload);
-  }, [lineId]);
+    return () => {
+      window.removeEventListener("trione-catalog", reload);
+      window.removeEventListener("focus", reload);
+    };
+  }, [lineId, level2]);
 
   useEffect(() => {
     setModelGen(allGenerations);
@@ -256,10 +278,25 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   }, [lineId]);
 
   useEffect(() => {
-    const list = readExchangeProducts();
-    setExchangeProducts(list);
-    setExchangeBrand((current) => (list.some((item) => item.parent === current) ? current : list[0]?.parent || "garmin"));
-    setGarminId((current) => (current && list.some((item) => item.code === current) ? current : ""));
+    if (!modelId || modelGen === allGenerations) return;
+    const current = products.find((item) => item.code === modelId && item.line === lineId);
+    if (current && modelGeneration(current.name) !== modelGen) setModelId("");
+  }, [modelGen, modelId, lineId, products]);
+
+  useEffect(() => {
+    function reload() {
+      const list = readExchangeProducts();
+      setExchangeProducts(list);
+      setExchangeBrand((current) => (list.some((item) => item.parent === current) ? current : list[0]?.parent || "garmin"));
+      setGarminId((current) => (current && list.some((item) => item.code === current) ? current : ""));
+    }
+    reload();
+    window.addEventListener("trione-catalog", reload);
+    window.addEventListener("focus", reload);
+    return () => {
+      window.removeEventListener("trione-catalog", reload);
+      window.removeEventListener("focus", reload);
+    };
   }, [categories]);
 
   useEffect(() => {
@@ -279,7 +316,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     setCategories(list);
     chooseCategory(item);
     if (!lineSlug) {
-      setStep(2);
+      setLineId("");
+      setModelId("");
+      setStep(1);
       setRouteApplied(true);
       return;
     }
@@ -287,13 +326,18 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     if (line) {
       setLineId(line.code);
       const productList = readTradeProducts(line.code);
-      const product = productSlug
-        ? productList.find((entry) => entry.slug === productSlug || entry.code === productSlug)
-        : productList[0];
-      if (product) setModelId(product.code);
-      setStep(productSlug && product ? 4 : 3);
+      const product = productSlug ? productList.find((entry) => entry.slug === productSlug || entry.code === productSlug) : undefined;
+      if (product) {
+        setModelId(product.code);
+        setStep(4);
+      } else {
+        setModelId("");
+        setStep(1);
+      }
     } else {
-      setStep(2);
+      setLineId("");
+      setModelId("");
+      setStep(1);
     }
     setRouteApplied(true);
   }, [initialSlug]);
@@ -303,14 +347,16 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     const cat = categories.find((item) => item.key === activeKey);
     const known = Boolean(cat && brands.some((brand) => brand.id === cat.code));
     let path = "/thu-cu";
-    if (known && cat && step >= 2) {
+    if (known && cat && brandId !== "other") {
       path += `/${cat.slug}`;
-      if (step >= 3 && lineId) {
+      if (lineId) {
         const current = readLevel2Categories(cat.code).find((item) => item.code === lineId);
-        if (current) path += `/${current.slug}`;
-        if (step >= 4 && modelId) {
-          const product = readTradeProducts(lineId).find((item) => item.code === modelId);
-          if (product) path += `/${product.slug}`;
+        if (current) {
+          path += `/${current.slug}`;
+          if (step >= 4 && modelId) {
+            const product = readTradeProducts(lineId).find((item) => item.code === modelId);
+            if (product) path += `/${product.slug}`;
+          }
         }
       }
     }
@@ -321,15 +367,15 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     const origin = (site.canonical || site.website || "https://trione.vn").replace(/\/$/, "");
     const brandItem = categories.find((item) => item.key === activeKey);
     const lineItem = level2.find((item) => item.code === lineId);
-    const subject = step >= 9 && pickedExchange ? pickedExchange : step >= 3 && pickedProduct ? pickedProduct : step >= 2 && lineItem ? lineItem : step >= 2 ? brandItem : undefined;
+    const subject = step >= 9 && pickedExchange ? pickedExchange : pickedProduct ? pickedProduct : lineItem && lineId ? lineItem : brandItem;
     const name = subject?.name || "";
     const title = subject?.seoTitle || (name ? `${name} | Thu cũ đổi mới | ${site.company}` : site.seoTitle);
     const description = subject?.description || pickedProduct?.blurb || pickedProduct?.specs || site.description;
     const keywords = subject?.keywords || [name, chosenName, "thu cũ", "đổi mới", site.company].filter(Boolean).join(", ");
     let path = "/thu-cu";
-    if (brandItem && brandItem.code !== "other" && step >= 2) {
+    if (brandItem && brandItem.code !== "other" && brandId !== "other") {
       path += `/${brandItem.slug}`;
-      if (lineItem && step >= 3) path += `/${lineItem.slug}`;
+      if (lineItem && lineId) path += `/${lineItem.slug}`;
       if (pickedProduct && step >= 4) path += `/${pickedProduct.slug}`;
     }
     setPageSeo({ title, description, keywords, canonical: `${origin}${path}` });
@@ -361,6 +407,10 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     if (sendingLock.current) return;
     if (step === 1 && brandId === "other") {
       setStep(11);
+      return;
+    }
+    if (step === 1) {
+      setStep(4);
       return;
     }
     if (step === 5 && fn === "issues") {
@@ -409,8 +459,10 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         photos: uploadedPhotos,
         newDevice: garmin.name,
         newSpecs: garmin.specs,
+        imeiNew: newSerial.trim(),
         newPrice: garmin.listPrice,
         tradeIn,
+        supportPrice: garmin.supportPrice,
         note: issueNote,
         status: "dang-cho-duyet",
         source: byStaff ? `Tạo bởi nhân viên ${session.user}` : "Tạo bởi khách hàng TRIONE.VN",
@@ -433,6 +485,10 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     }
     if (step === 6 && fn === "issues") {
       setStep(52);
+      return;
+    }
+    if (step === 4) {
+      setStep(1);
       return;
     }
     setStep((s) => Math.max(1, s - 1));
@@ -491,15 +547,15 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         <div className="pointer-events-none absolute top-40 right-[-120px] h-[520px] w-[520px] rounded-full border-[40px] border-rose-100/70" />
         <WizardHeader />
         <div className="relative mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-          <Stepper current={9} doneAll />
+          <Stepper current={7} doneAll />
           <section>
             <div className="mb-6 flex items-start justify-between gap-4">
               <div className="border-l-4 border-[#e11d2e] pl-4">
                 <h1 className="text-[28px] leading-tight font-bold">Yêu cầu đã gửi thành công</h1>
-                <p className="mt-1 text-zinc-500">Nhân viên TRIONE.VN sẽ liên hệ để thẩm định trong giờ làm việc.</p>
+                <p className="mt-1 text-zinc-500">Nhân viên {site.company} sẽ liên hệ để thẩm định trong giờ làm việc.</p>
               </div>
               <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-                ✓ ĐÃ HOÀN TẤT 9 BƯỚC
+                ✓ ĐÃ HOÀN TẤT 7 BƯỚC
               </span>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-emerald-50 p-5">
@@ -509,7 +565,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   {deviceLabel} → {garmin.name}
                 </p>
                 <p className="mt-2 text-sm">
-                  Giá thu cũ {vnd(tradeIn)} · Giá sau khi trừ {vnd(due)}
+                  Giá thu cũ {vnd(tradeIn)} · Trợ giá {vnd(garmin.supportPrice)} · Giá thực {vnd(due)}
                 </p>
               </div>
               <div className="rounded-xl bg-white/80 px-4 py-3 text-sm">
@@ -541,48 +597,94 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
 
         {step === 1 && (
           <Section
-            title="Chọn thương hiệu đồng hồ"
-            sub="Đồng hồ bạn muốn thu cũ thuộc thương hiệu nào?"
-            chip={<span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-[#e11d2e]">● Chọn 01 thương hiệu</span>}
+            title="Chọn đồng hồ muốn thu cũ"
+            sub="Chọn thương hiệu, dòng và mẫu trong cùng một bước."
+            chip={<span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-[#e11d2e]">● Tick trong sổ xuống</span>}
           >
-            <div className="grid sm:grid-cols-3 gap-x-8 gap-y-6">
-              {categories.length ? (
-                categories.map((item) =>
-                  item.code === "other" ? (
-                    <div key={item.key} className="flex items-start gap-3">
-                      <Level1Mark item={item} />
-                      <div className="flex-1">
-                        <p className="font-semibold">{item.name}</p>
-                        <input
-                          value={otherBrand}
-                          onChange={(event) => {
-                            setOtherBrand(event.target.value);
-                            setActiveKey(item.key);
-                            setBrandId("other");
-                            setLineId("");
-                            setModelId("");
-                          }}
-                          className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
-                          placeholder="Nhập tên thương hiệu..."
-                        />
-                      </div>
-                      <CheckBox on={activeKey === item.key} />
-                    </div>
-                  ) : (
-                    <button key={item.key} type="button" onClick={() => chooseCategory(item)} aria-pressed={activeKey === item.key} className={`pick flex items-center gap-3 rounded-2xl px-2 py-2 text-left ${activeKey === item.key ? "is-on bg-rose-50" : ""}`}>
-                      <Level1Mark item={item} />
-                      <span className="flex-1">
-                        <h2 className="block text-base font-semibold">{item.name}</h2>
-                        {item.line ? <span className="text-sm text-zinc-500">{item.line}</span> : null}
-                      </span>
-                      <CheckBox on={activeKey === item.key} />
-                    </button>
-                  )
-                )
-              ) : (
-                <p className="text-sm text-zinc-500">Chưa có danh mục cấp 1 đang hiển thị.</p>
-              )}
+            <div className="grid gap-4 md:grid-cols-3">
+              <TickSelect
+                label="Thương hiệu"
+                placeholder="Chọn thương hiệu"
+                value={activeKey}
+                open={openMenu === "brand"}
+                onOpen={(next) => setOpenMenu(next ? "brand" : "")}
+                options={categories.map((item) => ({ id: item.key, name: item.name, hint: item.line, image: item.image }))}
+                onChange={(key) => {
+                  const item = categories.find((entry) => entry.key === key);
+                  if (item) chooseCategory(item);
+                }}
+              />
+              <TickSelect
+                label="Dòng sản phẩm"
+                placeholder={brandId === "other" ? "Không cần chọn dòng" : "Chọn dòng"}
+                value={lineId}
+                disabled={!brandId || brandId === "other"}
+                open={openMenu === "line"}
+                onOpen={(next) => setOpenMenu(next ? "line" : "")}
+                options={level2.map((item) => ({ id: item.code, name: item.name, hint: item.blurb, image: item.image }))}
+                onChange={(code) => {
+                  setLineId(code);
+                  setModelId("");
+                  setModelGen(allGenerations);
+                }}
+              />
+              <div>
+                <TickSelect
+                  label="Mẫu"
+                  placeholder={lineId ? "Chọn mẫu" : "Chọn dòng trước"}
+                  value={modelId}
+                  disabled={!lineId || brandId === "other"}
+                  searchable
+                  open={openMenu === "model"}
+                  onOpen={(next) => setOpenMenu(next ? "model" : "")}
+                  options={visibleModels.map((item) => ({ id: item.code, name: item.name, hint: item.specs || item.blurb, image: item.image }))}
+                  onChange={setModelId}
+                />
+                {lineId && generations.length > 1 ? (
+                  <label className="mt-2 block text-xs text-zinc-500">
+                    Thế hệ
+                    <select
+                      value={generations.includes(modelGen) ? modelGen : allGenerations}
+                      onChange={(event) => setModelGen(event.target.value)}
+                      className="mt-1 w-full rounded-xl border bg-white px-3 py-2 text-sm font-semibold text-zinc-800"
+                    >
+                      {generations.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+              </div>
             </div>
+            {brandId === "other" ? (
+              <label className="mt-4 block text-sm">
+                <span className="mb-1 block font-medium">Tên thương hiệu</span>
+                <input
+                  value={otherBrand}
+                  onChange={(event) => setOtherBrand(event.target.value)}
+                  className="w-full rounded-xl border bg-white px-3 py-3 text-sm"
+                  placeholder="Nhập tên thương hiệu..."
+                />
+              </label>
+            ) : null}
+            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 accent-[#e11d2e]"
+                onChange={(event) => {
+                  if (event.target.checked) router.push(lineGuideHref);
+                }}
+              />
+              <span>
+                <span className="block font-semibold">Không biết dòng sản phẩm nào</span>
+                <span className="mt-1 block text-sm text-zinc-500">Tick vào để xem bài hướng dẫn nhận diện dòng máy.</span>
+                <a href={lineGuideHref} className="mt-2 inline-block text-sm font-medium text-[#e11d2e]">
+                  Xem bài hướng dẫn
+                </a>
+              </span>
+            </label>
           </Section>
         )}
 
@@ -614,160 +716,11 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
           </Section>
         )}
 
-        {step === 2 && (
-          <Section
-            title={`Đây là dòng ${chosenName} nào?`}
-            sub="Chọn dòng sản phẩm được hiển thị trên đồng hồ hoặc trong ứng dụng kết nối."
-            chip={
-              <span className="flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs shadow-sm">
-                {brandId === "apple" ? (
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden>
-                    <path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.9-3.5.9s-1.8-.8-3-.8c-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.3 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7 2-.1 2.9-2.2c1-.1.8-2.3 1.7-3.4-.7-.3-2-1.2-2-2.1zM14.8 6.4c.6-.8 1.1-1.8.9-2.9-1 .1-2.1.7-2.7 1.5-.6.7-1.1 1.8-.9 2.8 1 .1 2.1-.6 2.7-1.4z" />
-                  </svg>
-                ) : null}
-                Thương hiệu: {chosenName}
-              </span>
-            }
-          >
-            <div className="grid md:grid-cols-2 gap-4">
-              {level2.length ? (
-                level2.map((l) => (
-                  <button
-                    key={l.key}
-                    onClick={() => {
-                      setLineId(l.code);
-                      const nextModel = readTradeProducts(l.code)[0];
-                      setModelId(nextModel?.code ?? "");
-                    }}
-                    aria-pressed={lineId === l.code}
-                    className={`pick flex gap-3 rounded-2xl border bg-white p-3 text-left sm:gap-4 sm:p-4 ${
-                      lineId === l.code ? "is-on border-[#e11d2e] bg-rose-50/50" : "border-transparent"
-                    }`}
-                  >
-                    {l.image ? (
-                      <MarkedImage src={l.image} className="h-16 w-16 shrink-0 rounded-xl bg-[#f4f4f5] object-cover sm:h-[92px] sm:w-[120px]" />
-                    ) : (
-                      <LineThumb kind={l.thumb || "android"} />
-                    )}
-                    <span className="min-w-0 flex-1">
-                      <h2 className="block text-base font-semibold leading-snug sm:text-lg">{l.name}</h2>
-                      {l.blurb ? <span className="mt-1 block text-sm text-zinc-500">{l.blurb}</span> : null}
-                      {lineId === l.code && (
-                        <span className="mt-3 inline-block rounded-full bg-rose-50 px-3 py-1 text-xs text-trione">
-                          ĐÃ CHỌN
-                        </span>
-                      )}
-                    </span>
-                    {lineId === l.code ? <CheckBox on /> : <span className="self-center text-zinc-300">→</span>}
-                  </button>
-                ))
-              ) : (
-                <p className="text-sm text-zinc-500">Chưa có danh mục cấp 2 đang hiển thị cho thương hiệu này.</p>
-              )}
-              <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-zinc-200 bg-white p-5">
-                <input
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 accent-[#e11d2e]"
-                  onChange={(event) => {
-                    if (event.target.checked) router.push(lineGuideHref);
-                  }}
-                />
-                <span>
-                  <span className="block font-semibold">Không biết dòng sản phẩm nào</span>
-                  <span className="mt-1 block text-sm text-zinc-500">
-                    Tick vào để xem bài hướng dẫn nhận diện dòng máy.
-                  </span>
-                  <a href={lineGuideHref} className="mt-2 inline-block text-sm font-medium text-[#e11d2e]">
-                    {lineGuideHref}
-                  </a>
-                </span>
-              </label>
-            </div>
-          </Section>
-        )}
-
-        {step === 3 && (
-          <Section
-            title={`Đây là mẫu ${lineLabel} nào?`}
-            sub="Chọn đúng mẫu và kích thước phù hợp với đồng hồ của bạn."
-            chip={
-              <span className="flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs shadow-sm">
-                <AppleMini />
-                {chosenName} / {lineLabel}
-              </span>
-            }
-          >
-            <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <div className="relative min-w-0 flex-1">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">⌕</span>
-                <input
-                  value={modelQ}
-                  onChange={(e) => setModelQ(e.target.value)}
-                  className="w-full rounded-xl border bg-white py-3 pl-10 pr-4 text-sm"
-                  placeholder="Tìm theo tên mẫu hoặc kích thước..."
-                />
-              </div>
-              <label className="min-w-[180px] rounded-xl border bg-white px-4 py-2 text-xs text-zinc-500">
-                <span className="block text-[10px] tracking-wide">▽ BỘ LỌC MẪU</span>
-                <select
-                  value={generations.includes(modelGen) ? modelGen : allGenerations}
-                  onChange={(event) => setModelGen(event.target.value)}
-                  className="w-full bg-transparent font-semibold text-zinc-800 outline-none"
-                >
-                  {generations.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <p className="mb-3 text-xs text-zinc-400">
-              Tìm thấy {visibleModels.length} mẫu {lineLabel}
-            </p>
-            <div className="space-y-3">
-              {visibleModels.length ? (
-                visibleModels.map((m) => (
-                  <button
-                    key={m.key}
-                    onClick={() => setModelId(m.code)}
-                    aria-pressed={modelId === m.code}
-                    className={`pick flex w-full items-center gap-3 rounded-2xl border bg-white p-3 text-left sm:gap-4 sm:p-4 ${
-                      modelId === m.code ? "is-on border-[#e11d2e] bg-rose-50/40" : "border-zinc-100"
-                    }`}
-                  >
-                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#f4f4f5] sm:h-[88px] sm:w-[120px]">
-                      {m.image ? <MarkedImage src={m.image} className="h-full w-full object-cover" /> : <ModelThumb id={m.code} />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-base font-semibold leading-snug">{m.name}</h3>
-                        <CheckBox on={modelId === m.code} />
-                      </div>
-                      <p className="mt-1 text-sm leading-5 text-zinc-500">{m.blurb || m.specs || "Chưa có mô tả"}</p>
-                      {modelId === m.code ? (
-                        <span className="mt-2 inline-block rounded-full bg-rose-50 px-3 py-1 text-xs text-trione">ĐÃ CHỌN</span>
-                      ) : null}
-                    </div>
-                  </button>
-                ))
-              ) : (
-                <p className="text-sm text-zinc-500">
-                  {lineProducts.length ? "Không có mẫu khớp với từ khóa hoặc bộ lọc." : "Chưa có sản phẩm đang hiển thị cho dòng này."}
-                </p>
-              )}
-            </div>
-            <p className="mt-4 text-xs text-zinc-400">
-              i &nbsp; Chưa chắc chắn? Tên mẫu thường nằm trong Cài đặt · Cài đặt chung · Giới thiệu.
-            </p>
-          </Section>
-        )}
-
         {step === 4 && (
           <Section
             title="Nhập IMEI hoặc số sê-ri"
             sub="Không bắt buộc. Có thể bỏ qua và bổ sung khi thẩm định tại cửa hàng."
-            chip={<DeviceChip text={deviceLabel} />}
+            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} />}
           >
             <div className="rounded-2xl bg-white p-6">
               <p className="text-xs font-semibold tracking-wide text-zinc-500">
@@ -811,7 +764,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
           <Section
             title="Đồng hồ có hoạt động bình thường không?"
             sub="Kiểm tra nguồn, sạc, cảm ứng, GPS và khả năng đồng bộ với ứng dụng."
-            chip={<DeviceChip text={deviceLabel} />}
+            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} />}
           >
             <div className="space-y-3">
               {(
@@ -852,7 +805,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
           <Section
             title="Đồng hồ đang gặp vấn đề gì?"
             sub="Có thể chọn nhiều mục. Hãy chọn tất cả vấn đề đã kiểm tra được trên thiết bị."
-            chip={<DeviceChip text={deviceLabel} />}
+            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} />}
           >
             <div className="mb-4 flex items-center justify-between rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
               <span>
@@ -862,10 +815,8 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
               <span className="text-[11px] font-semibold">CHỌN NHIỀU</span>
             </div>
             <div className="grid md:grid-cols-2 gap-3">
-              {issues.map((i, issueIndex) => {
+              {issues.map((i) => {
                 const on = issueIds.includes(i.id);
-                const level = Math.min(4, Math.max(1, grade));
-                const issuePrice = pickedProduct?.gradePrices[level - 1]?.[issueIndex] ?? 0;
                 return (
                   <button
                     key={i.id}
@@ -885,7 +836,6 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                     <span className="flex-1">
                       <h3 className="block text-base font-semibold">{i.name}</h3>
                       <span className="block text-sm text-zinc-500">{i.hint}</span>
-                      {issuePrice > 0 ? <span className="mt-1 block text-sm font-semibold text-[#e11d2e]">{vnd(issuePrice)}</span> : null}
                     </span>
                     <CheckBox on={on} />
                   </button>
@@ -906,23 +856,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
           <Section
             title="Tình trạng màn hình như thế nào?"
             sub="Lau sạch bụi và dấu vân tay, sau đó kiểm tra mặt kính dưới ánh sáng rõ."
-            chip={<DeviceChip text={deviceLabel} />}
+            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} />}
           >
-            <OptionList
-              kind="screen"
-              options={screenOptions}
-              value={screen}
-              onChange={setScreen}
-              prices={
-                fn === "ok"
-                  ? {
-                      excellent: conditionAmount(pickedProduct, "screen", "excellent"),
-                      light: conditionAmount(pickedProduct, "screen", "light"),
-                      broken: conditionAmount(pickedProduct, "screen", "broken"),
-                    }
-                  : undefined
-              }
-            />
+            <OptionList kind="screen" options={screenOptions} value={screen} onChange={setScreen} />
           </Section>
         )}
 
@@ -930,23 +866,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
           <Section
             title="Thân máy và các nút bấm như thế nào?"
             sub="Kiểm tra viền, mặt lưng, các nút bấm và khu vực cảm biến của đồng hồ."
-            chip={<DeviceChip text={deviceLabel} />}
+            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} />}
           >
-            <OptionList
-              kind="body"
-              options={bodyOptions}
-              value={body}
-              onChange={setBody}
-              prices={
-                fn === "ok"
-                  ? {
-                      excellent: conditionAmount(pickedProduct, "body", "excellent"),
-                      light: conditionAmount(pickedProduct, "body", "light"),
-                      heavy: conditionAmount(pickedProduct, "body", "heavy"),
-                    }
-                  : undefined
-              }
-            />
+            <OptionList kind="body" options={bodyOptions} value={body} onChange={setBody} />
           </Section>
         )}
 
@@ -954,7 +876,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
           <Section
             title="Chụp hình ảnh thiết bị"
             sub="Không bắt buộc. Có thể tải từ máy, chụp bằng điện thoại, hoặc bỏ qua."
-            chip={<DeviceChip text={deviceLabel} />}
+            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} />}
           >
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <label className="relative inline-flex cursor-pointer items-center overflow-hidden rounded-lg bg-[#e11d2e] px-4 py-2.5 text-sm font-semibold text-white">
@@ -1017,6 +939,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 <div className="rounded-2xl bg-white px-4 py-2 shadow-sm">
                   <p className="text-[10px] tracking-wide text-zinc-400">GIÁ THU CŨ DỰ KIẾN</p>
                   <p className="font-bold text-[#e11d2e]">{vnd(tradeIn)}</p>
+                  {tradeIn === 0 ? <p className="mt-1 max-w-[140px] text-[10px] leading-4 text-zinc-400">Chưa có giá thu cho tình trạng này.</p> : null}
                 </div>
                 <div className="max-w-[150px] rounded-2xl bg-white px-4 py-2 text-xs text-zinc-600 shadow-sm">
                   {deviceLabel}
@@ -1072,7 +995,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 </div>
                 <div className="grid sm:grid-cols-2 gap-3">
                   {visibleGarmin.map((g) => {
-                    const extra = g.price - tradeIn;
+                    const extra = exchangeDue(g.price, tradeIn, g.supportPrice);
                     return (
                       <button
                         key={g.key}
@@ -1094,8 +1017,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                           <h3 className="block font-semibold">{g.name}</h3>
                           <span className="block text-xs text-zinc-500">{g.specs}</span>
                           <span className="mt-1 block text-xs text-zinc-500">Giá sản phẩm {vnd(g.price)}</span>
-                          <span className={`block text-sm font-semibold ${extra <= 0 ? "text-emerald-700" : "text-[#e11d2e]"}`}>
-                            {extra <= 0 ? "Không cần trả thêm" : `Cần trả thêm ${vnd(extra)}`}
+                          {g.supportPrice > 0 ? <span className="block text-xs text-emerald-700">Trợ giá − {vnd(g.supportPrice)}</span> : null}
+                          <span className={`block text-sm font-semibold ${extra === 0 ? "text-emerald-700" : "text-[#e11d2e]"}`}>
+                            {extra === 0 ? "Không cần trả thêm" : `Cần trả thêm ${vnd(extra)}`}
                           </span>
                           {garminId === g.code ? (
                             <span className="mt-2 inline-block rounded-full bg-rose-50 px-3 py-1 text-xs text-trione">ĐÃ CHỌN</span>
@@ -1137,6 +1061,16 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 )}
                 {pickedExchange ? (
                   <>
+                    <label className="mt-3 block text-sm">
+                      <span className="mb-1 block text-[10px] font-semibold tracking-wide text-zinc-500">SỐ SERI MÁY MỚI · KHÔNG BẮT BUỘC</span>
+                      <input
+                        value={newSerial}
+                        onChange={(event) => setNewSerial(event.target.value.toUpperCase())}
+                        maxLength={18}
+                        className="w-full rounded-xl border px-3 py-2 text-sm outline-none"
+                        placeholder="Nhập số seri máy mới"
+                      />
+                    </label>
                     <div className="mt-4 space-y-1 text-sm">
                       <p className="flex justify-between">
                         <span>Giá sản phẩm mới</span>
@@ -1145,6 +1079,10 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                       <p className="flex justify-between text-emerald-700">
                         <span>Khấu trừ máy cũ</span>
                         <span>− {vnd(tradeIn)}</span>
+                      </p>
+                      <p className="flex justify-between text-emerald-700">
+                        <span>Trợ giá</span>
+                        <span>− {vnd(garmin.supportPrice)}</span>
                       </p>
                     </div>
                     <p className="mt-3 rounded-xl bg-rose-50 p-3">
@@ -1181,12 +1119,19 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
               <div className="rounded-2xl bg-white p-5">
                 <div className="flex justify-between text-xs">
                   <span className="text-zinc-500">SẢN PHẨM THU CŨ</span>
-                  <button type="button" onClick={() => setStep(brandId === "other" ? 1 : 3)} className="text-[#e11d2e]">
+                  <button type="button" onClick={() => setStep(1)} className="text-[#e11d2e]">
                     Chỉnh sửa
                   </button>
                 </div>
-                <p className="mt-2 text-xl font-bold">{deviceLabel}</p>
-                <p className="text-sm text-zinc-500">{brandId === "other" ? "Giá thu cũ sẽ được thẩm định tại cửa hàng" : model?.specs}</p>
+                <div className="mt-2 flex gap-3">
+                  {pickedProduct?.image ? (
+                    <img src={pickedProduct.image} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />
+                  ) : null}
+                  <div className="min-w-0">
+                    <p className="text-xl font-bold">{deviceLabel}</p>
+                    <p className="text-sm text-zinc-500">{brandId === "other" ? "Giá thu cũ sẽ được thẩm định tại cửa hàng" : model?.specs}</p>
+                  </div>
+                </div>
                 <p className="mt-2 text-xs text-zinc-500">
                   {fn === "ok" ? "Hoạt động tốt" : fn === "dead" ? "Không hoạt động" : "Có vấn đề"} · Màn hình{" "}
                   {screen === "excellent" ? "xuất sắc" : screen === "light" ? "đã qua sử dụng nhẹ" : "hư hỏng"} · Thân máy{" "}
@@ -1195,6 +1140,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 <p className="mt-3 text-sm">
                   Giá loại {fn === "dead" ? 5 : grade} · Giá thu cũ <b>{vnd(tradeIn)}</b>
                 </p>
+                {tradeIn === 0 ? <p className="mt-1 text-xs text-zinc-400">Chưa có giá thu cho tình trạng này.</p> : null}
               </div>
               <div className="rounded-2xl bg-white p-5">
                 <div className="flex justify-between text-xs">
@@ -1220,23 +1166,28 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 <p className="mt-3 text-sm">
                   Giá sản phẩm mới <b>{vnd(garmin.listPrice)}</b>
                 </p>
+                <p className="mt-1 text-sm text-zinc-500">Số seri máy mới: {newSerial.trim() || "Chưa nhập"}</p>
               </div>
             </div>
             <div className="mt-4 rounded-2xl bg-white p-5">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div>
-                  <p className="text-[11px] text-zinc-400">GIÁ THU CŨ</p>
-                  <p className="text-xl font-bold text-emerald-700">{vnd(tradeIn)}</p>
-                </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <p className="text-[11px] text-zinc-400">GIÁ SẢN PHẨM MỚI</p>
                   <p className="text-xl font-bold">{vnd(garmin.listPrice)}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-zinc-400">GIÁ SAU KHI TRỪ THU CŨ</p>
+                  <p className="text-[11px] text-zinc-400">GIÁ THU CŨ</p>
+                  <p className="text-xl font-bold text-emerald-700">{vnd(tradeIn)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-zinc-400">TRỢ GIÁ</p>
+                  <p className="text-xl font-bold text-emerald-700">{vnd(garmin.supportPrice)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-zinc-400">GIÁ THỰC</p>
                   <p className="text-xl font-bold text-[#e11d2e]">{vnd(due)}</p>
                   <p className="text-xs text-zinc-500">
-                    {vnd(garmin.listPrice)} − {vnd(tradeIn)}
+                    {vnd(garmin.listPrice)} − {vnd(tradeIn)} − {vnd(garmin.supportPrice)}
                   </p>
                 </div>
               </div>
@@ -1274,7 +1225,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
             <p className="text-sm text-zinc-500 hidden sm:block">
               {step === 1 && (
                 <>
-                  Đã chọn: <b className="text-[#e11d2e]">{chosenName}</b>
+                  Đã chọn: <b className="text-[#e11d2e]">{brandId === "other" ? chosenName : model?.name || (lineId ? lineLabel : chosenName)}</b>
                 </>
               )}
               {step === 11 && (
@@ -1360,9 +1311,91 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   );
 }
 
-function Level1Mark({ item }: { item: Level1Category }) {
-  if (item.image) return <MarkedImage src={item.image} className="h-14 w-14 rounded-2xl object-cover" />;
-  return <BrandMark id={item.code || "other"} />;
+function TickSelect({
+  label,
+  placeholder,
+  value,
+  options,
+  onChange,
+  disabled,
+  searchable,
+  open,
+  onOpen,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  options: { id: string; name: string; hint?: string; image?: string }[];
+  onChange: (id: string) => void;
+  disabled?: boolean;
+  searchable?: boolean;
+  open: boolean;
+  onOpen: (open: boolean) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [q, setQ] = useState("");
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(event: MouseEvent) {
+      if (!ref.current?.contains(event.target as Node)) onOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open, onOpen]);
+  const selected = options.find((item) => item.id === value);
+  const shown = options.filter((item) => !q.trim() || `${item.name} ${item.hint ?? ""}`.toLowerCase().includes(q.trim().toLowerCase()));
+  return (
+    <div ref={ref} className="relative">
+      <p className="mb-1 text-xs font-semibold tracking-wide text-zinc-500">{label}</p>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onOpen(!open)}
+        className="flex w-full items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3 text-left disabled:bg-zinc-50 disabled:text-zinc-400"
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          {selected?.image ? <img src={selected.image} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover" /> : null}
+          <span className={`min-w-0 truncate ${selected ? "font-semibold text-zinc-900" : "text-zinc-400"}`}>{selected?.name || placeholder}</span>
+        </span>
+        <span className="text-zinc-400">▾</span>
+      </button>
+      {open && !disabled ? (
+        <div className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-xl border bg-white p-1 shadow-lg">
+          {searchable ? (
+            <input
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+              className="mb-1 w-full rounded-lg border px-3 py-2 text-sm"
+              placeholder="Tìm theo tên mẫu hoặc kích thước..."
+            />
+          ) : null}
+          {shown.length ? (
+            shown.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  onChange(item.id);
+                  onOpen(false);
+                  setQ("");
+                }}
+                className="flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left hover:bg-rose-50"
+              >
+                <CheckBox on={item.id === value} />
+                {item.image ? <img src={item.image} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" /> : null}
+                <span className="min-w-0">
+                  <span className="block font-medium">{item.name}</span>
+                  {item.hint ? <span className="block text-xs text-zinc-500">{item.hint}</span> : null}
+                </span>
+              </button>
+            ))
+          ) : (
+            <p className="px-2 py-3 text-sm text-zinc-500">Không có mục phù hợp.</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function Section({
@@ -1390,10 +1423,10 @@ function Section({
   );
 }
 
-function DeviceChip({ text, label = "THIẾT BỊ ĐANG KIỂM TRA" }: { text: string; label?: string }) {
+function DeviceChip({ text, image, label = "THIẾT BỊ ĐANG KIỂM TRA" }: { text: string; image?: string; label?: string }) {
   return (
     <span className="flex max-w-[260px] items-center gap-2 rounded-2xl bg-white px-3 py-2 text-[11px] text-zinc-600 shadow-sm">
-      <AppleMini />
+      {image ? <img src={image} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" /> : <WatchMini />}
       <span>
         <span className="block text-[9px] tracking-wide text-zinc-400">{label}</span>
         <span className="font-semibold text-zinc-800">{text}</span>
@@ -1402,10 +1435,11 @@ function DeviceChip({ text, label = "THIẾT BỊ ĐANG KIỂM TRA" }: { text: s
   );
 }
 
-function AppleMini() {
+function WatchMini() {
   return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden>
-      <path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.9-3.5.9s-1.8-.8-3-.8c-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.3 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7 2-.1 2.9-2.2c1-.1.8-2.3 1.7-3.4-.7-.3-2-1.2-2-2.1zM14.8 6.4c.6-.8 1.1-1.8.9-2.9-1 .1-2.1.7-2.7 1.5-.6.7-1.1 1.8-.9 2.8 1 .1 2.1-.6 2.7-1.4z" />
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <rect x="7" y="5" width="10" height="14" rx="3" />
+      <path d="M9 5V3.5h6V5M9 19v1.5h6V19M12 9v3l2 1" />
     </svg>
   );
 }

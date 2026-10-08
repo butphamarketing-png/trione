@@ -65,7 +65,12 @@ export async function publishCatalog() {
 let ready: Promise<boolean> | null = null;
 
 export function ensureCatalog() {
-  if (!ready) ready = hydrateCatalog();
+  if (!ready) {
+    ready = hydrateCatalog().then((ok) => {
+      if (!ok) ready = null;
+      return ok;
+    });
+  }
   return ready;
 }
 
@@ -77,24 +82,36 @@ export async function hydrateCatalog() {
     const payload = (await res.json()) as Record<string, string>;
     const keys = Object.keys(payload).filter((key) => kept(key) && payload[key]);
     if (!keys.length) return false;
+    const serverTimes = JSON.parse(payload.__times || "{}") as Record<string, number>;
+    const dirty = JSON.parse(sessionStorage.getItem(dirtyStore) || "{}") as Record<string, number>;
+    const known = JSON.parse(sessionStorage.getItem(timeStore) || "{}") as Record<string, number>;
+    let keepLocal = false;
+    const applied = new Set<string>();
     for (const key of keys) {
+      const serverTime = Number(serverTimes[key] || 0);
+      const localTime = Number(dirty[key] || 0);
+      if (sessionStorage.getItem(key) && localTime > serverTime) {
+        keepLocal = true;
+        continue;
+      }
       if (key.startsWith("trione-admin:")) ingestStored(key, payload[key]);
       else sessionStorage.setItem(key, payload[key]);
+      applied.add(key);
+      known[key] = serverTime || known[key] || Date.now();
+      if (dirty[key] && dirty[key] <= known[key]) delete dirty[key];
     }
-    const settings = payload["trione-site-settings"];
-    if (settings) {
-      const site = await import("@/lib/site-settings");
-      site.importSiteSettings(settings);
-    }
-    const requests = payload["trione-demo-requests"];
-    if (requests) {
-      const orders = await import("@/lib/demo-requests");
-      orders.importRequestStore(requests);
-    }
-    const known = JSON.parse(sessionStorage.getItem(timeStore) || "{}") as Record<string, number>;
-    for (const key of keys) known[key] = known[key] || Date.now();
     sessionStorage.setItem(timeStore, JSON.stringify(known));
+    sessionStorage.setItem(dirtyStore, JSON.stringify(dirty));
+    if (applied.has("trione-site-settings")) {
+      const site = await import("@/lib/site-settings");
+      site.importSiteSettings(payload["trione-site-settings"]);
+    }
+    if (applied.has("trione-demo-requests")) {
+      const orders = await import("@/lib/demo-requests");
+      orders.importRequestStore(payload["trione-demo-requests"]);
+    }
     window.dispatchEvent(new Event(catalogEvent));
+    if (keepLocal) void publishCatalog();
     return true;
   } catch {
     return false;

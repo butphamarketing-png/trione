@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { bodyOptions, brands, issues, lines, models, screenOptions } from "@/data/catalog";
-import { cloneRecord, normalizeConditionPrices, normalizeGradePrices, type AdminAlbumImage, type AdminExtra, type AdminRecord } from "@/lib/admin-records";
+import { brands, lines, models } from "@/data/catalog";
+import { cloneRecord, type AdminAlbumImage, type AdminExtra, type AdminRecord } from "@/lib/admin-records";
 import { fileToDataUrl } from "@/lib/demo-media";
 import { defaultSiteSettings, readSiteSettings, useSiteSettings, type SiteSettings } from "@/lib/site-settings";
 import { readLevel1Categories, type Level1Category } from "@/lib/level1-categories";
@@ -368,7 +368,7 @@ export function AdminRecordForm({
                       </option>
                     ))}
                 </select>
-                <p className="mt-1 text-xs text-zinc-400">Sản phẩm hiện ở bước 3. Đường dẫn dạng /thu-cu/apple/apple-watch-ultra/apple-watch-ultra-2.</p>
+                <p className="mt-1 text-xs text-zinc-400">Sản phẩm hiện trong bước chọn máy, cùng thương hiệu và dòng. Đường dẫn dạng /thu-cu/apple/apple-watch-ultra/apple-watch-ultra-2.</p>
               </label>
             </Section>
           ) : null}
@@ -591,14 +591,10 @@ export function AdminRecordForm({
                   <div>
                     <p className="text-sm">5 loại giá theo tình trạng:</p>
                     <p className="mt-1 text-xs leading-5 text-zinc-500">
-                      Hoạt động tốt thì màn hình và thân máy ở các bước sau chọn loại giá, lấy mức xấu hơn. Có vấn đề thì khách tick nhiều phần hư, giá lấy theo lỗi ở loại đó. Không hoạt động luôn là Giá loại 5. Ô tình trạng để trống thì dùng giá của loại tương ứng.
+                      Giá mỗi loại là mức cố định. Khách chỉ chọn tình trạng, không nhập giá. Ô để trống thì giá thu của loại đó là 0. Hoạt động tốt lấy mức xấu hơn giữa màn hình và thân máy: xuất sắc là loại 1, dùng nhẹ là loại 2, hư hỏng hoặc mòn nặng là loại 4. Có vấn đề: 1 lỗi là loại 2, 2 lỗi là loại 3, từ 3 lỗi là loại 4; nếu màn hình hoặc thân máy xấu hơn thì lấy mức xấu hơn. Không hoạt động là loại 5.
                     </p>
                   </div>
                   {priceColumns.map((grade, gradeIndex) => {
-                    const prices = normalizeGradePrices(draft.extra.gradePrices);
-                    const screenPrices = normalizeConditionPrices(draft.extra.screenPrices);
-                    const bodyPrices = normalizeConditionPrices(draft.extra.bodyPrices);
-                    const conditionIndex = gradeIndex === 3 ? 2 : gradeIndex < 2 ? gradeIndex : -1;
                     const levelIndex = columns.indexOf(grade);
                     const note =
                       gradeIndex === 0
@@ -606,7 +602,7 @@ export function AdminRecordForm({
                         : gradeIndex === 1
                           ? "Màn hình đã qua sử dụng nhẹ, thân máy hao mòn thông thường, hoặc 1 lỗi."
                           : gradeIndex === 2
-                            ? "Đúng 2 lỗi. Màn hình và thân máy không xấu hơn mức này."
+                            ? "Đúng 2 lỗi."
                             : gradeIndex === 3
                               ? "Màn hình hư hỏng, thân máy hao mòn nặng, hoặc từ 3 lỗi."
                               : "Đồng hồ không hoạt động.";
@@ -614,56 +610,13 @@ export function AdminRecordForm({
                       <div key={grade} className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
                         <p className="mb-1 text-sm font-semibold">{grade}</p>
                         <p className="mb-3 text-xs text-zinc-500">{note}</p>
-                        {conditionIndex >= 0 ? (
-                          <div className="mb-3 grid gap-3 sm:grid-cols-2">
-                            <MoneyField
-                              label={`Tình trạng màn hình: ${screenOptions[conditionIndex]?.name ?? ""}`}
-                              value={screenPrices[conditionIndex]}
-                              disabled={readOnly}
-                              onChange={(value) => {
-                                const next = normalizeConditionPrices(draft.extra.screenPrices);
-                                next[conditionIndex] = value;
-                                setExtra("screenPrices", next);
-                              }}
-                            />
-                            <MoneyField
-                              label={`Thân máy và nút bấm: ${bodyOptions[conditionIndex]?.name ?? ""}`}
-                              value={bodyPrices[conditionIndex]}
-                              disabled={readOnly}
-                              onChange={(value) => {
-                                const next = normalizeConditionPrices(draft.extra.bodyPrices);
-                                next[conditionIndex] = value;
-                                setExtra("bodyPrices", next);
-                              }}
-                            />
-                          </div>
-                        ) : null}
-                        {gradeIndex < 4 ? (
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            {issues.slice(0, 4).map((issue, issueIndex) => (
-                              <MoneyField
-                                key={issue.id}
-                                label={issue.name}
-                                value={prices[gradeIndex][issueIndex]}
-                                disabled={readOnly}
-                                onChange={(value) => {
-                                  const next = normalizeGradePrices(draft.extra.gradePrices);
-                                  next[gradeIndex][issueIndex] = value;
-                                  setExtra("gradePrices", next);
-                                }}
-                              />
-                            ))}
-                          </div>
-                        ) : null}
                         {levelIndex >= 0 ? (
-                          <div className="mt-3">
-                            <MoneyField
-                              label={gradeIndex === 4 ? "Không hoạt động" : "Giá của loại này khi ô tình trạng để trống"}
-                              value={draft.cells[levelIndex] ?? ""}
-                              disabled={readOnly}
-                              onChange={(value) => setCell(levelIndex, value)}
-                            />
-                          </div>
+                          <MoneyField
+                            label="Giá thu của loại này"
+                            value={draft.cells[levelIndex] ?? ""}
+                            disabled={readOnly}
+                            onChange={(value) => setCell(levelIndex, value)}
+                          />
                         ) : null}
                       </div>
                     );
@@ -716,7 +669,7 @@ export function AdminRecordForm({
                     <p className="mt-1 text-xs text-zinc-400">
                       {columns.includes("Giá niêm yết")
                         ? "Cấp 1 là tên thương hiệu. Cấp 2 là sản phẩm này, hiện khi khách chọn máy đổi mới."
-                        : "Dòng này hiện ở bước 2 khi khách chọn danh mục cấp 1 tương ứng. Đường dẫn dạng /thu-cu/apple/ hoặc /thu-cu/sam-sung/."}
+                        : "Dòng này hiện trong cùng bước chọn máy, sau khi khách chọn thương hiệu. Đường dẫn dạng /thu-cu/apple/ hoặc /thu-cu/sam-sung/."}
                     </p>
                   </label>
                 );
@@ -730,6 +683,9 @@ export function AdminRecordForm({
                     onChange={(event) => setCell(index, event.target.value)}
                     className={inputClass}
                   />
+                  {column === "Trợ giá" ? (
+                    <p className="mt-1 text-xs text-zinc-400">Giá thực = giá niêm yết − giá thu cũ − trợ giá. Để trống hoặc 0 thì không trừ thêm.</p>
+                  ) : null}
                 </label>
               );
             })}

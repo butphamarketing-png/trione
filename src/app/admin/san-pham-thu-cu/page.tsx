@@ -31,20 +31,7 @@ export default function TradeInProductsPage() {
       redFrom={2}
       presetVersion="tradein-prices-v1"
       blankColumns={emptyProblemPrices}
-      filters={
-        <>
-          <select className="rounded border bg-white px-3 py-2 text-sm">
-            <option>Chọn danh mục</option>
-            <option>Đồng hồ</option>
-          </select>
-          <select className="rounded border bg-white px-3 py-2 text-sm">
-            <option>Chọn hãng</option>
-            <option>Apple</option>
-            <option>Garmin</option>
-            <option>Samsung</option>
-          </select>
-        </>
-      }
+      brandFilter
       columns={["STT", "Tiêu đề", "Giá loại 1", "Giá loại 2", "Giá loại 3", "Giá loại 4", "Giá loại 5", "Hiển thị"]}
       defaultImages={productPhotos}
       codes={models.map((model) => model.id)}

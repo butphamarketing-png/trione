@@ -1,5 +1,6 @@
 import { brands, garminNew } from "@/data/catalog";
-import { normalizeRecord, reindex, type AdminRecord } from "@/lib/admin-records";
+import { blankExtra, normalizeRecord, reindex, saveRecords, type AdminRecord } from "@/lib/admin-records";
+import { vndComma } from "@/lib/pricing";
 
 export const exchangeStorageKey = "Sản phẩm đổi mới";
 
@@ -7,7 +8,8 @@ const titleIndex = 2;
 const parentIndex = 3;
 const seriesIndex = 4;
 const priceIndex = 5;
-const visibleIndex = 6;
+const supportIndex = 6;
+const visibleIndex = 7;
 
 export type ExchangeProduct = {
   key: string;
@@ -18,6 +20,7 @@ export type ExchangeProduct = {
   series: string;
   specs: string;
   price: number;
+  supportPrice: number;
   image: string;
   face: string;
   strap: string;
@@ -72,6 +75,7 @@ function toProduct(item: (typeof garminNew)[number], key = item.id): ExchangePro
     series: item.series,
     specs: item.specs,
     price: item.listPrice,
+    supportPrice: 0,
     image: exchangePhotos[item.name] || "",
     face: item.face,
     strap: item.strap,
@@ -90,10 +94,18 @@ function plainText(value: string) {
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+export function migrateExchangeRecord(record: AdminRecord): AdminRecord {
+  if (record.cells.length !== 7) return record;
+  const cells = [...record.cells];
+  cells.splice(supportIndex, 0, "0");
+  return { ...record, cells };
+}
+
 export function readExchangeProducts(parent = ""): ExchangeProduct[] {
   const saved = readSavedExchange();
   const mapped = saved?.length
     ? saved
+        .map(migrateExchangeRecord)
         .filter((record) => record.cells[visibleIndex] === "✓" && (record.cells[titleIndex] ?? "").trim())
         .map((record) => {
           const name = record.cells[titleIndex].trim();
@@ -110,11 +122,12 @@ export function readExchangeProducts(parent = ""): ExchangeProduct[] {
             series: (record.cells[seriesIndex] ?? "").trim() || known?.series || "",
             specs: record.extra.shortDesc || plainText(record.extra.description) || known?.specs || "",
             price: money(record.cells[priceIndex] ?? ""),
-            image: record.extra.image || "",
+            supportPrice: money(record.cells[supportIndex] ?? ""),
+            image: record.extra.image || exchangePhotos[name] || "",
             face: known?.face || "#222",
             strap: known?.strap || "#444",
             time: known?.time || "10:09",
-            seoTitle: record.extra.seoTitle || "",
+            seoTitle: record.extra.seoTitle && record.extra.seoTitle !== name ? record.extra.seoTitle : "",
             keywords: record.extra.keywords || "",
             description: record.extra.description || "",
           } satisfies ExchangeProduct;
@@ -122,6 +135,104 @@ export function readExchangeProducts(parent = ""): ExchangeProduct[] {
     : fallbackExchangeProducts();
   if (!parent) return mapped;
   return mapped.filter((item) => item.parent === parent);
+}
+
+function csvCell(value: string) {
+  if (/[",\n;]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
+  return value;
+}
+
+export function supportCsv() {
+  const lines = ["mã sản phẩm,tên sản phẩm,giá niêm yết,trợ giá"];
+  for (const item of readExchangeProducts()) {
+    lines.push([csvCell(item.code), csvCell(item.name), String(item.price), String(item.supportPrice)].join(","));
+  }
+  return lines.join("\r\n");
+}
+
+function parseCsv(text: string) {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let quoted = false;
+  const src = text.replace(/^\uFEFF/, "");
+  const header = src.split(/\r?\n/, 1)[0] ?? "";
+  const delimiter = (header.match(/;/g) || []).length > (header.match(/,/g) || []).length ? ";" : ",";
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (quoted) {
+      if (ch === '"') {
+        if (src[i + 1] === '"') {
+          cell += '"';
+          i += 1;
+        } else quoted = false;
+      } else cell += ch;
+      continue;
+    }
+    if (ch === '"') {
+      quoted = true;
+      continue;
+    }
+    if (ch === delimiter) {
+      row.push(cell.trim());
+      cell = "";
+      continue;
+    }
+    if (ch === "\n") {
+      row.push(cell.trim());
+      if (row.some(Boolean)) rows.push(row);
+      row = [];
+      cell = "";
+      continue;
+    }
+    if (ch !== "\r") cell += ch;
+  }
+  if (cell || row.length) {
+    row.push(cell.trim());
+    if (row.some(Boolean)) rows.push(row);
+  }
+  return rows;
+}
+
+function ensureExchangeRecords() {
+  const saved = readSavedExchange();
+  if (saved?.length) return saved.map(migrateExchangeRecord);
+  return fallbackExchangeProducts().map((item, index) =>
+    normalizeRecord(
+      {
+        id: String(index + 1),
+        cells: [String(index + 1), "", item.name, item.brandName, item.series, vndComma(item.price), "0", "✓"],
+        extra: { ...blankExtra(String(index + 1)), sku: item.code, category: item.parent, seoTitle: item.name },
+      },
+      index
+    )
+  );
+}
+
+export function importSupportCsv(text: string) {
+  const rows = parseCsv(text);
+  const start = /mã|ma san pham|code/i.test(rows[0]?.[0] ?? "") ? 1 : 0;
+  const records = ensureExchangeRecords();
+  const missing: string[] = [];
+  let updated = 0;
+  for (const row of rows.slice(start)) {
+    const code = (row[0] ?? "").trim().toLowerCase();
+    const name = (row[1] ?? "").trim().toLowerCase();
+    const support = money(row.length >= 4 ? (row[3] ?? "") : (row[2] ?? ""));
+    const record = records.find((item) => {
+      const sku = (item.extra.sku || "").trim().toLowerCase();
+      const title = (item.cells[titleIndex] ?? "").trim().toLowerCase();
+      return (code && sku === code) || (name && title === name);
+    });
+    if (!record) {
+      missing.push(row[1] || row[0] || "dòng trống");
+      continue;
+    }
+    record.cells[supportIndex] = vndComma(support);
+    updated += 1;
+  }
+  saveRecords(exchangeStorageKey, records);
+  return { updated, missing };
 }
 
 function readSavedExchange() {

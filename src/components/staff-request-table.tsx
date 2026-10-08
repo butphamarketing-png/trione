@@ -14,13 +14,14 @@ export function StaffRequestTable({ items }: { items?: TradeRequest[] }) {
   const live = useLiveRequests();
   const rows = items ?? live;
   return (
-    <table className="w-full text-sm">
+    <div className="overflow-x-auto">
+    <table className="w-full min-w-[720px] text-sm">
       <thead className="text-left text-[11px] tracking-wide text-zinc-400">
         <tr>
           <th className="py-2 font-medium">MÃ YÊU CẦU</th>
           <th className="font-medium">TÊN TÀI KHOẢN</th>
           <th className="font-medium">THIẾT BỊ THU CŨ</th>
-          <th className="font-medium">GARMIN ĐỔI MỚI</th>
+          <th className="font-medium">MÁY ĐỔI MỚI</th>
           <th className="font-medium">GIÁ THU DỰ KIẾN</th>
           <th className="font-medium">TRẠNG THÁI</th>
           <th className="font-medium">CẬP NHẬT</th>
@@ -56,5 +57,6 @@ export function StaffRequestTable({ items }: { items?: TradeRequest[] }) {
         ))}
       </tbody>
     </table>
+    </div>
   );
 }
