@@ -44,7 +44,7 @@ export function CheckBox({ on }: { on: boolean }) {
 
 export function Stepper({ current, total = 7, doneAll }: { current: number; total?: number; doneAll?: boolean }) {
   return (
-    <ol className="mb-6 flex items-start justify-between px-0 sm:mb-10 sm:px-2" suppressHydrationWarning>
+    <ol className="mb-6 flex items-start justify-between overflow-hidden px-0 sm:mb-10 sm:px-2" suppressHydrationWarning>
       {Array.from({ length: total }, (_, i) => i + 1).map((n) => {
         const done = doneAll || current > n;
         const active = !doneAll && current === n;
@@ -121,7 +121,7 @@ export function StoreFooter() {
   ].filter((item) => item.href || !item.optional);
   return (
     <footer className="bg-[#0a0a0a] text-white mt-auto">
-      <div className="mx-auto max-w-6xl px-8 py-12 grid gap-10 md:grid-cols-4">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-8 md:grid-cols-4">
         <div>
           {site.logo ? (
             <img src={site.logo} alt={site.company} className="mb-5 h-[88px] w-[88px] rounded-full object-contain" />
@@ -132,8 +132,8 @@ export function StoreFooter() {
           )}
           <p className="text-sm font-bold">ĐĂNG KÝ NHẬN TIN</p>
           <p className="text-xs text-zinc-400 mt-1 mb-3">Nhận ưu đãi và tin tức mới nhất từ {site.company}</p>
-          <div className="flex border border-zinc-500 max-w-[220px]">
-            <input className="flex-1 bg-transparent px-3 py-2 text-sm outline-none" placeholder="Email của bạn..." />
+          <div className="flex max-w-[220px] border border-zinc-500">
+            <input className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none" placeholder="Email của bạn..." />
             <button className="px-3 text-lg" aria-label="Gửi">
               ➤
             </button>
@@ -203,7 +203,7 @@ export function StoreFooter() {
         </div>
       </div>
       <div className="border-t border-zinc-800">
-        <div className="mx-auto max-w-6xl px-8 py-4 flex flex-wrap items-center justify-between gap-4 text-xs text-zinc-500">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 text-xs text-zinc-500 sm:px-8">
           <span>{site.copyright}</span>
           <div className="text-center">
             <p className="mb-2 font-semibold text-white/80">KẾT NỐI VỚI CHÚNG TÔI</p>

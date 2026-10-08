@@ -545,12 +545,14 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   if (submitted) {
     return (
       <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#f7f7f8]">
-        <div className="pointer-events-none absolute top-40 right-[-120px] h-[520px] w-[520px] rounded-full border-[40px] border-rose-100/70" />
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute top-40 right-[-120px] h-[520px] w-[520px] rounded-full border-[40px] border-rose-100/70" />
+        </div>
         <WizardHeader />
         <div className="relative mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
           <Stepper current={7} doneAll />
           <section>
-            <div className="mb-6 flex items-start justify-between gap-4">
+            <div className="mb-6 flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
               <div className="border-l-4 border-[#e11d2e] pl-4">
                 <h1 className="text-[28px] leading-tight font-bold">Yêu cầu đã gửi thành công</h1>
                 <p className="mt-1 text-zinc-500">Nhân viên {site.company} sẽ liên hệ để thẩm định trong giờ làm việc.</p>
@@ -590,8 +592,10 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f7f7f8] relative overflow-hidden">
-      <div className="pointer-events-none absolute right-[-120px] top-40 h-[520px] w-[520px] rounded-full border-[40px] border-rose-100/70" />
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#f7f7f8] pb-24 sm:pb-0">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute right-[-120px] top-40 h-[520px] w-[520px] rounded-full border-[40px] border-rose-100/70" />
+      </div>
       <WizardHeader />
       <div className="relative mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <Stepper current={displayStep} doneAll={step === 10} />
@@ -732,11 +736,11 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 <input
                   value={serial}
                   onChange={(e) => setSerial(e.target.value.toUpperCase())}
-                  className="w-full rounded-xl border border-zinc-200 px-4 py-3 outline-none"
+                  className="w-full rounded-xl border border-zinc-200 px-4 py-3 pr-14 outline-none"
                   placeholder="Ví dụ: L0XXXXXXXXXX hoặc 35XXXXXXXXXXXX"
                   maxLength={18}
                 />
-                <span className="absolute right-3 top-3 text-xs text-zinc-400">{serial.length}/18</span>
+                <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs text-zinc-400">{serial.length}/18</span>
               </div>
               <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
                 <div className="flex gap-3 rounded-xl bg-zinc-50 p-4">
@@ -950,8 +954,8 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
               </div>
             }
           >
-            <div className="grid lg:grid-cols-[1fr_280px] gap-6">
-              <div>
+            <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+              <div className="max-lg:pb-[46vh]">
                 <div className="relative mb-3">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">⌕</span>
                   <input
@@ -1034,7 +1038,11 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   })}
                 </div>
               </div>
-              <aside className="h-fit rounded-2xl bg-white p-5 shadow-sm">
+              <aside className="flex h-fit flex-col rounded-2xl bg-white p-5 shadow-sm max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-40 max-lg:max-h-[46vh] max-lg:overflow-hidden max-lg:rounded-b-none max-lg:border-t max-lg:p-4 max-lg:pb-[max(1rem,env(safe-area-inset-bottom))]">
+                <button type="button" onClick={back} className="mb-2 text-sm font-medium text-zinc-600 lg:hidden">
+                  ← Quay lại
+                </button>
+                <div className="min-h-0 flex-1 overflow-y-auto">
                 <p className="font-semibold">Tạm tính đổi mới</p>
                 <div className="mt-3 flex justify-between text-sm">
                     <span>
@@ -1060,7 +1068,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-3 rounded-xl bg-zinc-50 p-3 text-sm text-zinc-500">Tick một sản phẩm đổi mới để xem tạm tính.</p>
+                  <p className="mt-3 text-sm text-zinc-500">Chọn một sản phẩm phía trên để xem giá thực.</p>
                 )}
                 {pickedExchange ? (
                   <>
@@ -1070,7 +1078,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                         value={newSerial}
                         onChange={(event) => setNewSerial(event.target.value.toUpperCase())}
                         maxLength={18}
-                        className="w-full rounded-xl border px-3 py-2 text-sm outline-none"
+                        className="w-full rounded-xl border px-3 py-3 text-sm outline-none"
                         placeholder="Nhập số seri máy mới"
                       />
                     </label>
@@ -1088,20 +1096,24 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                         <span>− {vnd(garmin.supportPrice)}</span>
                       </p>
                     </div>
-                    <p className="mt-3 rounded-xl bg-rose-50 p-3">
-                      <span className="block text-[11px] text-zinc-500">CHI PHÍ ĐỔI MỚI DỰ KIẾN</span>
-                      <span className="text-xl font-bold text-[#e11d2e]">{vnd(due)}</span>
-                    </p>
                   </>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={next}
-                  disabled={!garminId}
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#e11d2e] px-4 py-3 text-sm font-bold text-white disabled:bg-zinc-300"
-                >
-                  XEM BÁO GIÁ ĐỔI MỚI <span>›</span>
-                </button>
+                </div>
+                {pickedExchange ? (
+                  <div className="mt-3 shrink-0 border-t border-zinc-100 pt-3">
+                    <p className="flex items-end justify-between gap-3">
+                      <span className="text-[11px] text-zinc-500">CHI PHÍ ĐỔI MỚI DỰ KIẾN</span>
+                      <span className="text-xl font-bold text-[#e11d2e]">{vnd(due)}</span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={next}
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#e11d2e] px-4 py-3 text-sm font-bold text-white"
+                    >
+                      XEM BÁO GIÁ ĐỔI MỚI <span>›</span>
+                    </button>
+                  </div>
+                ) : null}
               </aside>
             </div>
             <p className="mt-4 text-xs text-zinc-400">Giá hiển thị là mức dự kiến và sẽ được xác nhận tại cửa hàng.</p>
@@ -1205,7 +1217,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   type="button"
                   onClick={next}
                   disabled={!agreed || sending}
-                  className="rounded-xl bg-[#e11d2e] px-6 py-3 font-semibold text-white disabled:bg-zinc-300"
+                  className="w-full rounded-xl bg-[#e11d2e] px-6 py-3 font-semibold text-white disabled:bg-zinc-300 sm:w-auto"
                 >
                   {sending ? "Đang gửi…" : "Gửi yêu cầu về admin"}
                 </button>
@@ -1214,7 +1226,10 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
           </Section>
         )}
 
-        <div className="mt-10 flex items-center justify-between border-t border-zinc-100 pt-6" suppressHydrationWarning>
+        <div
+          className={`${step === 9 ? "max-lg:hidden" : ""} fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-zinc-200 bg-white px-4 py-3 sm:static sm:z-auto sm:mt-10 sm:border-zinc-100 sm:bg-transparent sm:px-0 sm:py-0 sm:pt-6`}
+          suppressHydrationWarning
+        >
           <button
             onClick={back}
             disabled={step === 1}
@@ -1543,9 +1558,9 @@ function PhotoCard({
 }) {
   return (
     <div className="rounded-2xl bg-white p-3 text-left shadow-sm">
-      <div className="mb-2 flex items-center justify-between text-[11px]">
-        <span className="font-semibold">{p.label}</span>
-        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-zinc-400">TÙY CHỌN</span>
+      <div className="mb-2 flex items-start justify-between gap-1 text-[11px]">
+        <span className="min-w-0 font-semibold leading-4">{p.label}</span>
+        <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 whitespace-nowrap text-zinc-400">TÙY CHỌN</span>
       </div>
       {src ? (
         <div className="relative">
@@ -1576,7 +1591,7 @@ function PhotoCard({
 
 function PhotoSource({ label, capture, onFile }: { label: string; capture?: boolean; onFile: (file: File) => void }) {
   return (
-    <label className="relative block cursor-pointer overflow-hidden rounded-lg border bg-zinc-50 px-2 py-1.5 text-center text-[11px] font-semibold text-zinc-700">
+    <label className="relative block min-h-11 cursor-pointer overflow-hidden rounded-lg border bg-zinc-50 px-2 py-3 text-center text-[11px] font-semibold text-zinc-700">
       <input
         type="file"
         accept={capture ? "image/*" : "image/*,.heic,.heif"}
