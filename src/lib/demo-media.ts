@@ -6,14 +6,14 @@ export type MediaItem = {
 };
 
 export const mediaLibrary: MediaItem[] = [
-  { id: "login-bg", label: "Banner đăng nhập", fallback: "/login-bg.png", usedOn: "Trang đăng nhập" },
-  { id: "line:ultra", label: "Apple Watch Ultra", fallback: "/watches/line-ultra.png", usedOn: "Wizard · dòng máy" },
-  { id: "line:series", label: "Apple Watch Series", fallback: "/watches/line-series.png", usedOn: "Wizard · dòng máy" },
-  { id: "line:se", label: "Apple Watch SE", fallback: "/watches/line-se.png", usedOn: "Wizard · dòng máy" },
-  { id: "model:ultra2", label: "Ultra 2", fallback: "/watches/model-ultra2.png", usedOn: "Wizard · mẫu thu cũ" },
-  { id: "model:ultra1", label: "Ultra 1", fallback: "/watches/model-ultra1.png", usedOn: "Wizard · mẫu thu cũ" },
-  { id: "garmin:fenix8", label: "fēnix 8 AMOLED", fallback: "/watches/g-fenix.png", usedOn: "Wizard · đổi mới" },
-  { id: "garmin:fr970", label: "Forerunner 970", fallback: "/watches/g-fr970.png", usedOn: "Wizard · đổi mới" },
+  { id: "login-bg", label: "Banner đăng nhập", fallback: "", usedOn: "Trang đăng nhập" },
+  { id: "line:ultra", label: "Apple Watch Ultra", fallback: "/watches/ultra-2.jpg", usedOn: "Wizard · dòng máy" },
+  { id: "line:series", label: "Apple Watch Series", fallback: "/watches/series-10.jpg", usedOn: "Wizard · dòng máy" },
+  { id: "line:se", label: "Apple Watch SE", fallback: "/watches/se-2.jpg", usedOn: "Wizard · dòng máy" },
+  { id: "model:ultra2", label: "Ultra 2", fallback: "/watches/ultra-2.jpg", usedOn: "Wizard · mẫu thu cũ" },
+  { id: "model:ultra1", label: "Ultra 1", fallback: "/watches/ultra-1.jpg", usedOn: "Wizard · mẫu thu cũ" },
+  { id: "garmin:fenix8", label: "fēnix 8 AMOLED", fallback: "/watches/fenix-6x.jpg", usedOn: "Wizard · đổi mới" },
+  { id: "garmin:fr970", label: "Forerunner 970", fallback: "/watches/forerunner-970.jpg", usedOn: "Wizard · đổi mới" },
 ];
 
 const KEY = "trione-demo-media";

@@ -66,9 +66,9 @@ function RoundWatch({
 }
 
 const lineFallback: Record<string, string> = {
-  ultra: "/watches/line-ultra.png",
-  series: "/watches/line-series.png",
-  se: "/watches/line-se.png",
+  ultra: "/watches/ultra-2.jpg",
+  series: "/watches/series-10.jpg",
+  se: "/watches/se-2.jpg",
 };
 
 export function LineThumb({ kind }: { kind: string }) {
@@ -126,8 +126,8 @@ export function LineThumb({ kind }: { kind: string }) {
 }
 
 const garminFallback: Record<string, string> = {
-  fenix8: "/watches/g-fenix.png",
-  fr970: "/watches/g-fr970.png",
+  fenix8: "/watches/fenix-6x.jpg",
+  fr970: "/watches/forerunner-970.jpg",
 };
 
 export function GarminThumb({
@@ -159,8 +159,8 @@ export function GarminThumb({
 }
 
 const modelSrc: Record<string, string> = {
-  ultra2: "/watches/model-ultra2.png",
-  ultra1: "/watches/model-ultra1.png",
+  ultra2: "/watches/ultra-2.jpg",
+  ultra1: "/watches/ultra-1.jpg",
 };
 
 export function ModelThumb({ id }: { id: string }) {

@@ -8,7 +8,7 @@ import { useSiteSettings } from "@/lib/site-settings";
 
 export default function LoginPage() {
   const router = useRouter();
-  const loginBg = useMediaSrc("login-bg", "/login-bg.png");
+  const loginBg = useMediaSrc("login-bg", "");
   const site = useSiteSettings();
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
@@ -34,7 +34,10 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden" suppressHydrationWarning>
-      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${loginBg})` }} />
+      <div
+        className="absolute inset-0 bg-[#1c1c1c] bg-cover bg-center"
+        style={loginBg ? { backgroundImage: `url(${loginBg})` } : { backgroundImage: "radial-gradient(circle at top, #3a3a3a, #111)" }}
+      />
       <div className="relative flex flex-1 flex-col items-center justify-center px-4 pt-[118px] pb-24">
         <form onSubmit={submit} className="w-full max-w-[380px] rounded-2xl bg-white p-7 shadow-2xl">
           <h1 className="mb-5 text-center text-[26px] font-bold">Đăng nhập</h1>

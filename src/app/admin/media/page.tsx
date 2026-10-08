@@ -19,7 +19,7 @@ export default function MediaPage() {
       body.set("file", file);
       const res = await fetch("/api/media", { method: "POST", body });
       const json = (await res.json()) as { url?: string; error?: string };
-      if (!res.ok || !json.url) throw new Error(json.error || "Không tải được ảnh lên Supabase");
+      if (!res.ok || !json.url) throw new Error(json.error || "Không lưu được ảnh");
       saveMedia(id, json.url);
       await hydrateMediaFromCloud();
     } catch (e) {
@@ -49,7 +49,7 @@ export default function MediaPage() {
         <div>
           <h1 className="font-semibold">Quản lý hình ảnh · video</h1>
           <p className="mt-1 max-w-xl text-xs text-zinc-500">
-            Ảnh lưu trên Supabase Storage. Đổi ở đây sẽ hiện trên trang khách (mọi máy), sau khi tải xong.
+            Đổi ảnh ở đây sẽ hiện trên trang thu cũ và trang đăng nhập. Ảnh được giữ trên máy khi kho ảnh bên ngoài không vào được.
           </p>
           {err ? <p className="mt-2 text-xs text-[#e11d2e]">{err}</p> : null}
         </div>
@@ -95,7 +95,11 @@ function MediaCard({
   const src = useMediaSrc(id, fallback);
   return (
     <div className="overflow-hidden rounded-lg border bg-zinc-50">
-      <img src={src} alt="" className="h-28 w-full bg-white object-cover" />
+      {src ? (
+        <img src={src} alt="" className="h-28 w-full bg-white object-cover" />
+      ) : (
+        <div className="h-28 w-full bg-[radial-gradient(circle_at_top,#3a3a3a,#111)]" />
+      )}
       <div className="space-y-1 px-2 py-2">
         <p className="text-xs font-medium text-zinc-700">{label}</p>
         <p className="text-[10px] text-zinc-400">{usedOn}</p>

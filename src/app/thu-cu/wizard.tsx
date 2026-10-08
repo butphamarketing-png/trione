@@ -24,6 +24,7 @@ import { fileToDataUrl } from "@/lib/demo-media";
 import { readSession } from "@/lib/session";
 import { readStaffProfile } from "@/lib/staff-profile";
 import { phoneHref, setPageSeo, useSiteSettings } from "@/lib/site-settings";
+import { useMediaSrc } from "@/lib/use-live-media";
 
 type FunctionStatus = "ok" | "issues" | "dead";
 
@@ -621,7 +622,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 disabled={!brandId || brandId === "other"}
                 open={openMenu === "line"}
                 onOpen={(next) => setOpenMenu(next ? "line" : "")}
-                options={level2.map((item) => ({ id: item.code, name: item.name, hint: item.blurb, image: item.image }))}
+                options={level2.map((item) => ({ id: item.code, name: item.name, hint: item.blurb, image: item.image, mediaId: `line:${item.code}` }))}
                 onChange={(code) => {
                   setLineId(code);
                   setModelId("");
@@ -637,7 +638,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   searchable
                   open={openMenu === "model"}
                   onOpen={(next) => setOpenMenu(next ? "model" : "")}
-                  options={visibleModels.map((item) => ({ id: item.code, name: item.name, hint: item.specs || item.blurb, image: item.image }))}
+                  options={visibleModels.map((item) => ({ id: item.code, name: item.name, hint: item.specs || item.blurb, image: item.image, mediaId: `model:${item.code}` }))}
                   onChange={setModelId}
                 />
                 {lineId && generations.length > 1 ? (
@@ -720,7 +721,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
           <Section
             title="Nhập IMEI hoặc số sê-ri"
             sub="Không bắt buộc. Có thể bỏ qua và bổ sung khi thẩm định tại cửa hàng."
-            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} />}
+            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} modelId={modelId} />}
           >
             <div className="rounded-2xl bg-white p-6">
               <p className="text-xs font-semibold tracking-wide text-zinc-500">
@@ -741,8 +742,10 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 <div className="flex gap-3 rounded-xl bg-zinc-50 p-4">
                   <span className="grid h-10 w-10 place-items-center rounded-lg bg-white text-lg">⌚</span>
                   <div>
-                    <p className="font-semibold">Tìm trên Apple Watch</p>
-                    <p className="text-zinc-500">Cài đặt · Cài đặt chung · Giới thiệu</p>
+                    <p className="font-semibold">{brandId === "apple" ? "Tìm trên Apple Watch" : `Tìm trên ${chosenName || "đồng hồ"}`}</p>
+                    <p className="text-zinc-500">
+                      {brandId === "apple" ? "Cài đặt · Cài đặt chung · Giới thiệu" : "Mở phần cài đặt của đồng hồ hoặc ứng dụng của hãng"}
+                    </p>
                     <p className="text-xs text-zinc-400">Xem mục “Số sê-ri” hoặc “IMEI”.</p>
                   </div>
                 </div>
@@ -764,7 +767,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
           <Section
             title="Đồng hồ có hoạt động bình thường không?"
             sub="Kiểm tra nguồn, sạc, cảm ứng, GPS và khả năng đồng bộ với ứng dụng."
-            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} />}
+            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} modelId={modelId} />}
           >
             <div className="space-y-3">
               {(
@@ -805,7 +808,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
           <Section
             title="Đồng hồ đang gặp vấn đề gì?"
             sub="Có thể chọn nhiều mục. Hãy chọn tất cả vấn đề đã kiểm tra được trên thiết bị."
-            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} />}
+            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} modelId={modelId} />}
           >
             <div className="mb-4 flex items-center justify-between rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
               <span>
@@ -856,7 +859,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
           <Section
             title="Tình trạng màn hình như thế nào?"
             sub="Lau sạch bụi và dấu vân tay, sau đó kiểm tra mặt kính dưới ánh sáng rõ."
-            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} />}
+            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} modelId={modelId} />}
           >
             <OptionList kind="screen" options={screenOptions} value={screen} onChange={setScreen} />
           </Section>
@@ -866,7 +869,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
           <Section
             title="Thân máy và các nút bấm như thế nào?"
             sub="Kiểm tra viền, mặt lưng, các nút bấm và khu vực cảm biến của đồng hồ."
-            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} />}
+            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} modelId={modelId} />}
           >
             <OptionList kind="body" options={bodyOptions} value={body} onChange={setBody} />
           </Section>
@@ -876,7 +879,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
           <Section
             title="Chụp hình ảnh thiết bị"
             sub="Không bắt buộc. Có thể tải từ máy, chụp bằng điện thoại, hoặc bỏ qua."
-            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} />}
+            chip={<DeviceChip text={deviceLabel} image={pickedProduct?.image} modelId={modelId} />}
           >
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <label className="relative inline-flex cursor-pointer items-center overflow-hidden rounded-lg bg-[#e11d2e] px-4 py-2.5 text-sm font-semibold text-white">
@@ -1006,11 +1009,11 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                         }`}
                       >
                         <div className="grid h-[88px] w-[88px] shrink-0 place-items-center overflow-hidden rounded-xl bg-[#f3f3f4]">
-                          {g.image ? (
-                            <MarkedImage src={g.image} className="h-full w-full object-cover" />
-                          ) : (
-                            <GarminThumb id={g.code} face={g.face} strap={g.strap} time={g.time} />
-                          )}
+                          <ProductShot
+                            mediaId={`garmin:${g.code}`}
+                            src={g.image}
+                            thumb={<GarminThumb id={g.code} face={g.face} strap={g.strap} time={g.time} />}
+                          />
                         </div>
                         <span className="min-w-0 flex-1">
                           <span className="block text-[10px] tracking-wide text-zinc-400">{g.brandName} · {g.series}</span>
@@ -1043,11 +1046,11 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 {pickedExchange ? (
                   <div className="mt-3 flex items-center gap-3 rounded-xl border border-[#e11d2e] p-2">
                     <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-lg bg-[#f3f3f4]">
-                      {garmin.image ? (
-                        <MarkedImage src={garmin.image} className="h-full w-full object-cover" />
-                      ) : (
-                        <GarminThumb id={garmin.id} face={garmin.face} strap={garmin.strap} time={garmin.time} size={56} />
-                      )}
+                      <ProductShot
+                        mediaId={`garmin:${garmin.id}`}
+                        src={garmin.image}
+                        thumb={<GarminThumb id={garmin.id} face={garmin.face} strap={garmin.strap} time={garmin.time} size={56} />}
+                      />
                     </div>
                     <div className="min-w-0 text-sm">
                       <p className="text-[10px] text-[#e11d2e]">ĐÃ TICK</p>
@@ -1124,9 +1127,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   </button>
                 </div>
                 <div className="mt-2 flex gap-3">
-                  {pickedProduct?.image ? (
-                    <img src={pickedProduct.image} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />
-                  ) : null}
+                  <LiveImage mediaId={modelId ? `model:${modelId}` : ""} src={pickedProduct?.image} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
                   <div className="min-w-0">
                     <p className="text-xl font-bold">{deviceLabel}</p>
                     <p className="text-sm text-zinc-500">{brandId === "other" ? "Giá thu cũ sẽ được thẩm định tại cửa hàng" : model?.specs}</p>
@@ -1151,11 +1152,11 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 </div>
                 <div className="mt-3 flex gap-3">
                   <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#f3f3f4]">
-                    {garmin.image ? (
-                      <MarkedImage src={garmin.image} className="h-full w-full object-cover" />
-                    ) : (
-                      <GarminThumb id={garmin.id} face={garmin.face} strap={garmin.strap} time={garmin.time} size={64} />
-                    )}
+                    <ProductShot
+                      mediaId={`garmin:${garmin.id}`}
+                      src={garmin.image}
+                      thumb={<GarminThumb id={garmin.id} face={garmin.face} strap={garmin.strap} time={garmin.time} size={64} />}
+                    />
                   </div>
                   <div className="min-w-0 text-sm">
                     <p className="text-[10px] text-zinc-400">{garmin.series}</p>
@@ -1325,7 +1326,7 @@ function TickSelect({
   label: string;
   placeholder: string;
   value: string;
-  options: { id: string; name: string; hint?: string; image?: string }[];
+  options: { id: string; name: string; hint?: string; image?: string; mediaId?: string }[];
   onChange: (id: string) => void;
   disabled?: boolean;
   searchable?: boolean;
@@ -1354,7 +1355,7 @@ function TickSelect({
         className="flex w-full items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3 text-left disabled:bg-zinc-50 disabled:text-zinc-400"
       >
         <span className="flex min-w-0 items-center gap-2">
-          {selected?.image ? <img src={selected.image} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover" /> : null}
+          <LiveImage mediaId={selected?.mediaId} src={selected?.image} className="h-8 w-8 shrink-0 rounded-lg object-cover" />
           <span className={`min-w-0 truncate ${selected ? "font-semibold text-zinc-900" : "text-zinc-400"}`}>{selected?.name || placeholder}</span>
         </span>
         <span className="text-zinc-400">▾</span>
@@ -1382,7 +1383,7 @@ function TickSelect({
                 className="flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left hover:bg-rose-50"
               >
                 <CheckBox on={item.id === value} />
-                {item.image ? <img src={item.image} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" /> : null}
+                <LiveImage mediaId={item.mediaId} src={item.image} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
                 <span className="min-w-0">
                   <span className="block font-medium">{item.name}</span>
                   {item.hint ? <span className="block text-xs text-zinc-500">{item.hint}</span> : null}
@@ -1423,10 +1424,24 @@ function Section({
   );
 }
 
-function DeviceChip({ text, image, label = "THIẾT BỊ ĐANG KIỂM TRA" }: { text: string; image?: string; label?: string }) {
+function LiveImage({ mediaId, src, className }: { mediaId?: string; src?: string; className: string }) {
+  const photo = useMediaSrc(mediaId, src || "");
+  if (!photo) return null;
+  return <img src={photo} alt="" className={className} />;
+}
+
+function ProductShot({ mediaId, src, thumb }: { mediaId: string; src?: string; thumb: ReactNode }) {
+  const override = useMediaSrc(mediaId, "");
+  const photo = override || src || "";
+  if (photo) return <MarkedImage src={photo} className="h-full w-full object-cover" />;
+  return thumb;
+}
+
+function DeviceChip({ text, image, modelId, label = "THIẾT BỊ ĐANG KIỂM TRA" }: { text: string; image?: string; modelId?: string; label?: string }) {
+  const photo = useMediaSrc(modelId ? `model:${modelId}` : "", image || "");
   return (
     <span className="flex max-w-[260px] items-center gap-2 rounded-2xl bg-white px-3 py-2 text-[11px] text-zinc-600 shadow-sm">
-      {image ? <img src={image} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" /> : <WatchMini />}
+      {photo ? <img src={photo} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" /> : <WatchMini />}
       <span>
         <span className="block text-[9px] tracking-wide text-zinc-400">{label}</span>
         <span className="font-semibold text-zinc-800">{text}</span>
