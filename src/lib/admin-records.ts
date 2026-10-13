@@ -22,6 +22,7 @@ export type AdminExtra = {
   shortDesc: string;
   body: string;
   sku: string;
+  serial: string;
   category: string;
   subCategory: string;
   salePrice: string;
@@ -62,6 +63,7 @@ export function blankExtra(order = ""): AdminExtra {
     shortDesc: "",
     body: "",
     sku: "",
+    serial: "",
     category: "",
     subCategory: "",
     salePrice: "",
@@ -116,6 +118,7 @@ export function normalizeRecord(record: Partial<AdminRecord> | null | undefined,
       shortDesc: extra?.shortDesc ?? "",
       body: extra?.body ?? "",
       sku: extra?.sku ?? "",
+      serial: extra?.serial ?? "",
       category: extra?.category ?? "",
       subCategory: extra?.subCategory ?? "",
       salePrice: extra?.salePrice ?? "",

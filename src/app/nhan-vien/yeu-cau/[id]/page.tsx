@@ -137,11 +137,11 @@ export default function RequestDetailPage({
           <p className="mb-3 text-[11px] text-zinc-400">SẢN PHẨM ĐỔI MỚI ĐÃ CHỌN</p>
           <Row k="Tên đổi mới" v={found.newDevice} />
           <Row k="IMEI máy đổi mới" v={found.imeiNew || "Chưa nhập"} accent={!found.imeiNew} />
-          <Row k="Giá sản phẩm mới" v={vnd(found.newPrice)} />
-          <Row k="Khấu trừ máy cũ" v={`− ${vnd(found.tradeIn)}`} />
-          <Row k="Trợ giá" v={`− ${vnd(support)}`} />
+          <Row k="Giá gốc sản phẩm mới" v={vnd(found.newPrice)} />
+          <Row k="Giá đã thu cũ" v={`− ${vnd(found.tradeIn)}`} />
+          <Row k="Trợ giá nhà sản xuất" v={`− ${vnd(support)}`} />
           <p className="mt-3 flex justify-between rounded-lg bg-rose-50 px-3 py-2 font-bold text-[#e11d2e]">
-            <span>GIÁ THỰC</span>
+            <span>GIÁ TỔNG</span>
             <span>{vnd(due)}</span>
           </p>
           <p className="mt-1 text-xs text-zinc-400">

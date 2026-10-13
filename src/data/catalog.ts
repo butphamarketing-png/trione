@@ -1,7 +1,7 @@
 export type Grade = 1 | 2 | 3 | 4 | 5;
 
 export const tradeInPresetVersion = "garmin-vn-tradein-2026-10";
-export const linePresetVersion = "lines-garmin-vn-2026-10";
+export const linePresetVersion = "lines-match-products-2026-10";
 export const exchangePresetVersion = "garmin-vn-retail-2026-10";
 
 export type Brand = {

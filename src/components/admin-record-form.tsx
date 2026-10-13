@@ -108,6 +108,7 @@ export function AdminRecordForm({
   const titleIndex = Math.max(columns.indexOf("Tiêu đề"), 1);
   const showCazo = columns.includes("Tiêu đề");
   const isProduct = columns.includes("Giá loại 1");
+  const isExchange = columns.includes("Giá niêm yết");
   const parentIndex = columns.indexOf("Danh mục cấp 1");
   const [level1Parents, setLevel1Parents] = useState<Level1Category[]>([]);
   const [level2Options, setLevel2Options] = useState<Level2Category[]>([]);
@@ -674,6 +675,19 @@ export function AdminRecordForm({
                   </label>
                 );
               }
+              if (column === "Trợ giá") {
+                return (
+                  <div key={column} className="mb-3">
+                    <MoneyField
+                      label="Trợ giá (nhà sản xuất hỗ trợ)"
+                      value={draft.cells[index] ?? ""}
+                      disabled={readOnly}
+                      onChange={(value) => setCell(index, value)}
+                    />
+                    <p className="mt-1 text-xs text-zinc-400">Giá tổng = giá gốc sản phẩm mới − giá đã thu cũ − trợ giá. Để trống hoặc 0 thì không trừ thêm. Chỉ áp dụng cho sản phẩm mới.</p>
+                  </div>
+                );
+              }
               return (
                 <label key={column} className="mb-3 block text-sm">
                   <span className="mb-1 block">{column}</span>
@@ -683,12 +697,23 @@ export function AdminRecordForm({
                     onChange={(event) => setCell(index, event.target.value)}
                     className={inputClass}
                   />
-                  {column === "Trợ giá" ? (
-                    <p className="mt-1 text-xs text-zinc-400">Giá thực = giá niêm yết − giá thu cũ − trợ giá. Để trống hoặc 0 thì không trừ thêm.</p>
-                  ) : null}
                 </label>
               );
             })}
+            {isExchange ? (
+              <label className="mb-3 block text-sm">
+                <span className="mb-1 block">Số seri</span>
+                <input
+                  value={draft.extra.serial}
+                  disabled={readOnly}
+                  maxLength={32}
+                  onChange={(event) => setExtra("serial", event.target.value.toUpperCase())}
+                  placeholder="Nhập số seri máy mới"
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-zinc-400">Nhập tại đây. Trang thu cũ chỉ hiển thị số seri này, khách không nhập được.</p>
+              </label>
+            ) : null}
             <label className="mb-3 block max-w-[140px] text-sm">
               <span className="mb-1 block">Số thứ tự</span>
               <input

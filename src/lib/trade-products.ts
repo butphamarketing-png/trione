@@ -1,5 +1,5 @@
-import { brands, lines, models, tradeInPresetVersion } from "@/data/catalog";
-import { normalizeConditionPrices, normalizeGradePrices, normalizeRecord, reindex, type AdminRecord } from "@/lib/admin-records";
+import { brands, lines, models } from "@/data/catalog";
+import { loadRecords, normalizeConditionPrices, normalizeGradePrices } from "@/lib/admin-records";
 import type { FunctionStatus } from "@/lib/pricing";
 
 export const tradeProductStorageKey = "Danh sách Sản phẩm thu cũ";
@@ -114,13 +114,8 @@ function plainText(value: string) {
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function presetCurrent() {
-  if (typeof window === "undefined") return false;
-  return sessionStorage.getItem(`trione-admin-preset:${tradeProductStorageKey}`) === tradeInPresetVersion;
-}
-
 export function readTradeProducts(line = ""): TradeProduct[] {
-  const saved = presetCurrent() ? readSavedProducts() : null;
+  const saved = loadRecords(tradeProductStorageKey);
   if (!saved?.length) return fallbackTradeProducts(line);
   const mapped = saved
     .filter((record) => record.cells[visibleIndex] === "✓" && (record.cells[titleIndex] ?? "").trim())
@@ -158,17 +153,4 @@ export function readTradeProducts(line = ""): TradeProduct[] {
     });
   if (!line) return mapped;
   return mapped.filter((item) => item.line === line);
-}
-
-function readSavedProducts() {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = sessionStorage.getItem(`trione-admin:${tradeProductStorageKey}`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as AdminRecord[];
-    if (!Array.isArray(parsed)) return null;
-    return reindex(parsed.map((record, index) => normalizeRecord(record, index)));
-  } catch {
-    return null;
-  }
 }

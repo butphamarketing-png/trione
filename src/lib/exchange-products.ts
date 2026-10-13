@@ -1,5 +1,5 @@
-import { brands, exchangePresetVersion, garminNew } from "@/data/catalog";
-import { blankExtra, normalizeRecord, reindex, saveRecords, type AdminRecord } from "@/lib/admin-records";
+import { brands, garminNew } from "@/data/catalog";
+import { blankExtra, loadRecords, normalizeRecord, saveRecords, type AdminRecord } from "@/lib/admin-records";
 import { vndComma } from "@/lib/pricing";
 
 export const exchangeStorageKey = "Sản phẩm đổi mới";
@@ -25,6 +25,7 @@ export type ExchangeProduct = {
   face: string;
   strap: string;
   time: string;
+  serial: string;
   seoTitle: string;
   keywords: string;
   description: string;
@@ -80,6 +81,7 @@ function toProduct(item: (typeof garminNew)[number], key = item.id): ExchangePro
     face: item.face,
     strap: item.strap,
     time: item.time,
+    serial: "",
     seoTitle: "",
     keywords: "",
     description: "",
@@ -101,13 +103,8 @@ export function migrateExchangeRecord(record: AdminRecord): AdminRecord {
   return { ...record, cells };
 }
 
-function presetCurrent() {
-  if (typeof window === "undefined") return false;
-  return sessionStorage.getItem(`trione-admin-preset:${exchangeStorageKey}`) === exchangePresetVersion;
-}
-
 export function readExchangeProducts(parent = ""): ExchangeProduct[] {
-  const saved = presetCurrent() ? readSavedExchange() : null;
+  const saved = readSavedExchange();
   const mapped = saved?.length
     ? saved
         .map(migrateExchangeRecord)
@@ -132,6 +129,7 @@ export function readExchangeProducts(parent = ""): ExchangeProduct[] {
             face: known?.face || "#222",
             strap: known?.strap || "#444",
             time: known?.time || "10:09",
+            serial: (record.extra.serial || "").trim(),
             seoTitle: record.extra.seoTitle && record.extra.seoTitle !== name ? record.extra.seoTitle : "",
             keywords: record.extra.keywords || "",
             description: record.extra.description || "",
@@ -147,12 +145,18 @@ function csvCell(value: string) {
   return value;
 }
 
-export function supportCsv() {
-  const lines = ["mã sản phẩm,tên sản phẩm,giá niêm yết,trợ giá"];
+export function supportSheetRows() {
+  const rows = [["mã sản phẩm", "tên sản phẩm", "giá niêm yết", "trợ giá"]];
   for (const item of readExchangeProducts()) {
-    lines.push([csvCell(item.code), csvCell(item.name), String(item.price), String(item.supportPrice)].join(","));
+    rows.push([item.code, item.name, String(item.price), String(item.supportPrice)]);
   }
-  return lines.join("\r\n");
+  return rows;
+}
+
+export function supportCsv() {
+  return supportSheetRows()
+    .map((row) => row.map(csvCell).join(","))
+    .join("\r\n");
 }
 
 function parseCsv(text: string) {
@@ -214,41 +218,66 @@ function ensureExchangeRecords() {
   );
 }
 
-export function importSupportCsv(text: string) {
-  const rows = parseCsv(text);
-  const start = /mã|ma san pham|code/i.test(rows[0]?.[0] ?? "") ? 1 : 0;
+function fold(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase()
+    .trim();
+}
+
+function headerAt(header: string[], test: (value: string) => boolean) {
+  return header.findIndex((cell) => test(fold(cell)));
+}
+
+export function importSupportRows(rows: string[][]) {
+  const clean = rows.filter((row) => row.some((cell) => cell.trim()));
+  if (!clean.length) return { updated: 0, missing: [] as string[], skipped: 0 };
+  const folded = clean[0].map(fold);
+  const hasHeader = folded.some((cell) => /ma san pham|tro gia|sku|^code$/.test(cell));
+  const body = hasHeader ? clean.slice(1) : clean;
+  const codeAt = hasHeader ? headerAt(clean[0], (value) => /ma san pham|^ma$|sku|^code$/.test(value)) : 0;
+  const nameAt = hasHeader ? headerAt(clean[0], (value) => /ten san pham|^ten$|tieu de|^name$/.test(value)) : 1;
+  const supportAt = hasHeader
+    ? headerAt(clean[0], (value) => /tro gia|ho tro|support/.test(value))
+    : (clean[0]?.length ?? 0) >= 4
+      ? 3
+      : 2;
+  if (supportAt < 0) return { updated: 0, missing: ["Không thấy cột trợ giá"], skipped: 0 };
+
   const records = ensureExchangeRecords();
   const missing: string[] = [];
   let updated = 0;
-  for (const row of rows.slice(start)) {
-    const code = (row[0] ?? "").trim().toLowerCase();
-    const name = (row[1] ?? "").trim().toLowerCase();
-    const support = money(row.length >= 4 ? (row[3] ?? "") : (row[2] ?? ""));
+  let skipped = 0;
+  for (const row of body) {
+    const code = (row[codeAt] ?? "").trim().toLowerCase();
+    const name = nameAt >= 0 ? (row[nameAt] ?? "").trim().toLowerCase() : "";
+    const raw = (row[supportAt] ?? "").trim();
+    if (!raw) {
+      skipped += 1;
+      continue;
+    }
     const record = records.find((item) => {
       const sku = (item.extra.sku || "").trim().toLowerCase();
       const title = (item.cells[titleIndex] ?? "").trim().toLowerCase();
       return (code && sku === code) || (name && title === name);
     });
     if (!record) {
-      missing.push(row[1] || row[0] || "dòng trống");
+      missing.push(row[nameAt] || row[codeAt] || "dòng trống");
       continue;
     }
-    record.cells[supportIndex] = vndComma(support);
+    record.cells[supportIndex] = vndComma(money(raw));
     updated += 1;
   }
   saveRecords(exchangeStorageKey, records);
-  return { updated, missing };
+  return { updated, missing, skipped };
+}
+
+export function importSupportCsv(text: string) {
+  return importSupportRows(parseCsv(text));
 }
 
 function readSavedExchange() {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = sessionStorage.getItem(`trione-admin:${exchangeStorageKey}`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as AdminRecord[];
-    if (!Array.isArray(parsed)) return null;
-    return reindex(parsed.map((record, index) => normalizeRecord(record, index)));
-  } catch {
-    return null;
-  }
+  return loadRecords(exchangeStorageKey);
 }

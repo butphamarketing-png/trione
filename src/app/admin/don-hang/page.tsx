@@ -106,7 +106,7 @@ export default function OrdersAdminPage() {
         "Mã đơn hàng",
         "Người gửi",
         "Địa chỉ",
-        "Giá thực",
+        "Giá tổng",
         "Ngày đặt",
         "Hãng",
         "Tên máy",

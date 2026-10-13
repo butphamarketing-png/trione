@@ -1,5 +1,5 @@
-import { brands, linePresetVersion, lines } from "@/data/catalog";
-import { normalizeRecord, reindex, type AdminRecord } from "@/lib/admin-records";
+import { brands, lines } from "@/data/catalog";
+import { blankExtra, loadRecords, normalizeRecord, saveRecords, type AdminRecord } from "@/lib/admin-records";
 
 export const level2StorageKey = "Danh mục cấp 2";
 
@@ -64,13 +64,74 @@ function plainText(value: string) {
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function presetCurrent() {
-  if (typeof window === "undefined") return false;
-  return sessionStorage.getItem(`trione-admin-preset:${level2StorageKey}`) === linePresetVersion;
+function brandName(brandId: string) {
+  return brands.find((brand) => brand.id === brandId)?.name ?? "";
+}
+
+function alignLevel2(saved: AdminRecord[]) {
+  const used = new Set<string>();
+  let changed = false;
+  const aligned = lines.map((line, index) => {
+    const parent = brandName(line.brandId);
+    const existing = saved.find((record) => {
+      if (used.has(record.id)) return false;
+      const sku = (record.extra.sku || "").trim();
+      const title = (record.cells[titleIndex] ?? "").trim();
+      const category = (record.extra.category || "").trim();
+      const categoryName = (record.cells[parentIndex] ?? "").trim();
+      return sku === line.id || (title === line.name && (category === line.brandId || categoryName === parent));
+    });
+    if (!existing) {
+      changed = true;
+      return normalizeRecord(
+        {
+          id: line.id,
+          cells: [String(index + 1), "", line.name, parent, "✓"],
+          extra: {
+            ...blankExtra(String(index + 1)),
+            sku: line.id,
+            category: line.brandId,
+            image: line.image,
+            shortDesc: line.blurb,
+            seoTitle: line.name,
+          },
+        },
+        index
+      );
+    }
+    used.add(existing.id);
+    const skuChanged = existing.extra.sku !== line.id;
+    const categoryChanged = existing.extra.category !== line.brandId;
+    const titleChanged = (existing.cells[titleIndex] ?? "") !== line.name;
+    if (skuChanged || categoryChanged || titleChanged) changed = true;
+    return {
+      ...existing,
+      cells: existing.cells.map((cell, cellIndex) => {
+        if (cellIndex === titleIndex) return line.name;
+        if (cellIndex === parentIndex) return parent;
+        if (cellIndex === visibleIndex) return cell || "✓";
+        return cell;
+      }),
+      extra: {
+        ...existing.extra,
+        sku: line.id,
+        category: line.brandId,
+        image: existing.extra.image || line.image,
+        shortDesc: existing.extra.shortDesc || line.blurb,
+      },
+    };
+  });
+  for (const record of saved) {
+    if (!used.has(record.id)) aligned.push(record);
+  }
+  return { records: aligned, changed };
 }
 
 export function readLevel2Categories(parent = ""): Level2Category[] {
-  const saved = presetCurrent() ? readSavedLevel2() : null;
+  const loaded = loadRecords(level2StorageKey);
+  const aligned = loaded?.length ? alignLevel2(loaded) : null;
+  if (aligned?.changed && typeof window !== "undefined") saveRecords(level2StorageKey, aligned.records);
+  const saved = aligned?.records ?? loaded;
   if (!saved?.length) return fallbackLevel2(parent);
   const visible = saved.filter((record) => record.cells[visibleIndex] === "✓" && (record.cells[titleIndex] ?? "").trim());
   const mapped = visible.map((record) => {
@@ -93,17 +154,4 @@ export function readLevel2Categories(parent = ""): Level2Category[] {
   });
   if (!parent) return mapped;
   return mapped.filter((item) => item.parent === parent);
-}
-
-function readSavedLevel2() {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = sessionStorage.getItem(`trione-admin:${level2StorageKey}`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as AdminRecord[];
-    if (!Array.isArray(parsed)) return null;
-    return reindex(parsed.map((record, index) => normalizeRecord(record, index)));
-  } catch {
-    return null;
-  }
 }

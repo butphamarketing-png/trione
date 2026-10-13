@@ -31,6 +31,15 @@ type FunctionStatus = "ok" | "issues" | "dead";
 const lineGuideHref = "/huong-dan/nhan-dien-dong-san-pham";
 const allGenerations = "Tất cả thế hệ";
 
+function foldText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+}
+
 function openingFromSlug(slug: string[]) {
   const categories = fallbackLevel1();
   const [brandSlug, lineSlug, productSlug] = slug;
@@ -69,7 +78,6 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const [lineId, setLineId] = useState(opening.lineId);
   const [modelId, setModelId] = useState(opening.modelId);
   const [serial, setSerial] = useState("");
-  const [newSerial, setNewSerial] = useState("");
   const [openMenu, setOpenMenu] = useState<"brand" | "line" | "model" | "">("");
   const [fn, setFn] = useState<FunctionStatus>("ok");
   const [issueIds, setIssueIds] = useState<string[]>([]);
@@ -86,6 +94,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const [series, setSeries] = useState("TẤT CẢ");
   const [agreed, setAgreed] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [productQ, setProductQ] = useState("");
   const [modelQ, setModelQ] = useState("");
   const [modelGen, setModelGen] = useState(allGenerations);
   const [garminQ, setGarminQ] = useState("");
@@ -93,6 +102,8 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const [categories, setCategories] = useState<Level1Category[]>(fallbackLevel1);
   const [level2, setLevel2] = useState<Level2Category[]>(() => fallbackLevel2(opening.brandId === "other" ? "" : opening.brandId));
   const [products, setProducts] = useState<TradeProduct[]>(() => (opening.lineId ? fallbackTradeProducts(opening.lineId) : []));
+  const [catalogProducts, setCatalogProducts] = useState<TradeProduct[]>(() => fallbackTradeProducts());
+  const [allLines, setAllLines] = useState<Level2Category[]>(() => fallbackLevel2());
   const [exchangeProducts, setExchangeProducts] = useState<ExchangeProduct[]>(fallbackExchangeProducts);
   const [exchangeBrand, setExchangeBrand] = useState("garmin");
   const [activeKey, setActiveKey] = useState(opening.activeKey);
@@ -172,6 +183,21 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   });
   const lineProducts = products.filter((item) => item.line === lineId);
   const generations = [allGenerations, ...new Set(lineProducts.map((item) => modelGeneration(item.name)))];
+  const productHits = useMemo(() => {
+    const tokens = foldText(productQ).split(/\s+/).filter(Boolean);
+    if (!tokens.length) return [];
+    return catalogProducts
+      .map((item) => {
+        const brandName = categories.find((entry) => entry.code === item.parent)?.name || brands.find((entry) => entry.id === item.parent)?.name || "";
+        const lineName = allLines.find((entry) => entry.code === item.line)?.name || lines.find((entry) => entry.id === item.line)?.name || "";
+        return { item, brandName, lineName };
+      })
+      .filter(({ item, brandName, lineName }) => {
+        const haystack = foldText(`${item.name} ${item.specs} ${item.blurb} ${brandName} ${lineName}`);
+        return tokens.every((token) => haystack.includes(token));
+      })
+      .slice(0, 8);
+  }, [productQ, catalogProducts, categories, allLines]);
   const visibleModels = lineProducts.filter((item) => {
     const byGen = modelGen === allGenerations || modelGeneration(item.name) === modelGen;
     const haystack = `${item.name} ${item.specs} ${item.blurb}`.toLowerCase();
@@ -209,6 +235,21 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     setOtherBrand("");
     setLineId("");
     setModelId("");
+  }
+
+  function pickSearchedProduct(product: TradeProduct) {
+    const category = categories.find((item) => item.code === product.parent);
+    if (category) {
+      appliedKey.current = category.key;
+      setActiveKey(category.key);
+    }
+    setBrandId(product.parent || brandId);
+    setOtherBrand("");
+    setLineId(product.line);
+    setModelId(product.code);
+    setModelGen(allGenerations);
+    setModelQ("");
+    setProductQ("");
   }
 
   useEffect(() => {
@@ -281,6 +322,20 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       window.removeEventListener("focus", reload);
     };
   }, [lineId, level2]);
+
+  useEffect(() => {
+    const reload = () => {
+      setCatalogProducts(readTradeProducts());
+      setAllLines(readLevel2Categories());
+    };
+    reload();
+    window.addEventListener("trione-catalog", reload);
+    window.addEventListener("focus", reload);
+    return () => {
+      window.removeEventListener("trione-catalog", reload);
+      window.removeEventListener("focus", reload);
+    };
+  }, []);
 
   useEffect(() => {
     setModelGen(allGenerations);
@@ -470,7 +525,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         photos: uploadedPhotos,
         newDevice: garmin.name,
         newSpecs: garmin.specs,
-        imeiNew: newSerial.trim(),
+        imeiNew: pickedExchange?.serial.trim() || "",
         newPrice: garmin.listPrice,
         tradeIn,
         supportPrice: garmin.supportPrice,
@@ -578,7 +633,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   {deviceLabel} → {garmin.name}
                 </p>
                 <p className="mt-2 text-sm">
-                  Giá thu cũ {vnd(tradeIn)} · Trợ giá {vnd(garmin.supportPrice)} · Giá thực {vnd(due)}
+                  Giá thu cũ {vnd(tradeIn)} · Trợ giá − {vnd(garmin.supportPrice)} · Giá tổng {vnd(due)}
                 </p>
               </div>
               <div className="rounded-xl bg-white/80 px-4 py-3 text-sm">
@@ -613,9 +668,49 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         {step === 1 && (
           <Section
             title="Chọn đồng hồ muốn thu cũ"
-            sub="Chọn thương hiệu, dòng và mẫu trong cùng một bước."
+            sub="Tìm theo tên sản phẩm, hoặc chọn thương hiệu, dòng và mẫu."
             chip={<span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-[#e11d2e]">● Tick trong sổ xuống</span>}
           >
+            <div className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4">
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-semibold tracking-wide text-zinc-500">TÌM KIẾM NÂNG CAO THEO TÊN SẢN PHẨM</span>
+                <span className="relative block">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">⌕</span>
+                  <input
+                    value={productQ}
+                    onChange={(event) => setProductQ(event.target.value)}
+                    className="w-full rounded-xl border bg-white px-10 py-3 text-sm outline-none"
+                    placeholder="Nhập tên sản phẩm, ví dụ Ultra 2, Series 10, fēnix..."
+                  />
+                </span>
+              </label>
+              {productQ.trim() ? (
+                <div className="mt-2 max-h-72 overflow-auto rounded-xl border bg-zinc-50 p-1">
+                  {productHits.length ? (
+                    productHits.map(({ item, brandName, lineName }) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => pickSearchedProduct(item)}
+                        className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-white"
+                      >
+                        <LiveImage mediaId={`model:${item.code}`} src={item.image} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                        <span className="min-w-0">
+                          <span className="block font-semibold">{item.name}</span>
+                          <span className="block text-xs text-zinc-500">
+                            {[brandName, lineName, item.specs].filter(Boolean).join(" · ")}
+                          </span>
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="px-2 py-3 text-sm text-zinc-500">Không có sản phẩm trùng tên.</p>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-zinc-400">Gõ tên để chọn nhanh. Thương hiệu, dòng và mẫu sẽ được điền theo sản phẩm.</p>
+              )}
+            </div>
             <div className="grid gap-4 md:grid-cols-3">
               <TickSelect
                 label="Thương hiệu"
@@ -1040,7 +1135,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                           <h3 className="block font-semibold">{g.name}</h3>
                           <span className="block text-xs text-zinc-500">{g.specs}</span>
                           <span className="mt-1 block text-xs text-zinc-500">Giá sản phẩm {pricesReady ? vnd(g.price) : "Đang tải"}</span>
-                          {pricesReady && g.supportPrice > 0 ? <span className="block text-xs text-emerald-700">Trợ giá − {vnd(g.supportPrice)}</span> : null}
+                          {pricesReady && g.supportPrice > 0 ? <span className="block text-xs text-emerald-700">Trợ giá nhà sản xuất − {vnd(g.supportPrice)}</span> : null}
                           <span className={`block text-sm font-semibold ${pricesReady && extra === 0 ? "text-emerald-700" : "text-[#e11d2e]"}`}>
                             {!pricesReady ? "Đang tải giá" : extra === 0 ? "Không cần trả thêm" : `Cần trả thêm ${vnd(extra)}`}
                           </span>
@@ -1084,31 +1179,25 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm text-zinc-500">Chọn một sản phẩm phía trên để xem giá thực.</p>
+                  <p className="mt-3 text-sm text-zinc-500">Chọn một sản phẩm phía trên để xem giá tổng.</p>
                 )}
                 {pickedExchange ? (
                   <>
-                    <label className="mt-3 block text-sm">
-                      <span className="mb-1 block text-[10px] font-semibold tracking-wide text-zinc-500">SỐ SERI MÁY MỚI · KHÔNG BẮT BUỘC</span>
-                      <input
-                        value={newSerial}
-                        onChange={(event) => setNewSerial(event.target.value.toUpperCase())}
-                        maxLength={18}
-                        className="w-full rounded-xl border px-3 py-3 text-sm outline-none"
-                        placeholder="Nhập số seri máy mới"
-                      />
-                    </label>
+                    <div className="mt-3 rounded-xl bg-zinc-50 px-3 py-3 text-sm">
+                      <p className="text-[10px] font-semibold tracking-wide text-zinc-500">SỐ SERI MÁY MỚI</p>
+                      <p className="mt-1 font-semibold tracking-wide text-zinc-900">{pickedExchange.serial.trim() || "Chưa cập nhật"}</p>
+                    </div>
                     <div className="mt-4 space-y-1 text-sm">
                       <p className="flex justify-between">
-                        <span>Giá sản phẩm mới</span>
+                        <span>Giá gốc sản phẩm mới</span>
                         <span>{pricesReady ? vnd(garmin.listPrice) : "Đang tải"}</span>
                       </p>
                       <p className="flex justify-between text-emerald-700">
-                        <span>Khấu trừ máy cũ</span>
+                        <span>Giá đã thu cũ</span>
                         <span>{pricesReady ? `− ${vnd(tradeIn)}` : "Đang tải"}</span>
                       </p>
                       <p className="flex justify-between text-emerald-700">
-                        <span>Trợ giá</span>
+                        <span>Trợ giá nhà sản xuất</span>
                         <span>{pricesReady ? `− ${vnd(garmin.supportPrice)}` : "Đang tải"}</span>
                       </p>
                     </div>
@@ -1118,7 +1207,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 {pickedExchange ? (
                   <div className="mt-3 shrink-0 border-t border-zinc-100 pt-3">
                     <p className="flex items-end justify-between gap-3">
-                      <span className="text-[11px] text-zinc-500">CHI PHÍ ĐỔI MỚI DỰ KIẾN</span>
+                      <span className="text-[11px] text-zinc-500">GIÁ TỔNG</span>
                       <span className="text-xl font-bold text-[#e11d2e]">{pricesReady ? vnd(due) : "Đang tải"}</span>
                     </p>
                     <button
@@ -1196,25 +1285,25 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 <p className="mt-3 text-sm">
                   Giá sản phẩm mới <b>{pricesReady ? vnd(garmin.listPrice) : "Đang tải"}</b>
                 </p>
-                <p className="mt-1 text-sm text-zinc-500">Số seri máy mới: {newSerial.trim() || "Chưa nhập"}</p>
+                <p className="mt-1 text-sm text-zinc-500">Số seri máy mới: {pickedExchange?.serial.trim() || "Chưa cập nhật"}</p>
               </div>
             </div>
             <div className="mt-4 rounded-2xl bg-white p-5">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                  <p className="text-[11px] text-zinc-400">GIÁ SẢN PHẨM MỚI</p>
+                  <p className="text-[11px] text-zinc-400">GIÁ GỐC SẢN PHẨM MỚI</p>
                   <p className="text-xl font-bold">{pricesReady ? vnd(garmin.listPrice) : "Đang tải"}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-zinc-400">GIÁ THU CŨ</p>
-                  <p className="text-xl font-bold text-emerald-700">{pricesReady ? vnd(tradeIn) : "Đang tải"}</p>
+                  <p className="text-[11px] text-zinc-400">GIÁ ĐÃ THU CŨ</p>
+                  <p className="text-xl font-bold text-emerald-700">{pricesReady ? `− ${vnd(tradeIn)}` : "Đang tải"}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-zinc-400">TRỢ GIÁ</p>
-                  <p className="text-xl font-bold text-emerald-700">{pricesReady ? vnd(garmin.supportPrice) : "Đang tải"}</p>
+                  <p className="text-[11px] text-zinc-400">TRỢ GIÁ NHÀ SẢN XUẤT</p>
+                  <p className="text-xl font-bold text-emerald-700">{pricesReady ? `− ${vnd(garmin.supportPrice)}` : "Đang tải"}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-zinc-400">GIÁ THỰC</p>
+                  <p className="text-[11px] text-zinc-400">GIÁ TỔNG</p>
                   <p className="text-xl font-bold text-[#e11d2e]">{pricesReady ? vnd(due) : "Đang tải"}</p>
                   <p className="text-xs text-zinc-500">
                     {pricesReady ? `${vnd(garmin.listPrice)} − ${vnd(tradeIn)} − ${vnd(garmin.supportPrice)}` : "Đang tải giá từ kho chung"}
