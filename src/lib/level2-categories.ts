@@ -1,4 +1,4 @@
-import { brands, lines } from "@/data/catalog";
+import { brands, linePresetVersion, lines } from "@/data/catalog";
 import { normalizeRecord, reindex, type AdminRecord } from "@/lib/admin-records";
 
 export const level2StorageKey = "Danh mục cấp 2";
@@ -64,8 +64,13 @@ function plainText(value: string) {
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function presetCurrent() {
+  if (typeof window === "undefined") return false;
+  return sessionStorage.getItem(`trione-admin-preset:${level2StorageKey}`) === linePresetVersion;
+}
+
 export function readLevel2Categories(parent = ""): Level2Category[] {
-  const saved = readSavedLevel2();
+  const saved = presetCurrent() ? readSavedLevel2() : null;
   if (!saved?.length) return fallbackLevel2(parent);
   const visible = saved.filter((record) => record.cells[visibleIndex] === "✓" && (record.cells[titleIndex] ?? "").trim());
   const mapped = visible.map((record) => {

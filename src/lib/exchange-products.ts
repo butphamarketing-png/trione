@@ -1,4 +1,4 @@
-import { brands, garminNew } from "@/data/catalog";
+import { brands, exchangePresetVersion, garminNew } from "@/data/catalog";
 import { blankExtra, normalizeRecord, reindex, saveRecords, type AdminRecord } from "@/lib/admin-records";
 import { vndComma } from "@/lib/pricing";
 
@@ -101,8 +101,13 @@ export function migrateExchangeRecord(record: AdminRecord): AdminRecord {
   return { ...record, cells };
 }
 
+function presetCurrent() {
+  if (typeof window === "undefined") return false;
+  return sessionStorage.getItem(`trione-admin-preset:${exchangeStorageKey}`) === exchangePresetVersion;
+}
+
 export function readExchangeProducts(parent = ""): ExchangeProduct[] {
-  const saved = readSavedExchange();
+  const saved = presetCurrent() ? readSavedExchange() : null;
   const mapped = saved?.length
     ? saved
         .map(migrateExchangeRecord)

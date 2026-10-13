@@ -52,7 +52,9 @@ function openingFromSlug(slug: string[]) {
 function modelGeneration(name: string) {
   const year = name.match(/\((20\d{2})\)/);
   if (year) return year[1];
-  const labeled = name.match(/(Series|Ultra|SE|Watch|fēnix|fenix|Forerunner|PACE|Race|GTR|GT)\s*(\d+)/i);
+  const labeled = name.match(
+    /(Series|Ultra|SE|Watch|fēnix|fenix|Forerunner|Approach|Descent|Instinct|Lily|Venu|vívoactive|vívomove|vívosmart|PACE|Race|GTR|GT)\s+([A-Z]?\d+)/i,
+  );
   if (labeled) return `${labeled[1]} ${labeled[2]}`.replace(/\s+/g, " ");
   return "Thế hệ đầu";
 }
@@ -97,6 +99,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const brandRef = useRef(brandId);
   brandRef.current = brandId;
   const [routeApplied, setRouteApplied] = useState(initialSlug.length === 0);
+  const [pricesReady, setPricesReady] = useState(false);
   const appliedKey = useRef("");
   const openedRoute = useRef(false);
 
@@ -138,7 +141,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     brandId === "other"
       ? otherBrand.trim() || "Thương hiệu khác"
       : model
-        ? `${model.name}${model.specs ? ` · ${model.specs.split(" · ")[0]}` : ""}`
+        ? `${model.name}${model.specs && !model.name.includes(model.specs.split(" · ")[0]) ? ` · ${model.specs.split(" · ")[0]}` : ""}`
         : "";
   const grade = resolveGrade({
     functionStatus: fn,
@@ -187,10 +190,10 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     if (step === 6) return !!screen;
     if (step === 7) return !!body;
     if (step === 8) return true;
-    if (step === 9) return !!garminId;
-    if (step === 10) return agreed;
+    if (step === 9) return pricesReady && !!garminId;
+    if (step === 10) return pricesReady && agreed;
     return true;
-  }, [step, brandId, otherBrand, lineId, modelId, serial, fn, issueIds, screen, body, battery, strap, garminId, agreed]);
+  }, [step, brandId, otherBrand, lineId, modelId, serial, fn, issueIds, screen, body, battery, strap, garminId, agreed, pricesReady]);
 
   function chooseCategory(item: Level1Category) {
     setActiveKey(item.key);
@@ -221,9 +224,14 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       if (!list.length) setBrandId("");
     }
     sync();
+    let alive = true;
     void import("@/lib/catalog-sync").then(async (mod) => {
-      const changed = await mod.ensureCatalog();
-      if (changed) sync();
+      try {
+        const changed = await mod.ensureCatalog();
+        if (alive && changed) sync();
+      } finally {
+        if (alive) setPricesReady(true);
+      }
     });
     const onCatalog = () => sync();
     const onFocus = () => {
@@ -239,6 +247,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     window.addEventListener("trione-catalog", onCatalog);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
+      alive = false;
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("trione-catalog", onCatalog);
       document.removeEventListener("visibilitychange", onVisible);
@@ -406,6 +415,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
 
   async function next() {
     if (sendingLock.current) return;
+    if (!pricesReady && step >= 9) return;
     if (step === 1 && brandId === "other") {
       setStep(11);
       return;
@@ -642,7 +652,13 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   searchable
                   open={openMenu === "model"}
                   onOpen={(next) => setOpenMenu(next ? "model" : "")}
-                  options={visibleModels.map((item) => ({ id: item.code, name: item.name, hint: item.specs || item.blurb, image: item.image, mediaId: `model:${item.code}` }))}
+                  options={visibleModels.map((item) => ({
+                    id: item.code,
+                    name: item.name,
+                    hint: item.specs && !item.name.includes(item.specs) ? item.specs : item.blurb,
+                    image: item.image,
+                    mediaId: `model:${item.code}`,
+                  }))}
                   onChange={setModelId}
                 />
                 {lineId && generations.length > 1 ? (
@@ -945,8 +961,8 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
               <div className="flex items-center gap-2">
                 <div className="rounded-2xl bg-white px-4 py-2 shadow-sm">
                   <p className="text-[10px] tracking-wide text-zinc-400">GIÁ THU CŨ DỰ KIẾN</p>
-                  <p className="font-bold text-[#e11d2e]">{vnd(tradeIn)}</p>
-                  {tradeIn === 0 ? <p className="mt-1 max-w-[140px] text-[10px] leading-4 text-zinc-400">Chưa có giá thu cho tình trạng này.</p> : null}
+                  <p className="font-bold text-[#e11d2e]">{pricesReady ? vnd(tradeIn) : "Đang tải"}</p>
+                  {pricesReady && tradeIn === 0 ? <p className="mt-1 max-w-[140px] text-[10px] leading-4 text-zinc-400">Chưa có giá thu cho tình trạng này.</p> : null}
                 </div>
                 <div className="max-w-[150px] rounded-2xl bg-white px-4 py-2 text-xs text-zinc-600 shadow-sm">
                   {deviceLabel}
@@ -1023,10 +1039,10 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                           <span className="block text-[10px] tracking-wide text-zinc-400">{g.brandName} · {g.series}</span>
                           <h3 className="block font-semibold">{g.name}</h3>
                           <span className="block text-xs text-zinc-500">{g.specs}</span>
-                          <span className="mt-1 block text-xs text-zinc-500">Giá sản phẩm {vnd(g.price)}</span>
-                          {g.supportPrice > 0 ? <span className="block text-xs text-emerald-700">Trợ giá − {vnd(g.supportPrice)}</span> : null}
-                          <span className={`block text-sm font-semibold ${extra === 0 ? "text-emerald-700" : "text-[#e11d2e]"}`}>
-                            {extra === 0 ? "Không cần trả thêm" : `Cần trả thêm ${vnd(extra)}`}
+                          <span className="mt-1 block text-xs text-zinc-500">Giá sản phẩm {pricesReady ? vnd(g.price) : "Đang tải"}</span>
+                          {pricesReady && g.supportPrice > 0 ? <span className="block text-xs text-emerald-700">Trợ giá − {vnd(g.supportPrice)}</span> : null}
+                          <span className={`block text-sm font-semibold ${pricesReady && extra === 0 ? "text-emerald-700" : "text-[#e11d2e]"}`}>
+                            {!pricesReady ? "Đang tải giá" : extra === 0 ? "Không cần trả thêm" : `Cần trả thêm ${vnd(extra)}`}
                           </span>
                           {garminId === g.code ? (
                             <span className="mt-2 inline-block rounded-full bg-rose-50 px-3 py-1 text-xs text-trione">ĐÃ CHỌN</span>
@@ -1049,7 +1065,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                     <span className="block text-[10px] text-zinc-400">THIẾT BỊ THU CŨ</span>
                     {deviceLabel}
                   </span>
-                  <span className="font-semibold text-emerald-700">− {vnd(tradeIn)}</span>
+                  <span className="font-semibold text-emerald-700">{pricesReady ? `− ${vnd(tradeIn)}` : "Đang tải"}</span>
                 </div>
                 {pickedExchange ? (
                   <div className="mt-3 flex items-center gap-3 rounded-xl border border-[#e11d2e] p-2">
@@ -1064,7 +1080,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                       <p className="text-[10px] text-[#e11d2e]">ĐÃ TICK</p>
                       <p className="font-semibold leading-tight">{garmin.name}</p>
                       <p className="text-xs text-zinc-500">{garmin.specs}</p>
-                      <p className="text-xs">{vnd(garmin.listPrice)}</p>
+                      <p className="text-xs">{pricesReady ? vnd(garmin.listPrice) : "Đang tải"}</p>
                     </div>
                   </div>
                 ) : (
@@ -1085,15 +1101,15 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                     <div className="mt-4 space-y-1 text-sm">
                       <p className="flex justify-between">
                         <span>Giá sản phẩm mới</span>
-                        <span>{vnd(garmin.listPrice)}</span>
+                        <span>{pricesReady ? vnd(garmin.listPrice) : "Đang tải"}</span>
                       </p>
                       <p className="flex justify-between text-emerald-700">
                         <span>Khấu trừ máy cũ</span>
-                        <span>− {vnd(tradeIn)}</span>
+                        <span>{pricesReady ? `− ${vnd(tradeIn)}` : "Đang tải"}</span>
                       </p>
                       <p className="flex justify-between text-emerald-700">
                         <span>Trợ giá</span>
-                        <span>− {vnd(garmin.supportPrice)}</span>
+                        <span>{pricesReady ? `− ${vnd(garmin.supportPrice)}` : "Đang tải"}</span>
                       </p>
                     </div>
                   </>
@@ -1103,14 +1119,15 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   <div className="mt-3 shrink-0 border-t border-zinc-100 pt-3">
                     <p className="flex items-end justify-between gap-3">
                       <span className="text-[11px] text-zinc-500">CHI PHÍ ĐỔI MỚI DỰ KIẾN</span>
-                      <span className="text-xl font-bold text-[#e11d2e]">{vnd(due)}</span>
+                      <span className="text-xl font-bold text-[#e11d2e]">{pricesReady ? vnd(due) : "Đang tải"}</span>
                     </p>
                     <button
                       type="button"
                       onClick={next}
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#e11d2e] px-4 py-3 text-sm font-bold text-white"
+                      disabled={!pricesReady}
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#e11d2e] px-4 py-3 text-sm font-bold text-white disabled:bg-zinc-300"
                     >
-                      XEM BÁO GIÁ ĐỔI MỚI <span>›</span>
+                      {pricesReady ? "XEM BÁO GIÁ ĐỔI MỚI" : "ĐANG TẢI GIÁ"} <span>›</span>
                     </button>
                   </div>
                 ) : null}
@@ -1151,9 +1168,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   {body === "excellent" ? "xuất sắc" : body === "light" ? "hao mòn thường" : "hao mòn nặng"}
                 </p>
                 <p className="mt-3 text-sm">
-                  Giá loại {fn === "dead" ? 5 : grade} · Giá thu cũ <b>{vnd(tradeIn)}</b>
+                  Giá loại {fn === "dead" ? 5 : grade} · Giá thu cũ <b>{pricesReady ? vnd(tradeIn) : "Đang tải"}</b>
                 </p>
-                {tradeIn === 0 ? <p className="mt-1 text-xs text-zinc-400">Chưa có giá thu cho tình trạng này.</p> : null}
+                {pricesReady && tradeIn === 0 ? <p className="mt-1 text-xs text-zinc-400">Chưa có giá thu cho tình trạng này.</p> : null}
               </div>
               <div className="rounded-2xl bg-white p-5">
                 <div className="flex justify-between text-xs">
@@ -1177,7 +1194,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   </div>
                 </div>
                 <p className="mt-3 text-sm">
-                  Giá sản phẩm mới <b>{vnd(garmin.listPrice)}</b>
+                  Giá sản phẩm mới <b>{pricesReady ? vnd(garmin.listPrice) : "Đang tải"}</b>
                 </p>
                 <p className="mt-1 text-sm text-zinc-500">Số seri máy mới: {newSerial.trim() || "Chưa nhập"}</p>
               </div>
@@ -1186,21 +1203,21 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <p className="text-[11px] text-zinc-400">GIÁ SẢN PHẨM MỚI</p>
-                  <p className="text-xl font-bold">{vnd(garmin.listPrice)}</p>
+                  <p className="text-xl font-bold">{pricesReady ? vnd(garmin.listPrice) : "Đang tải"}</p>
                 </div>
                 <div>
                   <p className="text-[11px] text-zinc-400">GIÁ THU CŨ</p>
-                  <p className="text-xl font-bold text-emerald-700">{vnd(tradeIn)}</p>
+                  <p className="text-xl font-bold text-emerald-700">{pricesReady ? vnd(tradeIn) : "Đang tải"}</p>
                 </div>
                 <div>
                   <p className="text-[11px] text-zinc-400">TRỢ GIÁ</p>
-                  <p className="text-xl font-bold text-emerald-700">{vnd(garmin.supportPrice)}</p>
+                  <p className="text-xl font-bold text-emerald-700">{pricesReady ? vnd(garmin.supportPrice) : "Đang tải"}</p>
                 </div>
                 <div>
                   <p className="text-[11px] text-zinc-400">GIÁ THỰC</p>
-                  <p className="text-xl font-bold text-[#e11d2e]">{vnd(due)}</p>
+                  <p className="text-xl font-bold text-[#e11d2e]">{pricesReady ? vnd(due) : "Đang tải"}</p>
                   <p className="text-xs text-zinc-500">
-                    {vnd(garmin.listPrice)} − {vnd(tradeIn)} − {vnd(garmin.supportPrice)}
+                    {pricesReady ? `${vnd(garmin.listPrice)} − ${vnd(tradeIn)} − ${vnd(garmin.supportPrice)}` : "Đang tải giá từ kho chung"}
                   </p>
                 </div>
               </div>

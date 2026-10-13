@@ -1,5 +1,5 @@
 import { AdminTable } from "@/components/admin-table";
-import { brands, lines } from "@/data/catalog";
+import { brands, linePresetVersion, lines } from "@/data/catalog";
 
 const lineImages = Object.fromEntries(lines.map((line) => [line.name, line.image]));
 
@@ -18,7 +18,8 @@ export default function HangPage() {
       defaultImages={lineImages}
       codes={lines.map((line) => line.id)}
       parents={lines.map((line) => line.brandId)}
-      presetVersion="lines-photos-v1"
+      presetVersion={linePresetVersion}
+      reseedOnPreset
     />
   );
 }

@@ -1,4 +1,4 @@
-import { brands, lines, models } from "@/data/catalog";
+import { brands, lines, models, tradeInPresetVersion } from "@/data/catalog";
 import { normalizeConditionPrices, normalizeGradePrices, normalizeRecord, reindex, type AdminRecord } from "@/lib/admin-records";
 import type { FunctionStatus } from "@/lib/pricing";
 
@@ -94,7 +94,7 @@ function toProduct(model: (typeof models)[number], key = model.id): TradeProduct
     line: model.lineId,
     specs: model.specs,
     blurb: model.blurb,
-    image: "",
+    image: line?.image || "",
     prices: model.prices,
     gradePrices: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
     screenPrices: [0, 0, 0],
@@ -114,8 +114,13 @@ function plainText(value: string) {
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function presetCurrent() {
+  if (typeof window === "undefined") return false;
+  return sessionStorage.getItem(`trione-admin-preset:${tradeProductStorageKey}`) === tradeInPresetVersion;
+}
+
 export function readTradeProducts(line = ""): TradeProduct[] {
-  const saved = readSavedProducts();
+  const saved = presetCurrent() ? readSavedProducts() : null;
   if (!saved?.length) return fallbackTradeProducts(line);
   const mapped = saved
     .filter((record) => record.cells[visibleIndex] === "✓" && (record.cells[titleIndex] ?? "").trim())

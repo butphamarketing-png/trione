@@ -122,6 +122,7 @@ export function AdminTable(props: {
   titleLinks?: boolean;
   defaultImages?: Record<string, string>;
   presetVersion?: string;
+  reseedOnPreset?: boolean;
   blankColumns?: string[];
   codes?: string[];
   parents?: string[];
@@ -148,6 +149,7 @@ function AdminTableInner({
   titleLinks = true,
   defaultImages,
   presetVersion,
+  reseedOnPreset = false,
   blankColumns,
   codes,
   parents,
@@ -166,6 +168,7 @@ function AdminTableInner({
   titleLinks?: boolean;
   defaultImages?: Record<string, string>;
   presetVersion?: string;
+  reseedOnPreset?: boolean;
   blankColumns?: string[];
   codes?: string[];
   parents?: string[];
@@ -232,27 +235,40 @@ function AdminTableInner({
           }));
     const versionKey = `trione-admin-preset:${title}`;
     const replaceExisting = Boolean(presetVersion) && sessionStorage.getItem(versionKey) !== presetVersion;
-    const withImages = applyDefaultImages(base, defaultImages, titleAt, replaceExisting);
+    const baseRows =
+      reseedOnPreset && replaceExisting
+        ? seedRecords(parsed).map((record) => ({
+            ...record,
+            extra: {
+              ...record.extra,
+              featured: featuredAt >= 0 && record.cells[featuredAt] === "✓",
+              seoTitle: record.cells[titleAt] ?? "",
+            },
+            cells: record.cells.map((cell, index) => (index === featuredAt ? "" : cell)),
+          }))
+        : base;
+    const withImages = applyDefaultImages(baseRows, defaultImages, titleAt, replaceExisting);
     const prepared = blankColumnsOnPreset(withImages, names, blankColumns, replaceExisting);
     const coded = applySubs(applyParents(applyCodes(prepared, parsed, codes, titleAt), parsed, parents, titleAt), parsed, subs, titleAt);
     if (presetVersion && replaceExisting) sessionStorage.setItem(versionKey, presetVersion);
     const changed =
       !savedRaw ||
       migrated ||
+      coded.length !== (savedRaw?.length ?? 0) ||
       coded.some(
         (record, index) =>
           record.extra.image !== base[index]?.extra.image ||
           record.extra.sku !== base[index]?.extra.sku ||
           record.extra.category !== base[index]?.extra.category ||
           record.extra.subCategory !== base[index]?.extra.subCategory ||
-          record.cells.join("\u0000") !== base[index]?.cells.join("\u0000")
+          record.cells.join("\u0000") !== baseRows[index]?.cells.join("\u0000")
       );
     setRecords(changed ? saveRecords(title, coded) : reindex(coded));
     }
     return () => {
       cancelled = true;
     };
-  }, [title, signature, columnKey, defaultImages, presetVersion, blankColumns, codes, parents, subs, live]);
+  }, [title, signature, columnKey, defaultImages, presetVersion, reseedOnPreset, blankColumns, codes, parents, subs, live]);
 
   useEffect(() => {
     if (keepNotice.current) {

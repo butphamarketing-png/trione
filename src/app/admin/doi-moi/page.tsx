@@ -1,5 +1,5 @@
 import { AdminTable } from "@/components/admin-table";
-import { garminNew } from "@/data/catalog";
+import { exchangePresetVersion, garminNew } from "@/data/catalog";
 import { vndComma } from "@/lib/pricing";
 
 import { exchangePhotos } from "@/lib/exchange-products";
@@ -9,6 +9,8 @@ export default function NewProductsPage() {
     <AdminTable
       title="Sản phẩm đổi mới"
       redFrom={5}
+      presetVersion={exchangePresetVersion}
+      reseedOnPreset
       columns={["STT", "Hình", "Tiêu đề", "Danh mục cấp 1", "Series", "Giá niêm yết", "Trợ giá", "Hiển thị"]}
       defaultImages={exchangePhotos}
       codes={garminNew.map((item) => item.id)}
