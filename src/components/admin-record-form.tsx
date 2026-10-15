@@ -155,13 +155,12 @@ export function AdminRecordForm({
         return;
       }
       setExtra("image", dataUrl);
-      const blob = await (await fetch(dataUrl)).blob();
-      const body = new FormData();
-      body.set("id", `record-${draft.id}-${Date.now()}`);
-      body.set("file", new File([blob], "photo.webp", { type: blob.type || "image/webp" }));
-      const uploaded = await fetch("/api/media", { method: "POST", body });
-      const saved = (await uploaded.json()) as { url?: string };
-      if (uploaded.ok && saved.url) setExtra("image", saved.url);
+      const url = await uploadProductImage(dataUrl, `record-${draft.id}-${Date.now()}`);
+      if (!url) {
+        setFileError("Ảnh chưa lên trang chủ. Bấm chọn hình và lưu lại.");
+        return;
+      }
+      setExtra("image", url);
     } catch {
       setFileError("Không đọc được ảnh. Hãy chọn file JPG hoặc PNG.");
     } finally {
@@ -248,9 +247,11 @@ export function AdminRecordForm({
           list.map(async (file) => {
             const src = await fileToDataUrl(file, 700);
             if (!src.startsWith("data:image/")) return null;
+            const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+            const url = await uploadProductImage(src, `album-${id}`);
             return {
-              id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              src,
+              id,
+              src: url || src,
               order: "",
               title: "",
             } satisfies AdminAlbumImage;
@@ -299,8 +300,8 @@ export function AdminRecordForm({
           </button>
         ) : (
           <>
-            <button type="submit" className="rounded-lg bg-[#f6c445] px-5 py-2 text-sm font-medium">
-              Lưu
+            <button type="submit" disabled={imageBusy} className="rounded-lg bg-[#f6c445] px-5 py-2 text-sm font-medium disabled:opacity-60">
+              {imageBusy ? "Đang tải ảnh..." : "Lưu"}
             </button>
             {stayOnPage ? (
               <button type="button" onClick={() => onSave(false)} className="rounded-lg bg-[#f6c445] px-5 py-2 text-sm font-medium">
@@ -831,6 +832,16 @@ function Section({ id, title, note, action, children }: { id?: string; title: st
       <div className="rounded-2xl bg-white p-4 shadow-sm">{children}</div>
     </section>
   );
+}
+
+async function uploadProductImage(dataUrl: string, id: string) {
+  const blob = await (await fetch(dataUrl)).blob();
+  const body = new FormData();
+  body.set("id", id);
+  body.set("file", new File([blob], "photo.webp", { type: blob.type || "image/webp" }));
+  const uploaded = await fetch("/api/media", { method: "POST", body });
+  const saved = (await uploaded.json()) as { url?: string };
+  return uploaded.ok && saved.url ? saved.url : "";
 }
 
 function isImageFile(file: File) {

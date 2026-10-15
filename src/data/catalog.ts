@@ -337,6 +337,14 @@ export const models: TradeInModel[] = [
     prices: { 1: 3_639_300, 2: 3_119_400, 3: 2_079_600, 4: 1_559_700, 5: 519_900 },
   },
   {
+    id: "fr265s",
+    lineId: "forerunner",
+    name: "Forerunner 265s",
+    specs: "42 mm",
+    blurb: "Giá thu nhập trong admin.",
+    prices: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+  },
+  {
     id: "fr570-42",
     lineId: "forerunner",
     name: "Forerunner 570 42 mm",
@@ -650,6 +658,7 @@ export const garminNew: NewGarmin[] = [
   { id: "fr970", series: "FORERUNNER", name: "Forerunner 970", specs: "47 mm · AMOLED · Xanh", listPrice: 19_990_000, face: "#163a2a", strap: "#1a3d2c", time: "06:30" },
   { id: "fr570", series: "FORERUNNER", name: "Forerunner 570", specs: "42 mm · AMOLED · Trắng", listPrice: 14_429_000, face: "#e8e4dc", strap: "#d0cbc0", time: "08:12" },
   { id: "fr265", series: "FORERUNNER", name: "Forerunner 265", specs: "46 mm · AMOLED · Đen", listPrice: 9_990_000, face: "#111", strap: "#222", time: "07:05" },
+  { id: "fr265s", series: "FORERUNNER", name: "Forerunner 265s", specs: "42 mm · AMOLED · Đen", listPrice: 9_990_000, face: "#111", strap: "#222", time: "07:05" },
   { id: "venu4", series: "VENU", name: "Venu 4", specs: "45 mm · AMOLED · Be", listPrice: 14_990_000, face: "#c4b49a", strap: "#d4c4a8", time: "09:41" },
   { id: "venu3", series: "VENU", name: "Venu 3", specs: "45 mm · AMOLED · Slate", listPrice: 12_069_000, face: "#2a2e33", strap: "#4a4e54", time: "10:09" },
   { id: "venu3s", series: "VENU", name: "Venu 3S", specs: "41 mm · AMOLED · Soft Gold", listPrice: 12_069_000, face: "#c9b896", strap: "#e8dcc8", time: "11:20" },

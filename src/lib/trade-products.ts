@@ -77,10 +77,28 @@ function brandCode(value: string) {
   return brands.find((brand) => brand.id === clean || brand.name === clean)?.id ?? clean;
 }
 
+function foldName(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase()
+    .trim();
+}
+
 function lineCode(value: string) {
   const clean = value.trim();
   if (!clean) return "";
   return lines.find((line) => line.id === clean || line.name === clean)?.id ?? clean;
+}
+
+function onLine(item: { line: string; name: string }, line: string) {
+  if (item.line === line) return true;
+  const lineName = lines.find((entry) => entry.id === line)?.name ?? "";
+  if (!lineName) return false;
+  const name = foldName(item.name);
+  const expected = foldName(lineName);
+  return name === expected || name.startsWith(`${expected} `);
 }
 
 function toProduct(model: (typeof models)[number], key = model.id): TradeProduct {
@@ -152,5 +170,5 @@ export function readTradeProducts(line = ""): TradeProduct[] {
       } satisfies TradeProduct;
     });
   if (!line) return mapped;
-  return mapped.filter((item) => item.line === line);
+  return mapped.filter((item) => onLine(item, line));
 }

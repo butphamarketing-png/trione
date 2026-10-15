@@ -221,9 +221,18 @@ function AdminTableInner({
     const names = columnKey.split("|");
     const featuredAt = names.indexOf("Nổi bật");
     const titleAt = ["Tiêu đề", "Họ tên", "Tên", "Mã"].map((name) => names.indexOf(name)).find((index) => index >= 0) ?? 1;
+    const alignedSaved =
+      saved && saved.length > 0
+        ? saved.map((record, index) => {
+            const cells = names.map((_, cellIndex) => record.cells[cellIndex] ?? "");
+            const visibleAt = names.indexOf("Hiển thị");
+            if (visibleAt >= 0 && record.cells.length < width && !cells[visibleAt]) cells[visibleAt] = "✓";
+            return normalizeRecord({ ...record, cells }, index);
+          })
+        : null;
     const base =
-      !live && saved && saved.length > 0 && saved.every((record) => record.cells.length === width)
-        ? saved.map((record, index) => normalizeRecord(record, index))
+      !live && alignedSaved
+        ? alignedSaved
         : seedRecords(parsed).map((record) => ({
             ...record,
             extra: {

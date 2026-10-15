@@ -112,26 +112,34 @@ export async function GET() {
 export async function PUT(req: Request) {
   const incoming = asStore(await req.json());
   const local = mergeStores(await readLocal(), incoming);
+  let savedLocal = false;
   try {
     await writeLocal(local);
+    savedLocal = true;
   } catch {
-    return NextResponse.json({ error: "Không lưu được danh mục" }, { status: 500 });
+    savedLocal = false;
   }
 
+  let savedRemote = false;
   const supabase = createServiceClient();
   if (supabase) {
     try {
       await ensurePrivateBucket(supabase);
       const current = await readJson(PRIVATE_BUCKET, FILE);
       const next = mergeStores(current, incoming);
-      await supabase.storage.from(PRIVATE_BUCKET).upload(FILE, JSON.stringify(next), {
+      const uploaded = await supabase.storage.from(PRIVATE_BUCKET).upload(FILE, JSON.stringify(next), {
         upsert: true,
         contentType: "application/json",
         cacheControl: "no-cache",
       });
+      savedRemote = !uploaded.error;
     } catch {
-      /* bản trên máy vẫn là nguồn để trang chủ đọc */
+      savedRemote = false;
     }
   }
-  return NextResponse.json({ ok: true });
+
+  if (!savedLocal && !savedRemote) {
+    return NextResponse.json({ error: "Không lưu được danh mục" }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, savedLocal, savedRemote });
 }

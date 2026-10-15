@@ -50,6 +50,7 @@ const exchangePhotos: Record<string, string> = {
   "Forerunner 970": "/watches/forerunner-970.jpg",
   "Forerunner 570": "/watches/forerunner-265.jpg",
   "Forerunner 265": "/watches/forerunner-265.jpg",
+  "Forerunner 265s": "/watches/forerunner-265.jpg",
   "Venu 4": "/watches/venu-3.jpg",
   "Venu 3": "/watches/venu-3.jpg",
   "Venu 3S": "/watches/venu-3.jpg",

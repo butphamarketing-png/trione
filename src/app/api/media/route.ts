@@ -37,6 +37,18 @@ async function readLocal(id: string) {
   }
 }
 
+async function readRemoteFile(id: string) {
+  const supabase = createServiceClient();
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.storage.from(MEDIA_BUCKET).download(storagePath(id));
+    if (error || !data) return null;
+    return { buf: Buffer.from(await data.arrayBuffer()), type: data.type || "image/jpeg", updatedAt: Date.now() };
+  } catch {
+    return null;
+  }
+}
+
 async function localMap() {
   const map: Record<string, string> = {};
   try {
@@ -77,7 +89,7 @@ async function remoteMap() {
 export async function GET(req: Request) {
   const id = safeId(new URL(req.url).searchParams.get("id") ?? "");
   if (id) {
-    const file = await readLocal(id);
+    const file = (await readLocal(id)) ?? (await readRemoteFile(id));
     if (!file) return NextResponse.json({ error: "Không có ảnh" }, { status: 404 });
     return new NextResponse(new Uint8Array(file.buf), {
       headers: {
@@ -100,25 +112,32 @@ export async function POST(req: Request) {
   }
   const buf = Buffer.from(await file.arrayBuffer());
   const type = file.type || "image/jpeg";
+  let savedLocal = false;
   try {
     await saveLocal(id, buf, type);
+    savedLocal = true;
   } catch {
-    return NextResponse.json({ error: "Không lưu được ảnh" }, { status: 500 });
+    savedLocal = false;
   }
+  let publicUrl = "";
   const supabase = createServiceClient();
   if (supabase) {
     try {
       await ensureMediaBucket(supabase);
-      await supabase.storage.from(MEDIA_BUCKET).upload(storagePath(id), buf, {
+      const uploaded = await supabase.storage.from(MEDIA_BUCKET).upload(storagePath(id), buf, {
         upsert: true,
         contentType: type,
         cacheControl: "3600",
       });
+      if (!uploaded.error) publicUrl = mediaPublicUrl(id);
     } catch {
-      /* ảnh trên máy vẫn hiện được ở trang chủ */
+      publicUrl = "";
     }
   }
-  return NextResponse.json({ id, url: localUrl(id) });
+  if (!savedLocal && !publicUrl) {
+    return NextResponse.json({ error: "Không lưu được ảnh" }, { status: 500 });
+  }
+  return NextResponse.json({ id, url: publicUrl || localUrl(id) });
 }
 
 export async function DELETE(req: Request) {
