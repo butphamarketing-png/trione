@@ -1,6 +1,7 @@
 import { ingestStored } from "@/lib/admin-records";
 
 export const catalogEvent = "trione-catalog";
+export const catalogErrorEvent = "trione-catalog-error";
 
 function kept(key: string) {
   return (
@@ -46,13 +47,14 @@ export async function publishCatalog() {
       times[key] = dirty[key] || known[key] || 0;
     }
     payload.__times = JSON.stringify(times);
-    await fetch("/api/catalog", {
+    const res = await fetch("/api/catalog", {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
     });
+    if (!res.ok) window.dispatchEvent(new CustomEvent(catalogErrorEvent));
   } catch {
-    /* keep the local copy */
+    window.dispatchEvent(new CustomEvent(catalogErrorEvent));
   } finally {
     publishing = false;
     if (pending) {

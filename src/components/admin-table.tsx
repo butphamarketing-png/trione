@@ -287,6 +287,12 @@ function AdminTableInner({
     setError("");
   }, [mode, editId]);
 
+  useEffect(() => {
+    const onError = () => setError("Đã lưu trên máy này, nhưng chưa lên trang chủ. Bấm Lưu lại.");
+    window.addEventListener("trione-catalog-error", onError);
+    return () => window.removeEventListener("trione-catalog-error", onError);
+  }, []);
+
   const brandOptions = useMemo(() => {
     const ids = [...new Set((records ?? []).map((record) => record.extra.category).filter(Boolean))];
     return ids
@@ -672,6 +678,11 @@ function RecordEditor({
     return copy;
   });
   const [draft, setDraft] = useState(() => (baseline ? cloneRecord(baseline) : null));
+  const draftRef = useRef(draft);
+  function updateDraft(next: AdminRecord) {
+    draftRef.current = next;
+    setDraft(next);
+  }
   if (!draft || !baseline) {
     return (
       <div className="rounded-sm border-t-4 border-[#2f6fed] bg-white p-4">
@@ -688,8 +699,8 @@ function RecordEditor({
       draft={draft}
       baseline={baseline}
       mode={mode}
-      onChange={setDraft}
-      onSave={(exitAfter) => onSave(draft, exitAfter)}
+      onChange={updateDraft}
+      onSave={(exitAfter) => onSave(draftRef.current ?? draft, exitAfter)}
       onExit={onExit}
       onEdit={() => onEdit(draft.id)}
     />

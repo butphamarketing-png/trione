@@ -115,7 +115,6 @@ export function AdminRecordForm({
   const stayOnPage = columns.some((column) => column.includes("Giá"));
   const name = draft.cells[titleIndex]?.trim() ?? "";
   const draftRef = useRef(draft);
-  draftRef.current = draft;
   const [fileError, setFileError] = useState("");
   const [imageBusy, setImageBusy] = useState(false);
   const imageInput = useRef<HTMLInputElement>(null);
@@ -164,9 +163,11 @@ export function AdminRecordForm({
         setFileError("Không đọc được ảnh. Hãy chọn file JPG hoặc PNG.");
         return;
       }
+      const previous = draftRef.current.extra.image;
       setExtra("image", dataUrl);
-      const url = await uploadProductImage(dataUrl, `record-${draft.id}-${Date.now()}`);
+      const url = await uploadProductImage(dataUrl, `record-${draftRef.current.id}-${Date.now()}`);
       if (!url) {
+        setExtra("image", previous.startsWith("data:") ? "" : previous);
         setFileError("Ảnh chưa lên trang chủ. Bấm chọn hình và lưu lại.");
         return;
       }
@@ -206,7 +207,8 @@ export function AdminRecordForm({
   }, [parentIndex, isProduct]);
 
   useEffect(() => {
-    const extra = { ...draft.extra, album: draft.extra.album ?? [] };
+    const current = draftRef.current;
+    const extra = { ...current.extra, album: current.extra.album ?? [] };
     let changed = false;
     if (!extra.slug && name) {
       extra.slug = slugify(name);
@@ -216,7 +218,7 @@ export function AdminRecordForm({
       const model = models.find((item) => item.name === name);
       const line = lines.find((item) => item.id === model?.lineId);
       const brand = brands.find((item) => item.id === line?.brandId);
-      const price = draft.cells[columns.indexOf("Giá loại 1")] ?? "";
+      const price = current.cells[columns.indexOf("Giá loại 1")] ?? "";
       if ((!extra.category || extra.category === "Đồng hồ" || brands.some((item) => item.name === extra.category)) && brand) {
         extra.category = brand.id;
         changed = true;
@@ -242,7 +244,7 @@ export function AdminRecordForm({
         changed = true;
       }
     }
-    if (changed) onChange({ ...draft, extra });
+    if (changed) commit({ ...current, extra });
     // Fill defaults once, when the form opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -260,9 +262,10 @@ export function AdminRecordForm({
             if (!src.startsWith("data:image/")) return null;
             const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
             const url = await uploadProductImage(src, `album-${id}`);
+            if (!url) return null;
             return {
               id,
-              src: url || src,
+              src: url,
               order: "",
               title: "",
             } satisfies AdminAlbumImage;
@@ -270,7 +273,7 @@ export function AdminRecordForm({
         )
       ).filter((item): item is AdminAlbumImage => item !== null);
       if (!images.length) {
-        setFileError("Không đọc được ảnh. Hãy chọn file JPG hoặc PNG.");
+        setFileError("Ảnh chưa lên trang chủ. Bấm chọn hình và lưu lại.");
         return;
       }
       const current = draftRef.current;
@@ -322,7 +325,7 @@ export function AdminRecordForm({
             ) : null}
             <button
               type="button"
-              onClick={() => onChange(cloneRecord(baseline))}
+              onClick={() => commit(cloneRecord(baseline))}
               className="rounded-lg bg-[#f6c445] px-5 py-2 text-sm font-medium"
             >
               Làm lại
@@ -345,11 +348,12 @@ export function AdminRecordForm({
                   disabled={readOnly}
                   onChange={(event) => {
                     const code = event.target.value;
-                    const currentLine = level2Options.find((item) => item.code === draft.extra.subCategory || item.name === draft.extra.subCategory);
+                    const current = draftRef.current;
+                    const currentLine = level2Options.find((item) => item.code === current.extra.subCategory || item.name === current.extra.subCategory);
                     const keepLine = currentLine?.parent === code;
-                    onChange({
-                      ...draft,
-                      extra: { ...draft.extra, category: code, subCategory: keepLine ? currentLine.code : "" },
+                    commit({
+                      ...current,
+                      extra: { ...current.extra, category: code, subCategory: keepLine ? currentLine.code : "" },
                     });
                   }}
                   className={inputClass}
@@ -665,10 +669,11 @@ export function AdminRecordForm({
                       onChange={(event) => {
                         const code = event.target.value;
                         const parent = level1Parents.find((item) => item.code === code);
-                        onChange({
-                          ...draft,
-                          cells: draft.cells.map((cell, cellIndex) => (cellIndex === index ? parent?.name ?? "" : cell)),
-                          extra: { ...draft.extra, category: code },
+                        const current = draftRef.current;
+                        commit({
+                          ...current,
+                          cells: current.cells.map((cell, cellIndex) => (cellIndex === index ? parent?.name ?? "" : cell)),
+                          extra: { ...current.extra, category: code },
                         });
                       }}
                       className={inputClass}
