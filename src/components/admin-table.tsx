@@ -38,9 +38,7 @@ function applyDefaultImages(
   return records.map((record) => {
     const preset = defaults[record.cells[titleAt] ?? ""];
     const current = record.extra.image;
-    const catalogImage = current.startsWith("/watches/") || current.startsWith("/brands/");
-    const uploaded = current.startsWith("http") || current.startsWith("data:");
-    if (!preset || current === preset || uploaded || (!replaceExisting && current && !catalogImage)) return record;
+    if (!preset || current === preset || (current && !replaceExisting)) return record;
     return { ...record, extra: { ...record.extra, image: preset } };
   });
 }
@@ -243,7 +241,8 @@ function AdminTableInner({
             cells: record.cells.map((cell, index) => (index === featuredAt ? "" : cell)),
           }));
     const versionKey = `trione-admin-preset:${title}`;
-    const replaceExisting = Boolean(presetVersion) && sessionStorage.getItem(versionKey) !== presetVersion;
+    const storedVersion = sessionStorage.getItem(versionKey);
+    const replaceExisting = Boolean(presetVersion && storedVersion && storedVersion !== presetVersion);
     const baseRows =
       reseedOnPreset && replaceExisting
         ? seedRecords(parsed).map((record) => ({
@@ -259,7 +258,7 @@ function AdminTableInner({
     const withImages = applyDefaultImages(baseRows, defaultImages, titleAt, replaceExisting);
     const prepared = blankColumnsOnPreset(withImages, names, blankColumns, replaceExisting);
     const coded = applySubs(applyParents(applyCodes(prepared, parsed, codes, titleAt), parsed, parents, titleAt), parsed, subs, titleAt);
-    if (presetVersion && replaceExisting) sessionStorage.setItem(versionKey, presetVersion);
+    if (presetVersion && (!storedVersion || replaceExisting)) sessionStorage.setItem(versionKey, presetVersion);
     const changed =
       !savedRaw ||
       migrated ||

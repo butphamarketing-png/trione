@@ -151,6 +151,19 @@ export function seedRecords(rows: string[][]): AdminRecord[] {
   );
 }
 
+export function uploadedPhoto(src: string) {
+  return src.startsWith("http") || src.startsWith("/api/media") || src.startsWith("data:");
+}
+
+export function albumSources(album: AdminAlbumImage[] | undefined) {
+  return (album ?? []).map((item) => item.src).filter(Boolean);
+}
+
+export function shownProductImage(image: string, album: AdminAlbumImage[] | undefined) {
+  if (uploadedPhoto(image)) return image;
+  return albumSources(album).find(uploadedPhoto) || image || "";
+}
+
 export function cloneRecord(record: AdminRecord): AdminRecord {
   return {
     id: record.id,

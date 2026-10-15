@@ -114,6 +114,8 @@ export function AdminRecordForm({
   const [level2Options, setLevel2Options] = useState<Level2Category[]>([]);
   const stayOnPage = columns.some((column) => column.includes("Giá"));
   const name = draft.cells[titleIndex]?.trim() ?? "";
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   const [fileError, setFileError] = useState("");
   const [imageBusy, setImageBusy] = useState(false);
   const imageInput = useRef<HTMLInputElement>(null);
@@ -125,19 +127,27 @@ export function AdminRecordForm({
   const [pickedAlbum, setPickedAlbum] = useState<string[]>([]);
   const photoSize = columns.some((column) => column.includes("Giá")) ? "600 px × 560 px" : "600 px × 400 px";
 
+  function commit(next: AdminRecord) {
+    draftRef.current = next;
+    onChange(next);
+  }
+
   function setCell(index: number, value: string) {
-    onChange({ ...draft, cells: draft.cells.map((cell, i) => (i === index ? value : cell)) });
+    const current = draftRef.current;
+    commit({ ...current, cells: current.cells.map((cell, i) => (i === index ? value : cell)) });
   }
 
   function setExtra<K extends keyof AdminExtra>(key: K, value: AdminExtra[K]) {
-    onChange({ ...draft, extra: { ...draft.extra, [key]: value } });
+    const current = draftRef.current;
+    commit({ ...current, extra: { ...current.extra, [key]: value } });
   }
 
   function setTitle(value: string) {
-    const cells = draft.cells.map((cell, i) => (i === titleIndex ? value : cell));
-    const extra = slugFollow ? { ...draft.extra, slug: slugify(value) } : draft.extra;
+    const current = draftRef.current;
+    const cells = current.cells.map((cell, i) => (i === titleIndex ? value : cell));
+    const extra = slugFollow ? { ...current.extra, slug: slugify(value) } : current.extra;
     if (slugFollow) setSlugTouched(true);
-    onChange({ ...draft, cells, extra });
+    commit({ ...current, cells, extra });
   }
 
   async function onImage(file: File | undefined) {
@@ -176,7 +186,8 @@ export function AdminRecordForm({
       return;
     }
     const path = draft.extra.slug || slugify(title);
-    onChange({ ...draft, extra: { ...draft.extra, slug: path, ...buildSeo(title, path, isProduct, readSiteSettings()) } });
+    const current = draftRef.current;
+    commit({ ...current, extra: { ...current.extra, slug: path, ...buildSeo(title, path, isProduct, readSiteSettings()) } });
     setSeoNote("Đã điền Nội dung SEO từ tiêu đề và thông tin TRIONE.VN.");
     setSeoAsk(false);
     requestAnimationFrame(() => document.getElementById("noi-dung-seo")?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -262,8 +273,9 @@ export function AdminRecordForm({
         setFileError("Không đọc được ảnh. Hãy chọn file JPG hoặc PNG.");
         return;
       }
-      const next = [...album, ...images].map((item, index) => ({ ...item, order: item.order || String(index + 1) }));
-      onChange({ ...draft, extra: { ...draft.extra, album: next } });
+      const current = draftRef.current;
+      const next = [...(current.extra.album ?? []), ...images].map((item, index) => ({ ...item, order: item.order || String(index + 1) }));
+      commit({ ...current, extra: { ...current.extra, album: next } });
     } catch {
       setFileError("Không đọc được ảnh. Hãy chọn file JPG hoặc PNG.");
     } finally {
@@ -304,8 +316,8 @@ export function AdminRecordForm({
               {imageBusy ? "Đang tải ảnh..." : "Lưu"}
             </button>
             {stayOnPage ? (
-              <button type="button" onClick={() => onSave(false)} className="rounded-lg bg-[#f6c445] px-5 py-2 text-sm font-medium">
-                Lưu tại trang
+              <button type="button" disabled={imageBusy} onClick={() => onSave(false)} className="rounded-lg bg-[#f6c445] px-5 py-2 text-sm font-medium disabled:opacity-60">
+                {imageBusy ? "Đang tải ảnh..." : "Lưu tại trang"}
               </button>
             ) : null}
             <button
@@ -522,7 +534,7 @@ export function AdminRecordForm({
                     event.target.value = "";
                   }}
                 />
-                <p className="mt-2 text-xs text-zinc-400">Kích thước ảnh album: Width 700 px · Height 700 px. Ảnh lớn được thu nhỏ và nén tự động.</p>
+                <p className="mt-2 text-xs text-zinc-400">Kích thước ảnh album: Width 700 px · Height 700 px. Ảnh lớn được thu nhỏ và nén tự động. Ảnh này hiện trên trang thu cũ.</p>
               </div>
               <div className="mt-4">
                 <div className="mb-2 flex items-center justify-between text-sm">

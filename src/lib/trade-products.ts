@@ -1,5 +1,5 @@
 import { brands, lines, models } from "@/data/catalog";
-import { loadRecords, normalizeConditionPrices, normalizeGradePrices } from "@/lib/admin-records";
+import { albumSources, loadRecords, normalizeConditionPrices, normalizeGradePrices, shownProductImage } from "@/lib/admin-records";
 import type { FunctionStatus } from "@/lib/pricing";
 
 export const tradeProductStorageKey = "Danh sách Sản phẩm thu cũ";
@@ -18,6 +18,7 @@ export type TradeProduct = {
   specs: string;
   blurb: string;
   image: string;
+  album: string[];
   prices: { 1: number; 2: number; 3: number; 4: number; 5: number };
   gradePrices: number[][];
   screenPrices: number[];
@@ -113,6 +114,7 @@ function toProduct(model: (typeof models)[number], key = model.id): TradeProduct
     specs: model.specs,
     blurb: model.blurb,
     image: line?.image || "",
+    album: [],
     prices: model.prices,
     gradePrices: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
     screenPrices: [0, 0, 0],
@@ -153,7 +155,8 @@ export function readTradeProducts(line = ""): TradeProduct[] {
         line: productLine,
         specs: known?.specs || "",
         blurb: record.extra.shortDesc || plainText(record.extra.description) || known?.blurb || "",
-        image: record.extra.image || "",
+        image: shownProductImage(record.extra.image || "", record.extra.album),
+        album: albumSources(record.extra.album),
         gradePrices: normalizeGradePrices(record.extra.gradePrices).map((row) => row.map((cell) => money(cell))),
         screenPrices: normalizeConditionPrices(record.extra.screenPrices).map((cell) => money(cell)),
         bodyPrices: normalizeConditionPrices(record.extra.bodyPrices).map((cell) => money(cell)),

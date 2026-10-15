@@ -1,5 +1,5 @@
 import { brands, garminNew } from "@/data/catalog";
-import { blankExtra, loadRecords, normalizeRecord, saveRecords, type AdminRecord } from "@/lib/admin-records";
+import { albumSources, blankExtra, loadRecords, normalizeRecord, saveRecords, shownProductImage, type AdminRecord } from "@/lib/admin-records";
 import { vndComma } from "@/lib/pricing";
 
 export const exchangeStorageKey = "Sản phẩm đổi mới";
@@ -22,6 +22,7 @@ export type ExchangeProduct = {
   price: number;
   supportPrice: number;
   image: string;
+  album: string[];
   face: string;
   strap: string;
   time: string;
@@ -79,6 +80,7 @@ function toProduct(item: (typeof garminNew)[number], key = item.id): ExchangePro
     price: item.listPrice,
     supportPrice: 0,
     image: exchangePhotos[item.name] || "",
+    album: [],
     face: item.face,
     strap: item.strap,
     time: item.time,
@@ -126,7 +128,8 @@ export function readExchangeProducts(parent = ""): ExchangeProduct[] {
             specs: record.extra.shortDesc || plainText(record.extra.description) || known?.specs || "",
             price: money(record.cells[priceIndex] ?? ""),
             supportPrice: money(record.cells[supportIndex] ?? ""),
-            image: record.extra.image || exchangePhotos[name] || "",
+            image: shownProductImage(record.extra.image || exchangePhotos[name] || "", record.extra.album),
+            album: albumSources(record.extra.album),
             face: known?.face || "#222",
             strap: known?.strap || "#444",
             time: known?.time || "10:09",

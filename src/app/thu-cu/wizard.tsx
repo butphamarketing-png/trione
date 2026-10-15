@@ -1259,6 +1259,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 <p className="mt-3 text-sm">
                   Giá loại {fn === "dead" ? 5 : grade} · Giá thu cũ <b>{pricesReady ? vnd(tradeIn) : "Đang tải"}</b>
                 </p>
+                <AlbumStrip photos={pickedProduct?.album} />
                 {pricesReady && tradeIn === 0 ? <p className="mt-1 text-xs text-zinc-400">Chưa có giá thu cho tình trạng này.</p> : null}
               </div>
               <div className="rounded-2xl bg-white p-5">
@@ -1286,6 +1287,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   Giá sản phẩm mới <b>{pricesReady ? vnd(garmin.listPrice) : "Đang tải"}</b>
                 </p>
                 <p className="mt-1 text-sm text-zinc-500">Số seri máy mới: {pickedExchange?.serial.trim() || "Chưa cập nhật"}</p>
+                <AlbumStrip photos={pickedExchange?.album} />
               </div>
             </div>
             <div className="mt-4 rounded-2xl bg-white p-5">
@@ -1542,6 +1544,17 @@ function Section({
       </div>
       {children}
     </section>
+  );
+}
+
+function AlbumStrip({ photos }: { photos?: string[] }) {
+  if (!photos?.length) return null;
+  return (
+    <div className="mt-3 flex gap-2 overflow-x-auto">
+      {photos.map((src) => (
+        <img key={src} src={src} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
+      ))}
+    </div>
   );
 }
 
