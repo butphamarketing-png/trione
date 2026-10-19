@@ -93,7 +93,6 @@ function alignLevel2(saved: AdminRecord[]) {
       cells: existing.cells.map((cell, cellIndex) => {
         if (cellIndex === titleIndex) return title || line.name;
         if (cellIndex === parentIndex) return parent;
-        if (cellIndex === visibleIndex) return cell || "✓";
         return cell;
       }),
       extra: {

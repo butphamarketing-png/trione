@@ -20,7 +20,17 @@ export default function RequestListPage() {
   const items = useMemo(
     () =>
       all.filter((r) => {
-        const byQ = !q.trim() || `${r.id} ${r.name} ${r.username} ${r.oldDevice}`.toLowerCase().includes(q.toLowerCase());
+        const haystack = `${r.id} ${r.name} ${r.username} ${r.oldDevice}`
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/đ/gi, "d")
+          .toLowerCase();
+        const query = q
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/đ/gi, "d")
+          .toLowerCase();
+        const byQ = !q.trim() || haystack.includes(query);
         const byS = status === "all" || r.status === status;
         return byQ && byS;
       }),

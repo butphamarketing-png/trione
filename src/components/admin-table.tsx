@@ -17,6 +17,14 @@ import {
 import { brands } from "@/data/catalog";
 import { exchangeStorageKey, migrateExchangeRecord } from "@/lib/exchange-products";
 
+function foldSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase();
+}
+
 function slugify(value: string) {
   return value
     .normalize("NFD")
@@ -303,7 +311,7 @@ function AdminTableInner({
     () =>
       (records ?? []).filter((record) => {
         if (brand && record.extra.category !== brand) return false;
-        return !q.trim() || record.cells.join(" ").toLowerCase().includes(q.toLowerCase());
+        return !q.trim() || foldSearch(record.cells.join(" ")).includes(foldSearch(q));
       }),
     [records, q, brand]
   );

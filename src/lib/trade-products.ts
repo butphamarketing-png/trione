@@ -1,5 +1,6 @@
 import { brands, lines, models } from "@/data/catalog";
-import { albumSources, loadRecords, normalizeConditionPrices, normalizeGradePrices, shownProductImage } from "@/lib/admin-records";
+import { albumSources, loadRecords, normalizeConditionPrices, normalizeGradePrices, saveRecords, shownProductImage, type AdminRecord } from "@/lib/admin-records";
+import { level2StorageKey, readLevel2Categories } from "@/lib/level2-categories";
 import type { FunctionStatus } from "@/lib/pricing";
 
 export const tradeProductStorageKey = "Danh sách Sản phẩm thu cũ";
@@ -120,8 +121,28 @@ function plainText(value: string) {
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function retargetOrphanLines(saved: AdminRecord[]) {
+  if (typeof window === "undefined" || !loadRecords(level2StorageKey)?.length) return saved;
+  const savedLines = readLevel2Categories();
+  const codes = new Set(savedLines.map((item) => item.code));
+  let changed = false;
+  const next = saved.map((record) => {
+    const sub = (record.extra.subCategory || "").trim();
+    if (!sub || codes.has(sub)) return record;
+    const staticLine = lines.find((item) => item.id === sub);
+    if (!staticLine) return record;
+    const matches = savedLines.filter((item) => item.name === staticLine.name && item.parent === staticLine.brandId);
+    if (matches.length !== 1) return record;
+    changed = true;
+    return { ...record, extra: { ...record.extra, subCategory: matches[0].code } };
+  });
+  if (!changed) return saved;
+  return saveRecords(tradeProductStorageKey, next);
+}
+
 export function readTradeProducts(line = ""): TradeProduct[] {
-  const saved = loadRecords(tradeProductStorageKey);
+  const loaded = loadRecords(tradeProductStorageKey);
+  const saved = loaded?.length ? retargetOrphanLines(loaded) : loaded;
   if (!saved?.length) return fallbackTradeProducts(line);
   const mapped = saved
     .filter((record) => record.cells[visibleIndex] === "✓" && (record.cells[titleIndex] ?? "").trim())

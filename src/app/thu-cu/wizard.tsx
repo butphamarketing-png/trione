@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MarkedImage, StoreFooter, WizardHeader, Stepper, CheckBox } from "@/components/store-footer";
 import { GarminThumb } from "@/components/watch-face";
@@ -14,8 +15,8 @@ import {
   screenOptions,
 } from "@/data/catalog";
 import { fallbackLevel1, readLevel1Categories, type Level1Category } from "@/lib/level1-categories";
-import { fallbackLevel2, readLevel2Categories, type Level2Category } from "@/lib/level2-categories";
-import { fallbackTradeProducts, quoteTradeIn, readTradeProducts, type TradeProduct } from "@/lib/trade-products";
+import { readLevel2Categories, type Level2Category } from "@/lib/level2-categories";
+import { quoteTradeIn, readTradeProducts, type TradeProduct } from "@/lib/trade-products";
 import { fallbackExchangeProducts, readExchangeProducts, type ExchangeProduct } from "@/lib/exchange-products";
 import { exchangeDue, resolveGrade, vnd } from "@/lib/pricing";
 import { formatCreatedAt, makeRequestCode, saveTradeRequest } from "@/lib/demo-requests";
@@ -54,19 +55,16 @@ function textHasTokens(value: string, tokens: string[]) {
 
 function openingFromSlug(slug: string[]) {
   const categories = fallbackLevel1();
-  const [brandSlug, lineSlug, productSlug] = slug;
+  const [brandSlug] = slug;
   const brand = brandSlug ? categories.find((item) => item.slug === brandSlug || item.code === brandSlug) : undefined;
-  if (!brand) return { brandId: "apple", activeKey: "apple", lineId: "ultra", modelId: "ultra2", step: 1 };
+  if (!brand) return { brandId: "apple", activeKey: "apple", lineId: "", modelId: "", step: 1 };
   if (brand.code === "other") return { brandId: "other", activeKey: brand.key, lineId: "", modelId: "", step: 1 };
-  const line = lineSlug ? fallbackLevel2(brand.code).find((item) => item.slug === lineSlug || item.code === lineSlug) : undefined;
-  const product =
-    line && productSlug ? fallbackTradeProducts(line.code).find((item) => item.slug === productSlug || item.code === productSlug) : undefined;
   return {
     brandId: brand.code,
     activeKey: brand.key,
-    lineId: line?.code ?? "",
-    modelId: product?.code ?? "",
-    step: product ? 4 : 1,
+    lineId: "",
+    modelId: "",
+    step: 1,
   };
 }
 
@@ -96,8 +94,8 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const [issueNote, setIssueNote] = useState("");
   const [screen, setScreen] = useState("excellent");
   const [body, setBody] = useState("excellent");
-  const [battery, setBattery] = useState("good");
-  const [strap, setStrap] = useState("good");
+  const battery = "good";
+  const strap = "good";
   const [photos, setPhotos] = useState<Record<string, string>>({});
   const photoFiles = useRef<Record<string, File>>({});
   const sendingLock = useRef(false);
@@ -113,18 +111,19 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const [requestCode, setRequestCode] = useState("");
   const [categories, setCategories] = useState<Level1Category[]>(fallbackLevel1);
   const [level2, setLevel2] = useState<Level2Category[]>([]);
-  const [products, setProducts] = useState<TradeProduct[]>(() => (opening.lineId ? fallbackTradeProducts(opening.lineId) : []));
-  const [catalogProducts, setCatalogProducts] = useState<TradeProduct[]>(() => fallbackTradeProducts());
+  const [products, setProducts] = useState<TradeProduct[]>([]);
+  const [catalogProducts, setCatalogProducts] = useState<TradeProduct[]>([]);
   const [allLines, setAllLines] = useState<Level2Category[]>([]);
   const [exchangeProducts, setExchangeProducts] = useState<ExchangeProduct[]>(fallbackExchangeProducts);
   const [exchangeBrand, setExchangeBrand] = useState("garmin");
   const [activeKey, setActiveKey] = useState(opening.activeKey);
   const brandRef = useRef(brandId);
-  brandRef.current = brandId;
+  useEffect(() => {
+    brandRef.current = brandId;
+  }, [brandId]);
   const [routeApplied, setRouteApplied] = useState(initialSlug.length === 0);
   const [pricesReady, setPricesReady] = useState(false);
   const appliedKey = useRef("");
-  const openedRoute = useRef(false);
 
   const brand = brands.find((b) => b.id === brandId);
   const lineLabel = level2.find((item) => item.code === lineId)?.name || "sản phẩm";
@@ -189,7 +188,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const visibleGarmin = exchangeProducts.filter((item) => {
     if (item.parent !== exchangeBrand) return false;
     const bySeries = series === "TẤT CẢ" || item.series === series;
-    const byQ = !garminQ.trim() || `${item.name} ${item.specs} ${item.series} ${item.brandName}`.toLowerCase().includes(garminQ.toLowerCase());
+    const byQ = !garminQ.trim() || textHasTokens(`${item.name} ${item.specs} ${item.series} ${item.brandName}`, searchTokens(garminQ));
     return bySeries && byQ;
   });
   const lineProducts = products.filter((item) => item.line === lineId);
@@ -228,8 +227,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   }, [productQ, catalogProducts, categories, allLines]);
   const visibleModels = lineProducts.filter((item) => {
     const byGen = modelGen === allGenerations || modelGeneration(item.name) === modelGen;
-    const haystack = `${item.name} ${item.specs} ${item.blurb}`.toLowerCase();
-    const byQ = !modelQ.trim() || haystack.includes(modelQ.trim().toLowerCase());
+    const byQ = !modelQ.trim() || textHasTokens(`${item.name} ${item.specs} ${item.blurb}`, searchTokens(modelQ));
     return byGen && byQ;
   });
 
@@ -361,7 +359,14 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   useEffect(() => {
     let alive = true;
     const reload = () => {
-      if (alive) setLevel2(readLevel2Categories(brandId));
+      if (!alive) return;
+      const list = readLevel2Categories(brandId);
+      setLevel2(list);
+      setLineId((current) => {
+        if (!current || list.some((item) => item.code === current)) return current;
+        setModelId("");
+        return "";
+      });
     };
     void import("@/lib/catalog-sync").then(async (mod) => {
       await mod.ensureCatalog();
@@ -389,8 +394,10 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     let alive = true;
     const reload = () => {
       if (!alive) return;
-      setCatalogProducts(readTradeProducts());
-      setAllLines(readLevel2Categories());
+      const linesNow = readLevel2Categories();
+      const visibleCodes = new Set(linesNow.map((item) => item.code));
+      setAllLines(linesNow);
+      setCatalogProducts(readTradeProducts().filter((item) => visibleCodes.has(item.line)));
     };
     void import("@/lib/catalog-sync").then(async (mod) => {
       await mod.ensureCatalog();
@@ -418,7 +425,8 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
 
   useEffect(() => {
     function reload() {
-      const list = readExchangeProducts();
+      const parents = new Set(readLevel1Categories().map((item) => item.code));
+      const list = readExchangeProducts().filter((item) => parents.has(item.parent));
       setExchangeProducts(list);
       setExchangeBrand((current) => (list.some((item) => item.parent === current) ? current : list[0]?.parent || "garmin"));
       setGarminId((current) => (current && list.some((item) => item.code === current) ? current : ""));
@@ -433,46 +441,53 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   }, [categories]);
 
   useEffect(() => {
-    if (openedRoute.current) return;
-    openedRoute.current = true;
+    let alive = true;
     const [brandSlug, lineSlug, productSlug] = initialSlug;
     if (!brandSlug) {
       setRouteApplied(true);
       return;
     }
-    const list = readLevel1Categories();
-    const item = list.find((entry) => entry.slug === brandSlug || entry.code === brandSlug);
-    if (!item) {
-      setRouteApplied(true);
-      return;
-    }
-    setCategories(list);
-    chooseCategory(item);
-    if (!lineSlug) {
-      setLineId("");
-      setModelId("");
-      setStep(1);
-      setRouteApplied(true);
-      return;
-    }
-    const line = readLevel2Categories(item.code).find((entry) => entry.slug === lineSlug || entry.code === lineSlug);
-    if (line) {
-      setLineId(line.code);
-      const productList = readTradeProducts(line.code);
-      const product = productSlug ? productList.find((entry) => entry.slug === productSlug || entry.code === productSlug) : undefined;
-      if (product) {
-        setModelId(product.code);
-        setStep(4);
+    void import("@/lib/catalog-sync").then(async (mod) => {
+      await mod.ensureCatalog();
+      if (!alive) return;
+      const list = readLevel1Categories();
+      const item = list.find((entry) => entry.slug === brandSlug || entry.code === brandSlug);
+      if (!item) {
+        setRouteApplied(true);
+        return;
+      }
+      setCategories(list);
+      appliedKey.current = item.key;
+      chooseCategory(item);
+      if (!lineSlug) {
+        setLineId("");
+        setModelId("");
+        setStep(1);
+        setRouteApplied(true);
+        return;
+      }
+      const line = readLevel2Categories(item.code).find((entry) => entry.slug === lineSlug || entry.code === lineSlug);
+      if (line) {
+        setLineId(line.code);
+        const productList = readTradeProducts(line.code);
+        const product = productSlug ? productList.find((entry) => entry.slug === productSlug || entry.code === productSlug) : undefined;
+        if (product) {
+          setModelId(product.code);
+          setStep(4);
+        } else {
+          setModelId("");
+          setStep(1);
+        }
       } else {
+        setLineId("");
         setModelId("");
         setStep(1);
       }
-    } else {
-      setLineId("");
-      setModelId("");
-      setStep(1);
-    }
-    setRouteApplied(true);
+      setRouteApplied(true);
+    });
+    return () => {
+      alive = false;
+    };
   }, [initialSlug]);
 
   useEffect(() => {
@@ -713,9 +728,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
               <a className="rounded-xl bg-[#e11d2e] px-5 py-3 font-semibold text-white" href={`/nhan-vien/yeu-cau/${requestCode}`}>
                 Xem cổng nhân viên
               </a>
-              <a className="rounded-xl border bg-white px-5 py-3" href="/thu-cu">
+              <Link className="rounded-xl border bg-white px-5 py-3" href="/thu-cu">
                 Tạo yêu cầu khác
-              </a>
+              </Link>
             </div>
           </section>
         </div>
@@ -1550,7 +1565,7 @@ function TickSelect({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open, onOpen]);
   const selected = options.find((item) => item.id === value);
-  const shown = options.filter((item) => !q.trim() || `${item.name} ${item.hint ?? ""}`.toLowerCase().includes(q.trim().toLowerCase()));
+  const shown = options.filter((item) => !q.trim() || textHasTokens(`${item.name} ${item.hint ?? ""}`, searchTokens(q)));
   return (
     <div ref={ref} className="relative">
       <p className="mb-1 text-xs font-semibold tracking-wide text-zinc-500">{label}</p>

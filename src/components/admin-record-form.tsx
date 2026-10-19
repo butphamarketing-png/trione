@@ -217,32 +217,30 @@ export function AdminRecordForm({
     if (isProduct) {
       const model = models.find((item) => item.name === name);
       const line = lines.find((item) => item.id === model?.lineId);
+      const savedLine = line ? matchedSavedLevel2(line.id) : "";
       const brand = brands.find((item) => item.id === line?.brandId);
       const price = current.cells[columns.indexOf("Giá loại 1")] ?? "";
-      if ((!extra.category || extra.category === "Đồng hồ" || brands.some((item) => item.name === extra.category)) && brand) {
+      if (savedLine && (!extra.category || extra.category === "Đồng hồ" || brands.some((item) => item.name === extra.category)) && brand) {
         extra.category = brand.id;
         changed = true;
       }
-      if (!extra.subCategory && line) {
-        const savedLine = matchedSavedLevel2(line.id);
-        if (savedLine) {
-          extra.subCategory = savedLine;
-          changed = true;
-        }
+      if (!extra.subCategory && savedLine) {
+        extra.subCategory = savedLine;
+        changed = true;
       }
-      if (!extra.shortDesc && model?.blurb) {
+      if (savedLine && !extra.shortDesc && model?.blurb) {
         extra.shortDesc = model.blurb;
         changed = true;
       }
-      if (!extra.sku && model) {
+      if (savedLine && !extra.sku && model) {
         extra.sku = model.id;
         changed = true;
       }
-      if (!extra.salePrice && price) {
+      if (savedLine && !extra.salePrice && price) {
         extra.salePrice = price;
         changed = true;
       }
-      if (!extra.newPrice && price) {
+      if (savedLine && !extra.newPrice && price) {
         extra.newPrice = price;
         changed = true;
       }
