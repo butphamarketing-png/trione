@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/store-footer";
 import { useSiteSettings } from "@/lib/site-settings";
@@ -19,27 +19,32 @@ const nav = [
 
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
   const path = usePathname();
+  const router = useRouter();
   const site = useSiteSettings();
+  const [allowed, setAllowed] = useState(false);
   const [notes, setNotes] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   useEffect(() => {
     setNavOpen(false);
   }, [path]);
-  const [me, setMe] = useState<DemoSession>({
-    user: "nv.anh",
-    role: "staff",
-    name: "Nguyễn Minh Anh",
-    title: "Nhân viên thẩm định",
-  });
+  const [me, setMe] = useState<DemoSession | null>(null);
   useEffect(() => {
     const s = readSession();
-    if (s) setMe(s);
+    if (!s) {
+      router.replace("/dang-nhap");
+      return;
+    }
+    setMe(s);
+    setAllowed(true);
     const pull = () => void import("@/lib/catalog-sync").then((mod) => mod.hydrateCatalog());
     pull();
     window.addEventListener("focus", pull);
     return () => window.removeEventListener("focus", pull);
-  }, []);
+  }, [router]);
   const waiting = useLiveRequests().filter((r) => r.status === "dang-cho-duyet");
+  if (!allowed || !me) {
+    return <div className="grid min-h-screen place-items-center bg-[#f4f5f7] text-sm text-zinc-500">Đang kiểm tra đăng nhập...</div>;
+  }
   const initials = me.name
     .split(" ")
     .slice(-2)

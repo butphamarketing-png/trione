@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "@/components/store-footer";
 import { useSiteSettings } from "@/lib/site-settings";
@@ -59,6 +59,8 @@ function isActive(path: string, href: string) {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const path = usePathname();
+  const router = useRouter();
+  const [allowed, setAllowed] = useState(false);
   const current = useMemo(() => {
     const all = [dashboard, ...groups.flatMap((g) => g.children), ...tail];
     return all.find((i) => isActive(path, i.href));
@@ -69,18 +71,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     setNavOpen(false);
   }, [path]);
-  const [hello, setHello] = useState("admin");
+  const [hello, setHello] = useState("");
   const site = useSiteSettings();
   useEffect(() => {
     const s = readSession();
-    if (s) setHello(s.user);
-  }, []);
+    if (!s) {
+      router.replace("/dang-nhap");
+      return;
+    }
+    if (s.role !== "admin") {
+      router.replace("/nhan-vien");
+      return;
+    }
+    setHello(s.user);
+    setAllowed(true);
+  }, [router]);
   useEffect(() => {
     const pull = () => void import("@/lib/catalog-sync").then((mod) => mod.hydrateCatalog());
     pull();
     window.addEventListener("focus", pull);
     return () => window.removeEventListener("focus", pull);
   }, []);
+
+  if (!allowed) {
+    return <div className="grid min-h-screen place-items-center bg-[#f4f6f8] text-sm text-zinc-500">Đang kiểm tra đăng nhập...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-[#f4f6f8]">
