@@ -2,7 +2,7 @@
 
 import { AdminTable } from "@/components/admin-table";
 import { statusLabel, type RequestStatus, type TradeRequest } from "@/data/staff";
-import { patchRequest } from "@/lib/demo-requests";
+import { patchRequest, removeRequests } from "@/lib/demo-requests";
 import type { AdminRecord } from "@/lib/admin-records";
 import { useEffect, useState } from "react";
 import { useLiveRequests } from "@/lib/use-live-requests";
@@ -61,6 +61,9 @@ export default function OrdersAdminPage() {
     return () => window.removeEventListener("trione-catalog", sync);
   }, []);
   function sync(records: AdminRecord[]) {
+    const kept = new Set(records.map((record) => record.cells[1]?.trim()).filter(Boolean));
+    const missing = live.filter((item) => !kept.has(item.id)).map((item) => item.id);
+    if (missing.length) removeRequests(missing);
     for (const record of records) {
       const id = record.cells[1]?.trim();
       if (!id || !live.some((item) => item.id === id)) continue;
@@ -98,6 +101,7 @@ export default function OrdersAdminPage() {
       title="Quản lý đơn hàng"
       titleLinks={false}
       live
+      allowCreate={false}
       wide
       onCommit={sync}
       redIndexes={[4]}

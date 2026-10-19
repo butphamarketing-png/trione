@@ -134,6 +134,7 @@ export function AdminTable(props: {
   parents?: string[];
   subs?: string[];
   live?: boolean;
+  allowCreate?: boolean;
   wide?: boolean;
   redIndexes?: number[];
   brandFilter?: boolean;
@@ -161,6 +162,7 @@ function AdminTableInner({
   parents,
   subs,
   live = false,
+  allowCreate = true,
   wide = false,
   redIndexes,
   brandFilter = false,
@@ -180,6 +182,7 @@ function AdminTableInner({
   parents?: string[];
   subs?: string[];
   live?: boolean;
+  allowCreate?: boolean;
   wide?: boolean;
   redIndexes?: number[];
   brandFilter?: boolean;
@@ -344,7 +347,7 @@ function AdminTableInner({
     if (!name) {
       setError(`Nhập ${columns[titleIndex] ?? "tiêu đề"} trước khi lưu.`);
       setNotice("");
-      return;
+      return false;
     }
     const nextDraft = {
       ...current,
@@ -361,13 +364,14 @@ function AdminTableInner({
       commit([...pool.filter((record) => record.id !== nextDraft.id), nextDraft], "Đã lưu.");
       if (exitAfter) exit();
       else router.replace(href("edit", nextDraft.id));
-      return;
+      return true;
     }
     commit(
       pool.map((record) => (record.id === nextDraft.id ? nextDraft : record)),
       "Đã lưu."
     );
     if (exitAfter) exit();
+    return true;
   }
 
   function copy(record: AdminRecord) {
@@ -482,7 +486,7 @@ function AdminTableInner({
   return (
     <div>
       <Status notice={notice} error={error} />
-      <Toolbar onAddHref={href("add")} onDelete={() => askRemove(selected)} q={q} onQuery={setQ} />
+      <Toolbar allowCreate={allowCreate} onAddHref={href("add")} onDelete={() => askRemove(selected)} q={q} onQuery={setQ} />
       <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
         {filters || brandFilter ? (
           <div className="flex flex-wrap gap-2 px-4 pt-4">
@@ -547,7 +551,7 @@ function AdminTableInner({
                         : ""
                     }`}
                   >
-                    {index === 0 && columns[0] === "STT" ? (
+                    {index === 0 && columns[0] === "STT" && !live ? (
                       <input
                         key={`${record.id}-${record.extra.order}`}
                         defaultValue={record.extra.order || cell}
@@ -673,11 +677,11 @@ function RecordEditor({
   columns: string[];
   initial: AdminRecord | null;
   mode: "add" | "edit" | "view";
-  onSave: (record: AdminRecord, exitAfter: boolean) => void;
+  onSave: (record: AdminRecord, exitAfter: boolean) => boolean;
   onExit: () => void;
   onEdit: (id: string) => void;
 }) {
-  const [baseline] = useState(() => {
+  const [baseline, setBaseline] = useState(() => {
     if (!initial) return null;
     const copy = cloneRecord(initial);
     const nameAt = columns.findIndex((column) => ["Tiêu đề", "Họ tên", "Tên", "Mã"].includes(column));
@@ -708,7 +712,12 @@ function RecordEditor({
       baseline={baseline}
       mode={mode}
       onChange={updateDraft}
-      onSave={(exitAfter) => onSave(draftRef.current ?? draft, exitAfter)}
+      onSave={(exitAfter) => {
+        const current = draftRef.current ?? draft;
+        const saved = onSave(current, exitAfter);
+        if (saved && !exitAfter) setBaseline(cloneRecord(current));
+        return saved;
+      }}
       onExit={onExit}
       onEdit={() => onEdit(draft.id)}
     />
@@ -716,11 +725,13 @@ function RecordEditor({
 }
 
 function Toolbar({
+  allowCreate,
   onAddHref,
   onDelete,
   q,
   onQuery,
 }: {
+  allowCreate: boolean;
   onAddHref: string;
   onDelete: () => void;
   q: string;
@@ -737,11 +748,13 @@ function Toolbar({
         />
         <span className="grid place-items-center bg-[#f6c445] px-4 text-sm">⌕</span>
       </div>
-      <a href={onAddHref} className="rounded-lg bg-[#f6c445] px-4 py-2 text-sm font-medium">
-        + Thêm mới
-      </a>
+      {allowCreate ? (
+        <a href={onAddHref} className="rounded-lg bg-[#f6c445] px-4 py-2 text-sm font-medium">
+          + Thêm mới
+        </a>
+      ) : null}
       <button type="button" onClick={onDelete} className="rounded-lg bg-[#f07181] px-4 py-2 text-sm font-medium text-white">
-        Xóa tất cả
+        Xóa đã chọn
       </button>
     </div>
   );

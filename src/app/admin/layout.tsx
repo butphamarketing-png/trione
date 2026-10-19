@@ -160,11 +160,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               Xin chào, {hello}!
             </span>
             <div className="flex shrink-0 items-center gap-3 text-zinc-500">
-              <span className="hidden sm:inline">SEO</span>
-              <span className="hidden sm:inline">⚙</span>
-              <span className="relative">
+              <Link href="/admin/thiet-lap" className="hidden hover:text-zinc-900 sm:inline">
+                SEO
+              </Link>
+              <Link href="/admin/thiet-lap" className="hidden hover:text-zinc-900 sm:inline" aria-label="Thiết lập">
+                ⚙
+              </Link>
+              <Link href="/admin/don-hang" className="relative hover:text-zinc-900" aria-label="Đơn hàng">
                 🔔<span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#e11d2e]" />
-              </span>
+              </Link>
               <LogoutButton className="text-[#2f6fed]" />
             </div>
           </header>

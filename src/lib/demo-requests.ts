@@ -5,6 +5,7 @@ const KEY = "trione-demo-requests";
 type Store = {
   extra: TradeRequest[];
   overrides: Record<string, Partial<TradeRequest>>;
+  removed: string[];
 };
 
 const listeners = new Set<() => void>();
@@ -12,7 +13,7 @@ let cachedRaw: string | null | undefined;
 let cachedList: TradeRequest[] = requests;
 
 function empty(): Store {
-  return { extra: [], overrides: {} };
+  return { extra: [], overrides: {}, removed: [] };
 }
 
 function load(): Store {
@@ -24,6 +25,7 @@ function load(): Store {
     return {
       extra: Array.isArray(parsed.extra) ? parsed.extra : [],
       overrides: parsed.overrides && typeof parsed.overrides === "object" ? parsed.overrides : {},
+      removed: Array.isArray(parsed.removed) ? parsed.removed.map(String) : [],
     };
   } catch {
     return empty();
@@ -35,8 +37,9 @@ function withStatus(request: TradeRequest): TradeRequest {
 }
 
 function computeAll(store: Store): TradeRequest[] {
-  const seeded = requests.map((r) => withStatus({ ...r, ...store.overrides[r.id] }));
-  const extras = store.extra.map((r) => withStatus({ ...r, ...store.overrides[r.id] }));
+  const gone = new Set(store.removed ?? []);
+  const seeded = requests.filter((item) => !gone.has(item.id)).map((item) => withStatus({ ...item, ...store.overrides[item.id] }));
+  const extras = store.extra.filter((item) => !gone.has(item.id)).map((item) => withStatus({ ...item, ...store.overrides[item.id] }));
   return [...extras, ...seeded];
 }
 
@@ -59,6 +62,7 @@ export function importRequestStore(raw: string) {
   const store = {
     extra: Array.isArray(parsed.extra) ? parsed.extra : [],
     overrides: parsed.overrides && typeof parsed.overrides === "object" ? parsed.overrides : {},
+    removed: Array.isArray(parsed.removed) ? parsed.removed.map(String) : [],
   };
   sessionStorage.setItem(KEY, JSON.stringify(store));
   emit();
@@ -100,6 +104,16 @@ export function saveTradeRequest(request: TradeRequest) {
 export function patchRequest(id: string, patch: Partial<TradeRequest>) {
   const store = load();
   store.overrides[id] = { ...store.overrides[id], ...patch };
+  save(store);
+}
+
+export function removeRequests(ids: string[]) {
+  const drop = new Set(ids.filter(Boolean));
+  if (!drop.size) return;
+  const store = load();
+  store.removed = [...new Set([...(store.removed ?? []), ...drop])];
+  store.extra = store.extra.filter((item) => !drop.has(item.id));
+  for (const id of drop) delete store.overrides[id];
   save(store);
 }
 
