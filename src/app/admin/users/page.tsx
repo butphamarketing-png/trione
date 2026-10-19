@@ -15,7 +15,17 @@ export default function UsersPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setAccounts(readAccounts());
+    let cancelled = false;
+    void import("@/lib/catalog-sync").then(async (mod) => {
+      await mod.ensureCatalog();
+      if (!cancelled) setAccounts(readAccounts());
+    });
+    const refresh = () => setAccounts(readAccounts());
+    window.addEventListener("trione-catalog", refresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("trione-catalog", refresh);
+    };
   }, []);
 
   function add() {
@@ -96,7 +106,15 @@ export default function UsersPage() {
         {notice ? <p className="mt-2 text-sm text-emerald-600">{notice}</p> : null}
         {error ? <p className="mt-2 text-sm text-[#e11d2e]">{error}</p> : null}
       </div>
-      <AdminTable title="Quản lý user" columns={["STT", "Họ tên", "Tài khoản", "Vai trò", "Trạng thái"]} rows={rows} live onCommit={sync} />
+      <AdminTable
+        title="Quản lý user"
+        columns={["STT", "Họ tên", "Tài khoản", "Vai trò", "Trạng thái"]}
+        rows={rows}
+        recordIds={accounts.map((item) => item.id)}
+        live
+        allowCreate={false}
+        onCommit={sync}
+      />
     </div>
   );
 }

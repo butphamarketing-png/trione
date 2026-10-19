@@ -93,6 +93,11 @@ function applySubs(records: AdminRecord[], rows: string[][], subs: string[] | un
   });
 }
 
+function applyRecordIds(records: AdminRecord[], ids: string[] | undefined) {
+  if (!ids?.length) return records;
+  return records.map((record, index) => (ids[index] ? { ...record, id: ids[index] } : record));
+}
+
 function applyCodes(records: AdminRecord[], rows: string[][], codes: string[] | undefined, titleAt: number) {
   if (!codes?.length) return records;
   const byTitle = new Map<string, string>();
@@ -134,6 +139,7 @@ export function AdminTable(props: {
   parents?: string[];
   subs?: string[];
   live?: boolean;
+  recordIds?: string[];
   allowCreate?: boolean;
   wide?: boolean;
   redIndexes?: number[];
@@ -162,6 +168,7 @@ function AdminTableInner({
   parents,
   subs,
   live = false,
+  recordIds,
   allowCreate = true,
   wide = false,
   redIndexes,
@@ -182,6 +189,7 @@ function AdminTableInner({
   parents?: string[];
   subs?: string[];
   live?: boolean;
+  recordIds?: string[];
   allowCreate?: boolean;
   wide?: boolean;
   redIndexes?: number[];
@@ -195,6 +203,7 @@ function AdminTableInner({
   const editId = params.get("id");
   const mode = act === "add" || act === "edit" || act === "view" ? act : null;
   const signature = JSON.stringify(rows);
+  const recordIdKey = recordIds?.join("\u0000") ?? "";
   const visibleIndex = columns.indexOf("Hiển thị");
   const imageIndex = columns.indexOf("Hình");
   const featuredIndex = columns.indexOf("Nổi bật");
@@ -268,7 +277,10 @@ function AdminTableInner({
         : base;
     const withImages = applyDefaultImages(baseRows, defaultImages, titleAt, replaceExisting);
     const prepared = blankColumnsOnPreset(withImages, names, blankColumns, replaceExisting);
-    const coded = applySubs(applyParents(applyCodes(prepared, parsed, codes, titleAt), parsed, parents, titleAt), parsed, subs, titleAt);
+    const coded = applyRecordIds(
+      applySubs(applyParents(applyCodes(prepared, parsed, codes, titleAt), parsed, parents, titleAt), parsed, subs, titleAt),
+      recordIdKey ? recordIdKey.split("\u0000") : undefined
+    );
     if (presetVersion && (!storedVersion || replaceExisting)) sessionStorage.setItem(versionKey, presetVersion);
     const changed =
       !savedRaw ||
@@ -287,7 +299,7 @@ function AdminTableInner({
     return () => {
       cancelled = true;
     };
-  }, [title, signature, columnKey, defaultImages, presetVersion, reseedOnPreset, blankColumns, codes, parents, subs, live]);
+  }, [title, signature, columnKey, defaultImages, presetVersion, reseedOnPreset, blankColumns, codes, parents, subs, live, recordIdKey]);
 
   useEffect(() => {
     if (keepNotice.current) {
