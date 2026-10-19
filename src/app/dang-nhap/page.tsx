@@ -21,6 +21,19 @@ export default function LoginPage() {
       setErr("Nhập tài khoản và mật khẩu.");
       return;
     }
+    const envLogin = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user, pass }),
+    }).catch(() => null);
+    if (envLogin?.ok) {
+      const data = (await envLogin.json()) as { session?: { user: string; role: "admin"; name: string; title: string } };
+      if (data.session) {
+        saveSession(data.session);
+        router.replace("/admin");
+        return;
+      }
+    }
     const catalog = await import("@/lib/catalog-sync");
     await catalog.hydrateCatalog();
     const session = resolveLogin(user, pass);
