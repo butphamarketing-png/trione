@@ -4,7 +4,7 @@ import { cloneRecord, type AdminAlbumImage, type AdminExtra, type AdminRecord } 
 import { fileToDataUrl } from "@/lib/demo-media";
 import { defaultSiteSettings, readSiteSettings, useSiteSettings, type SiteSettings } from "@/lib/site-settings";
 import { readLevel1Categories, type Level1Category } from "@/lib/level1-categories";
-import { readLevel2Categories, type Level2Category } from "@/lib/level2-categories";
+import { matchedSavedLevel2, readLevel2Categories, type Level2Category } from "@/lib/level2-categories";
 
 
 function clipText(value: string, max: number) {
@@ -223,9 +223,12 @@ export function AdminRecordForm({
         extra.category = brand.id;
         changed = true;
       }
-      if ((!extra.subCategory || lines.some((item) => item.name === extra.subCategory) || brands.some((item) => item.name === extra.subCategory)) && line) {
-        extra.subCategory = line.id;
-        changed = true;
+      if (!extra.subCategory && line) {
+        const savedLine = matchedSavedLevel2(line.id);
+        if (savedLine) {
+          extra.subCategory = savedLine;
+          changed = true;
+        }
       }
       if (!extra.shortDesc && model?.blurb) {
         extra.shortDesc = model.blurb;

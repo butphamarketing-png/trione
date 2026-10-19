@@ -78,28 +78,14 @@ function brandCode(value: string) {
   return brands.find((brand) => brand.id === clean || brand.name === clean)?.id ?? clean;
 }
 
-function foldName(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/gi, "d")
-    .toLowerCase()
-    .trim();
-}
-
 function lineCode(value: string) {
   const clean = value.trim();
   if (!clean) return "";
-  return lines.find((line) => line.id === clean || line.name === clean)?.id ?? clean;
+  return lines.find((line) => line.id === clean)?.id ?? clean;
 }
 
-function onLine(item: { line: string; name: string }, line: string) {
-  if (item.line === line) return true;
-  const lineName = lines.find((entry) => entry.id === line)?.name ?? "";
-  if (!lineName) return false;
-  const name = foldName(item.name);
-  const expected = foldName(lineName);
-  return name === expected || name.startsWith(`${expected} `);
+function onLine(item: { line: string }, line: string) {
+  return Boolean(line) && item.line === line;
 }
 
 function toProduct(model: (typeof models)[number], key = model.id): TradeProduct {
@@ -144,7 +130,7 @@ export function readTradeProducts(line = ""): TradeProduct[] {
       const sku = (record.extra.sku || "").toLowerCase();
       const known = models.find((model) => model.id === sku || model.name === name);
       const code = sku || known?.id || `custom:${record.id}`;
-      const productLine = lineCode(record.extra.subCategory) || known?.lineId || "";
+      const productLine = lineCode(record.extra.subCategory);
       const parent = brandCode(record.extra.category) || lines.find((item) => item.id === productLine)?.brandId || "";
       return {
         key: record.id,

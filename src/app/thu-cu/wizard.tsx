@@ -9,7 +9,6 @@ import {
   brands,
   garminNew,
   issues,
-  lines,
   models,
   photoSlots,
   screenOptions,
@@ -113,10 +112,10 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const [garminQ, setGarminQ] = useState("");
   const [requestCode, setRequestCode] = useState("");
   const [categories, setCategories] = useState<Level1Category[]>(fallbackLevel1);
-  const [level2, setLevel2] = useState<Level2Category[]>(() => fallbackLevel2(opening.brandId === "other" ? "" : opening.brandId));
+  const [level2, setLevel2] = useState<Level2Category[]>([]);
   const [products, setProducts] = useState<TradeProduct[]>(() => (opening.lineId ? fallbackTradeProducts(opening.lineId) : []));
   const [catalogProducts, setCatalogProducts] = useState<TradeProduct[]>(() => fallbackTradeProducts());
-  const [allLines, setAllLines] = useState<Level2Category[]>(() => fallbackLevel2());
+  const [allLines, setAllLines] = useState<Level2Category[]>([]);
   const [exchangeProducts, setExchangeProducts] = useState<ExchangeProduct[]>(fallbackExchangeProducts);
   const [exchangeBrand, setExchangeBrand] = useState("garmin");
   const [activeKey, setActiveKey] = useState(opening.activeKey);
@@ -128,8 +127,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const openedRoute = useRef(false);
 
   const brand = brands.find((b) => b.id === brandId);
-  const line = lines.find((l) => l.id === lineId);
-  const lineLabel = level2.find((item) => item.code === lineId)?.name || line?.name || "sản phẩm";
+  const lineLabel = level2.find((item) => item.code === lineId)?.name || "sản phẩm";
   const pickedProduct = products.find((item) => item.code === modelId);
   const catalogModel = models.find((m) => m.id === modelId);
   const model = pickedProduct
@@ -216,7 +214,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     });
     const productRows = catalogProducts.flatMap((item) => {
       const lineEntry = allLines.find((entry) => entry.code === item.line || entry.name === item.line);
-      const lineName = lineEntry?.name || lines.find((entry) => entry.id === item.line)?.name || "";
+      const lineName = lineEntry?.name || "";
       const brandName = labelOf(item.parent) || labelOf(lineEntry?.parent || "");
       const named = textHasTokens(`${item.name} ${item.specs} ${item.blurb} ${lineName}`, tokens);
       const branded = textHasTokens(brandName, tokens) || (Boolean(broadBrand) && foldText(brandName) === broadBrand);
@@ -361,10 +359,19 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   }, [activeKey, categories, brandId]);
 
   useEffect(() => {
-    const reload = () => setLevel2(readLevel2Categories(brandId));
-    reload();
+    let alive = true;
+    const reload = () => {
+      if (alive) setLevel2(readLevel2Categories(brandId));
+    };
+    void import("@/lib/catalog-sync").then(async (mod) => {
+      await mod.ensureCatalog();
+      reload();
+    });
     window.addEventListener("trione-catalog", reload);
-    return () => window.removeEventListener("trione-catalog", reload);
+    return () => {
+      alive = false;
+      window.removeEventListener("trione-catalog", reload);
+    };
   }, [brandId, categories]);
 
   useEffect(() => {
@@ -379,14 +386,20 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   }, [lineId, level2]);
 
   useEffect(() => {
+    let alive = true;
     const reload = () => {
+      if (!alive) return;
       setCatalogProducts(readTradeProducts());
       setAllLines(readLevel2Categories());
     };
-    reload();
+    void import("@/lib/catalog-sync").then(async (mod) => {
+      await mod.ensureCatalog();
+      reload();
+    });
     window.addEventListener("trione-catalog", reload);
     window.addEventListener("focus", reload);
     return () => {
+      alive = false;
       window.removeEventListener("trione-catalog", reload);
       window.removeEventListener("focus", reload);
     };

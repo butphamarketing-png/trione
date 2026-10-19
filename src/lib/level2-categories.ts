@@ -1,5 +1,5 @@
 import { brands, lines } from "@/data/catalog";
-import { blankExtra, loadRecords, normalizeRecord, saveRecords, type AdminRecord } from "@/lib/admin-records";
+import { loadRecords, saveRecords, type AdminRecord } from "@/lib/admin-records";
 
 export const level2StorageKey = "Danh mục cấp 2";
 
@@ -69,46 +69,29 @@ function brandName(brandId: string) {
 }
 
 function alignLevel2(saved: AdminRecord[]) {
-  const used = new Set<string>();
+  const usedLineIds = new Set<string>();
   let changed = false;
-  const aligned = lines.map((line, index) => {
-    const parent = brandName(line.brandId);
-    const existing = saved.find((record) => {
-      if (used.has(record.id)) return false;
-      const sku = (record.extra.sku || "").trim();
-      const title = (record.cells[titleIndex] ?? "").trim();
-      const category = (record.extra.category || "").trim();
-      const categoryName = (record.cells[parentIndex] ?? "").trim();
-      return sku === line.id || (title === line.name && (category === line.brandId || categoryName === parent));
+  const records = saved.map((existing) => {
+    const sku = (existing.extra.sku || "").trim();
+    const title = (existing.cells[titleIndex] ?? "").trim();
+    const category = (existing.extra.category || "").trim();
+    const categoryName = (existing.cells[parentIndex] ?? "").trim();
+    const line = lines.find((item) => {
+      if (usedLineIds.has(item.id)) return false;
+      const parent = brandName(item.brandId);
+      return sku === item.id || (title === item.name && (category === item.brandId || categoryName === parent));
     });
-    if (!existing) {
-      changed = true;
-      return normalizeRecord(
-        {
-          id: line.id,
-          cells: [String(index + 1), "", line.name, parent, "✓"],
-          extra: {
-            ...blankExtra(String(index + 1)),
-            sku: line.id,
-            category: line.brandId,
-            image: line.image,
-            shortDesc: line.blurb,
-            seoTitle: line.name,
-          },
-        },
-        index
-      );
-    }
-    used.add(existing.id);
+    if (!line) return existing;
+    usedLineIds.add(line.id);
+    const parent = brandName(line.brandId);
     const skuChanged = existing.extra.sku !== line.id;
     const categoryChanged = existing.extra.category !== line.brandId;
-    const savedTitle = (existing.cells[titleIndex] ?? "").trim();
     const parentChanged = (existing.cells[parentIndex] ?? "") !== parent;
-    if (skuChanged || categoryChanged || parentChanged || !savedTitle) changed = true;
+    if (skuChanged || categoryChanged || parentChanged || !title) changed = true;
     return {
       ...existing,
       cells: existing.cells.map((cell, cellIndex) => {
-        if (cellIndex === titleIndex) return savedTitle || line.name;
+        if (cellIndex === titleIndex) return title || line.name;
         if (cellIndex === parentIndex) return parent;
         if (cellIndex === visibleIndex) return cell || "✓";
         return cell;
@@ -122,10 +105,12 @@ function alignLevel2(saved: AdminRecord[]) {
       },
     };
   });
-  for (const record of saved) {
-    if (!used.has(record.id)) aligned.push(record);
-  }
-  return { records: aligned, changed };
+  return { records, changed };
+}
+
+export function matchedSavedLevel2(code: string) {
+  if (!code || !loadRecords(level2StorageKey)?.length) return "";
+  return readLevel2Categories().find((item) => item.code === code)?.code ?? "";
 }
 
 export function readLevel2Categories(parent = ""): Level2Category[] {
