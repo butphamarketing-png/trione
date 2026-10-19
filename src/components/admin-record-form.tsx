@@ -92,6 +92,7 @@ export function AdminRecordForm({
   onSave,
   onExit,
   onEdit,
+  extra,
 }: {
   columns: string[];
   draft: AdminRecord;
@@ -101,6 +102,7 @@ export function AdminRecordForm({
   onSave: (exit: boolean) => void;
   onExit: () => void;
   onEdit: () => void;
+  extra?: ReactNode;
 }) {
   const site = useSiteSettings();
   const readOnly = mode === "view";
@@ -727,8 +729,8 @@ export function AdminRecordForm({
                     value={draft.cells[index] ?? ""}
                     disabled={readOnly}
                     onChange={(event) => setCell(index, event.target.value)}
-                    className={inputClass}
-                  />
+                  className={inputClass}
+                />
                 </label>
               );
             })}
@@ -829,6 +831,7 @@ export function AdminRecordForm({
               </label>
             );
           })}
+          {extra}
         </div>
       )}
 

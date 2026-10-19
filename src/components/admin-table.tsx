@@ -145,6 +145,8 @@ export function AdminTable(props: {
   redIndexes?: number[];
   brandFilter?: boolean;
   onCommit?: (records: AdminRecord[]) => void;
+  beforeSave?: (record: AdminRecord) => string;
+  renderExtra?: (mode: "add" | "edit" | "view") => ReactNode;
 }) {
   return (
     <Suspense fallback={null}>
@@ -174,6 +176,8 @@ function AdminTableInner({
   redIndexes,
   brandFilter = false,
   onCommit,
+  beforeSave,
+  renderExtra,
 }: {
   title: string;
   columns: string[];
@@ -195,6 +199,8 @@ function AdminTableInner({
   redIndexes?: number[];
   brandFilter?: boolean;
   onCommit?: (records: AdminRecord[]) => void;
+  beforeSave?: (record: AdminRecord) => string;
+  renderExtra?: (mode: "add" | "edit" | "view") => ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -371,6 +377,12 @@ function AdminTableInner({
       },
     };
     if (columns[0] === "STT") nextDraft.cells[0] = nextDraft.extra.order;
+    const blocked = beforeSave?.(nextDraft) ?? "";
+    if (blocked) {
+      setError(blocked);
+      setNotice("");
+      return false;
+    }
     const pool = (live ? records : peekRecords(title)) ?? records ?? [];
     if (mode === "add") {
       commit([...pool.filter((record) => record.id !== nextDraft.id), nextDraft], "Đã lưu.");
@@ -490,6 +502,7 @@ function AdminTableInner({
           onSave={save}
           onExit={exit}
           onEdit={(id) => router.push(href("edit", id))}
+          extra={renderExtra?.(mode)}
         />
       </div>
     );
@@ -685,6 +698,7 @@ function RecordEditor({
   onSave,
   onExit,
   onEdit,
+  extra,
 }: {
   columns: string[];
   initial: AdminRecord | null;
@@ -692,6 +706,7 @@ function RecordEditor({
   onSave: (record: AdminRecord, exitAfter: boolean) => boolean;
   onExit: () => void;
   onEdit: (id: string) => void;
+  extra?: ReactNode;
 }) {
   const [baseline, setBaseline] = useState(() => {
     if (!initial) return null;
@@ -732,6 +747,7 @@ function RecordEditor({
       }}
       onExit={onExit}
       onEdit={() => onEdit(draft.id)}
+      extra={extra}
     />
   );
 }

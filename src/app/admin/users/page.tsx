@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AdminTable } from "@/components/admin-table";
 import { accountRoles, readAccounts, saveAccounts, type Account, type AccountRole } from "@/lib/accounts";
 import type { AdminRecord } from "@/lib/admin-records";
+
+type PasswordDraft = { password: string; confirm: string; id: string };
 
 export default function UsersPage() {
   const [accounts, setAccounts] = useState<Account[] | null>(null);
@@ -13,6 +15,8 @@ export default function UsersPage() {
   const [role, setRole] = useState<AccountRole>("Nhân viên");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [passwordKey, setPasswordKey] = useState(0);
+  const passwordDraft = useRef<PasswordDraft>({ password: "", confirm: "", id: "" });
 
   useEffect(() => {
     let cancelled = false;
@@ -61,22 +65,40 @@ export default function UsersPage() {
     setNotice(`Đã tạo ${nextUser} với quyền ${role}.`);
   }
 
+  function checkPassword(record: AdminRecord) {
+    const draft = passwordDraft.current;
+    const next = draft.password.trim();
+    const again = draft.confirm.trim();
+    draft.id = record.id;
+    if (!next && !again) return "";
+    if (next.length < 6) return "Mật khẩu mới cần ít nhất 6 ký tự.";
+    if (next !== again) return "Mật khẩu nhập lại chưa khớp.";
+    return "";
+  }
+
   function sync(records: AdminRecord[]) {
     const previous = readAccounts();
+    const draft = passwordDraft.current;
+    const nextPassword = draft.password.trim();
     const next = saveAccounts(
       records.map((record) => {
         const username = record.cells[2]?.trim() ?? "";
         const existing = previous.find((item) => item.id === record.id || item.user.toLowerCase() === username.toLowerCase());
+        const changing = Boolean(nextPassword) && record.id === draft.id;
         return {
           id: existing?.id || record.id,
           name: record.cells[1]?.trim() ?? "",
           user: username,
           role: record.cells[3] ?? "Nhân viên",
           status: record.cells[4] === "Ngưng" ? "Ngưng" : "Hoạt động",
-          password: existing?.password || "123456",
+          password: changing ? nextPassword : existing?.password || "123456",
         };
       })
     );
+    if (nextPassword && records.some((record) => record.id === draft.id)) {
+      passwordDraft.current = { password: "", confirm: "", id: "" };
+      setPasswordKey((value) => value + 1);
+    }
     setAccounts(next);
   }
 
@@ -114,7 +136,61 @@ export default function UsersPage() {
         live
         allowCreate={false}
         onCommit={sync}
+        beforeSave={checkPassword}
+        renderExtra={(mode) => <PasswordFields key={passwordKey} mode={mode} draft={passwordDraft} />}
       />
+    </div>
+  );
+}
+
+function PasswordFields({
+  mode,
+  draft,
+}: {
+  mode: "add" | "edit" | "view";
+  draft: { current: PasswordDraft };
+}) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const readOnly = mode === "view";
+
+  function update(next: PasswordDraft) {
+    draft.current = next;
+  }
+
+  return (
+    <div className="mb-3 grid gap-3 sm:grid-cols-2">
+      <label className="block text-sm">
+        <span className="mb-1 block">Mật khẩu mới</span>
+        <input
+          type="password"
+          value={password}
+          disabled={readOnly}
+          autoComplete="new-password"
+          placeholder="Để trống nếu giữ mật khẩu cũ"
+          onChange={(event) => {
+            const value = event.target.value;
+            setPassword(value);
+            update({ ...draft.current, password: value });
+          }}
+          className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#e2b100] disabled:bg-zinc-50"
+        />
+      </label>
+      <label className="block text-sm">
+        <span className="mb-1 block">Nhập lại mật khẩu</span>
+        <input
+          type="password"
+          value={confirm}
+          disabled={readOnly}
+          autoComplete="new-password"
+          onChange={(event) => {
+            const value = event.target.value;
+            setConfirm(value);
+            update({ ...draft.current, confirm: value });
+          }}
+          className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#e2b100] disabled:bg-zinc-50"
+        />
+      </label>
     </div>
   );
 }
