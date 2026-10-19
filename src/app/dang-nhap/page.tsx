@@ -87,7 +87,6 @@ export default function LoginPage() {
             <br />
             <span className="font-bold text-[#e11d2e]">{site.company}</span> để được hỗ trợ
           </p>
-          <p className="mt-3 text-center text-[11px] text-zinc-400">Demo: nv.anh · sala.hcm · admin / 123456</p>
         </form>
       </div>
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 bg-[#e11d2e] px-6 py-2.5 text-[11px] font-semibold tracking-wide text-white">
