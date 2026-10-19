@@ -102,12 +102,13 @@ function alignLevel2(saved: AdminRecord[]) {
     used.add(existing.id);
     const skuChanged = existing.extra.sku !== line.id;
     const categoryChanged = existing.extra.category !== line.brandId;
-    const titleChanged = (existing.cells[titleIndex] ?? "") !== line.name;
-    if (skuChanged || categoryChanged || titleChanged) changed = true;
+    const savedTitle = (existing.cells[titleIndex] ?? "").trim();
+    const parentChanged = (existing.cells[parentIndex] ?? "") !== parent;
+    if (skuChanged || categoryChanged || parentChanged || !savedTitle) changed = true;
     return {
       ...existing,
       cells: existing.cells.map((cell, cellIndex) => {
-        if (cellIndex === titleIndex) return line.name;
+        if (cellIndex === titleIndex) return savedTitle || line.name;
         if (cellIndex === parentIndex) return parent;
         if (cellIndex === visibleIndex) return cell || "✓";
         return cell;

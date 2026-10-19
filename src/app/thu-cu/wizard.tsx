@@ -40,6 +40,19 @@ function foldText(value: string) {
     .toLowerCase();
 }
 
+type ProductSearchHit =
+  | { kind: "product"; key: string; item: TradeProduct; brandName: string; lineName: string }
+  | { kind: "line"; key: string; line: Level2Category; brandName: string };
+
+function searchTokens(value: string) {
+  return foldText(value).trim().split(/\s+/).filter(Boolean);
+}
+
+function textHasTokens(value: string, tokens: string[]) {
+  const haystack = foldText(value);
+  return tokens.every((token) => haystack.includes(token));
+}
+
 function openingFromSlug(slug: string[]) {
   const categories = fallbackLevel1();
   const [brandSlug, lineSlug, productSlug] = slug;
@@ -184,19 +197,36 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const lineProducts = products.filter((item) => item.line === lineId);
   const generations = [allGenerations, ...new Set(lineProducts.map((item) => modelGeneration(item.name)))];
   const productHits = useMemo(() => {
-    const tokens = foldText(productQ).split(/\s+/).filter(Boolean);
+    const query = foldText(productQ).trim();
+    const tokens = searchTokens(productQ);
     if (!tokens.length) return [];
-    return catalogProducts
-      .map((item) => {
-        const brandName = categories.find((entry) => entry.code === item.parent)?.name || brands.find((entry) => entry.id === item.parent)?.name || "";
-        const lineName = allLines.find((entry) => entry.code === item.line)?.name || lines.find((entry) => entry.id === item.line)?.name || "";
-        return { item, brandName, lineName };
-      })
-      .filter(({ item, brandName, lineName }) => {
-        const haystack = foldText(`${item.name} ${item.specs} ${item.blurb} ${brandName} ${lineName}`);
-        return tokens.every((token) => haystack.includes(token));
-      })
-      .slice(0, 8);
+    const labelOf = (code: string) => categories.find((entry) => entry.code === code)?.name || brands.find((entry) => entry.id === code)?.name || "";
+    const brandNames = new Set([...categories.map((entry) => entry.name), ...brands.map((entry) => entry.name)].filter(Boolean));
+    const matchedBrands = [...brandNames].filter((name) => {
+      const folded = foldText(name);
+      return folded === query || (query.length >= 2 && folded.startsWith(query));
+    });
+    const broadBrand = matchedBrands.length === 1 ? foldText(matchedBrands[0]) : "";
+    const lineRows: ProductSearchHit[] = allLines.flatMap((line) => {
+      const brandName = labelOf(line.parent);
+      const byName = textHasTokens(`${line.name} ${line.blurb} ${line.keywords}`, tokens);
+      const byBrand = Boolean(broadBrand) && foldText(brandName) === broadBrand;
+      if (!byName && !byBrand) return [];
+      return [{ kind: "line", key: `line:${line.code}`, line, brandName }];
+    });
+    const productRows = catalogProducts.flatMap((item) => {
+      const lineEntry = allLines.find((entry) => entry.code === item.line || entry.name === item.line);
+      const lineName = lineEntry?.name || lines.find((entry) => entry.id === item.line)?.name || "";
+      const brandName = labelOf(item.parent) || labelOf(lineEntry?.parent || "");
+      const named = textHasTokens(`${item.name} ${item.specs} ${item.blurb} ${lineName}`, tokens);
+      const branded = textHasTokens(brandName, tokens) || (Boolean(broadBrand) && foldText(brandName) === broadBrand);
+      if (!named && !branded) return [];
+      return [{ kind: "product" as const, key: item.key, item, brandName, lineName, named }];
+    });
+    const ordered: ProductSearchHit[] = broadBrand
+      ? [...lineRows, ...productRows]
+      : [...productRows.filter((row) => row.named), ...lineRows, ...productRows.filter((row) => !row.named)];
+    return ordered.slice(0, 30);
   }, [productQ, catalogProducts, categories, allLines]);
   const visibleModels = lineProducts.filter((item) => {
     const byGen = modelGen === allGenerations || modelGeneration(item.name) === modelGen;
@@ -247,6 +277,31 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     setOtherBrand("");
     setLineId(product.line);
     setModelId(product.code);
+    setModelGen(allGenerations);
+    setModelQ("");
+    setProductQ("");
+  }
+
+  function pickSearchedLine(line: Level2Category) {
+    const category = categories.find((item) => item.code === line.parent);
+    if (category) {
+      appliedKey.current = category.key;
+      setActiveKey(category.key);
+      const known = brands.some((entry) => entry.id === category.code);
+      if (known) {
+        setBrandId(category.code);
+        setOtherBrand("");
+      } else {
+        setBrandId("other");
+        setOtherBrand(category.code === "other" ? "" : category.name);
+      }
+    } else if (line.parent) {
+      setBrandId(line.parent);
+      setOtherBrand("");
+    }
+    const matches = catalogProducts.filter((item) => item.line === line.code || item.line === line.name);
+    setLineId(line.code);
+    setModelId(matches.length === 1 ? matches[0].code : "");
     setModelGen(allGenerations);
     setModelQ("");
     setProductQ("");
@@ -687,24 +742,39 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
               {productQ.trim() ? (
                 <div className="mt-2 max-h-72 overflow-auto rounded-xl border bg-zinc-50 p-1">
                   {productHits.length ? (
-                    productHits.map(({ item, brandName, lineName }) => (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={() => pickSearchedProduct(item)}
-                        className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-white"
-                      >
-                        <LiveImage mediaId={`model:${item.code}`} src={item.image} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
-                        <span className="min-w-0">
-                          <span className="block font-semibold">{item.name}</span>
-                          <span className="block text-xs text-zinc-500">
-                            {[brandName, lineName, item.specs].filter(Boolean).join(" · ")}
+                    productHits.map((hit) =>
+                      hit.kind === "line" ? (
+                        <button
+                          key={hit.key}
+                          type="button"
+                          onClick={() => pickSearchedLine(hit.line)}
+                          className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-white"
+                        >
+                          <LiveImage mediaId={`line:${hit.line.code}`} src={hit.line.image} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                          <span className="min-w-0">
+                            <span className="block font-semibold">{hit.line.name}</span>
+                            <span className="block text-xs text-zinc-500">{[hit.brandName, "Dòng sản phẩm"].filter(Boolean).join(" · ")}</span>
                           </span>
-                        </span>
-                      </button>
-                    ))
+                        </button>
+                      ) : (
+                        <button
+                          key={hit.key}
+                          type="button"
+                          onClick={() => pickSearchedProduct(hit.item)}
+                          className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-white"
+                        >
+                          <LiveImage mediaId={`model:${hit.item.code}`} src={hit.item.image} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                          <span className="min-w-0">
+                            <span className="block font-semibold">{hit.item.name}</span>
+                            <span className="block text-xs text-zinc-500">
+                              {[hit.brandName, hit.lineName, hit.item.specs].filter(Boolean).join(" · ")}
+                            </span>
+                          </span>
+                        </button>
+                      ),
+                    )
                   ) : (
-                    <p className="px-2 py-3 text-sm text-zinc-500">Không có sản phẩm trùng tên.</p>
+                    <p className="px-2 py-3 text-sm text-zinc-500">Không có dòng hoặc sản phẩm phù hợp.</p>
                   )}
                 </div>
               ) : (
