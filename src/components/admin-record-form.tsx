@@ -202,8 +202,21 @@ export function AdminRecordForm({
 
   useEffect(() => {
     if (parentIndex < 0 && !isProduct) return;
-    setLevel1Parents(readLevel1Categories(true));
-    if (isProduct) setLevel2Options(readLevel2Categories());
+    let alive = true;
+    const reload = () => {
+      if (!alive) return;
+      setLevel1Parents(readLevel1Categories(true));
+      if (isProduct) setLevel2Options(readLevel2Categories());
+    };
+    void import("@/lib/catalog-sync").then(async (mod) => {
+      await mod.ensureCatalog();
+      reload();
+    });
+    window.addEventListener("trione-catalog", reload);
+    return () => {
+      alive = false;
+      window.removeEventListener("trione-catalog", reload);
+    };
   }, [parentIndex, isProduct]);
 
   useEffect(() => {

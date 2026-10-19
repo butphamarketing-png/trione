@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { mapEmbedSrc, phoneHref, useSiteSettings } from "@/lib/site-settings";
 
@@ -112,6 +113,8 @@ export function BrandLogo({ size = 48, light = false }: { size?: number; light?:
 export function StoreFooter() {
   const site = useSiteSettings();
   const map = mapEmbedSrc(site.map);
+  const [newsEmail, setNewsEmail] = useState("");
+  const [newsNote, setNewsNote] = useState("");
   const socials = [
     { href: site.facebook, label: "Facebook", className: "bg-[#1877f2] text-white", text: "f", optional: false },
     { href: site.zalo, label: "Zalo", className: "bg-[#0068ff] text-white text-[10px]", text: "Zalo", optional: false },
@@ -132,12 +135,40 @@ export function StoreFooter() {
           )}
           <p className="text-sm font-bold">ĐĂNG KÝ NHẬN TIN</p>
           <p className="text-xs text-zinc-400 mt-1 mb-3">Nhận ưu đãi và tin tức mới nhất từ {site.company}</p>
-          <div className="flex max-w-[220px] border border-zinc-500">
-            <input className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none" placeholder="Email của bạn..." />
-            <button className="px-3 text-lg" aria-label="Gửi">
-              ➤
-            </button>
-          </div>
+          <form
+            className="max-w-[220px]"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const email = newsEmail.trim();
+              if (!email) {
+                setNewsNote("Nhập email để nhận tin.");
+                return;
+              }
+              if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                setNewsNote("Email chưa đúng định dạng.");
+                return;
+              }
+              setNewsEmail("");
+              setNewsNote("Đã ghi nhận email. TRIONE.VN sẽ gửi tin khi có ưu đãi.");
+            }}
+          >
+            <div className="flex border border-zinc-500">
+              <input
+                value={newsEmail}
+                onChange={(event) => {
+                  setNewsEmail(event.target.value);
+                  setNewsNote("");
+                }}
+                className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none"
+                placeholder="Email của bạn..."
+                aria-label="Email của bạn..."
+              />
+              <button type="submit" className="px-3 text-lg" aria-label="Gửi">
+                ➤
+              </button>
+            </div>
+            {newsNote ? <p className="mt-2 text-xs text-zinc-300">{newsNote}</p> : null}
+          </form>
         </div>
         <div>
           <p className="font-bold mb-3">{site.company} PHYSICAL STORE</p>
@@ -156,7 +187,10 @@ export function StoreFooter() {
               {site.hotline}
             </a>
             <br />
-            Website: {site.website}
+            Website:{" "}
+            <a href={site.website} className="font-semibold text-white">
+              {site.website.replace(/^https?:\/\//, "")}
+            </a>
             {site.hours ? (
               <>
                 <br />
@@ -170,18 +204,22 @@ export function StoreFooter() {
           <p className="font-bold mb-3">VỀ CHÚNG TÔI</p>
           <ul className="space-y-1.5 text-[13px] text-zinc-400">
             {[
-              "Giới thiệu về Trione.vn",
-              "Nam",
-              "Nữ",
-              "Garmin",
-              "Đồng hồ thể thao",
-              "Dinh dưỡng",
-              "Cũ người, mới ta",
-              "Phụ kiện",
-              "Tin tức - Sự kiện",
-              "Hệ thống cửa hàng",
-            ].map((i) => (
-              <li key={i}>{i}</li>
+              ["Giới thiệu về Trione.vn", "/gioi-thieu"],
+              ["Nam", "/thu-cu"],
+              ["Nữ", "/thu-cu"],
+              ["Garmin", "/thu-cu/garmin"],
+              ["Đồng hồ thể thao", "/thu-cu"],
+              ["Dinh dưỡng", "/gioi-thieu"],
+              ["Cũ người, mới ta", "/thu-cu"],
+              ["Phụ kiện", "/gioi-thieu"],
+              ["Tin tức - Sự kiện", "/gioi-thieu"],
+              ["Hệ thống cửa hàng", "/gioi-thieu#cua-hang"],
+            ].map(([label, href]) => (
+              <li key={label}>
+                <Link href={href} className="hover:text-white">
+                  {label}
+                </Link>
+              </li>
             ))}
           </ul>
         </div>
@@ -189,15 +227,19 @@ export function StoreFooter() {
           <p className="font-bold mb-3">CHÍNH SÁCH</p>
           <ul className="space-y-1.5 text-[13px] text-zinc-400">
             {[
-              "Điều khoản sử dụng Trione Content Manager",
-              "Chính sách bảo mật",
-              "Chính sách thanh toán",
-              "Chính sách vận chuyển và giao nhận",
-              "Chính sách đổi trả và hoàn tiền",
-              "Thông tin liên hệ & giải quyết khiếu nại",
-              "Bảo hành toàn diện",
-            ].map((i) => (
-              <li key={i}>{i}</li>
+              ["Điều khoản sử dụng", "/chinh-sach#dieu-khoan"],
+              ["Chính sách bảo mật", "/chinh-sach#bao-mat"],
+              ["Chính sách thanh toán", "/chinh-sach#thanh-toan"],
+              ["Chính sách vận chuyển và giao nhận", "/chinh-sach#van-chuyen"],
+              ["Chính sách đổi trả và hoàn tiền", "/chinh-sach#doi-tra"],
+              ["Thông tin liên hệ và giải quyết khiếu nại", "/chinh-sach#lien-he"],
+              ["Bảo hành toàn diện", "/chinh-sach#bao-hanh"],
+            ].map(([label, href]) => (
+              <li key={href}>
+                <Link href={href} className="hover:text-white">
+                  {label}
+                </Link>
+              </li>
             ))}
           </ul>
         </div>
