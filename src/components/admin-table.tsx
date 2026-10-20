@@ -11,6 +11,7 @@ import {
   peekRecords,
   reindex,
   saveRecords,
+  saveRecordsLocal,
   seedRecords,
   type AdminRecord,
 } from "@/lib/admin-records";
@@ -300,7 +301,7 @@ function AdminTableInner({
           record.extra.subCategory !== base[index]?.extra.subCategory ||
           record.cells.join("\u0000") !== baseRows[index]?.cells.join("\u0000")
       );
-    setRecords(changed ? saveRecords(title, coded) : reindex(coded));
+    setRecords(changed ? saveRecordsLocal(title, coded) : reindex(coded));
     }
     return () => {
       cancelled = true;

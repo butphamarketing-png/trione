@@ -29,7 +29,7 @@ export default function LoginPage() {
     setBusy(true);
     setErr("");
     const catalog = await import("@/lib/catalog-sync");
-    await catalog.hydrateCatalog();
+    await catalog.hydrateCatalog({ force: true });
     const session = resolveLogin(user, pass);
     if (session) {
       saveSession(session);

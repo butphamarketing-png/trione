@@ -217,15 +217,22 @@ export function loadRecords(key: string): AdminRecord[] | null {
   }
 }
 
-export function saveRecords(key: string, records: AdminRecord[]) {
+export function saveRecordsLocal(key: string, records: AdminRecord[]) {
   const next = reindex(records.map((record, index) => normalizeRecord(record, index)));
   memory.set(key, { dirty: true, records: next });
   if (typeof window !== "undefined") {
     sessionStorage.setItem(storageKey(key), JSON.stringify(next));
     void import("@/lib/catalog-sync").then((mod) => {
       mod.touchCatalogKey(storageKey(key));
-      return mod.publishCatalog();
     });
+  }
+  return next;
+}
+
+export function saveRecords(key: string, records: AdminRecord[]) {
+  const next = saveRecordsLocal(key, records);
+  if (typeof window !== "undefined") {
+    void import("@/lib/catalog-sync").then((mod) => mod.publishCatalog());
   }
   return next;
 }

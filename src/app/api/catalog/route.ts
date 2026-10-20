@@ -99,11 +99,22 @@ async function readRemote() {
   }
 }
 
+function storeChanged(before: Record<string, string>, after: Record<string, string>) {
+  if (before.__times !== after.__times) return true;
+  const beforeKeys = Object.keys(before).filter((key) => key !== "__times");
+  const afterKeys = Object.keys(after).filter((key) => key !== "__times");
+  if (beforeKeys.length !== afterKeys.length) return true;
+  for (const key of afterKeys) {
+    if (before[key] !== after[key]) return true;
+  }
+  return false;
+}
+
 export async function GET() {
   const remote = await readRemote();
   const local = await readLocal();
   const merged = mergeStores(local, remote);
-  if (Object.keys(remote).some((key) => key !== "__times")) {
+  if (Object.keys(remote).some((key) => key !== "__times") && storeChanged(local, merged)) {
     await writeLocal(merged).catch(() => undefined);
   }
   return NextResponse.json(merged);

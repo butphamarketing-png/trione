@@ -15,6 +15,8 @@ function kept(key: string) {
 
 const timeStore = "trione-catalog-times";
 const dirtyStore = "trione-catalog-dirty";
+const HYDRATE_MIN_MS = 25_000;
+const PUBLISH_DEBOUNCE_MS = 500;
 
 export function touchCatalogKey(key: string) {
   if (typeof window === "undefined") return;
@@ -25,8 +27,11 @@ export function touchCatalogKey(key: string) {
 
 let publishing = false;
 let pending = false;
+let publishTimer: ReturnType<typeof setTimeout> | null = null;
+let lastHydrateAt = 0;
+let hydrateInFlight: Promise<boolean> | null = null;
 
-export async function publishCatalog() {
+async function flushPublish() {
   if (typeof window === "undefined") return;
   if (publishing) {
     pending = true;
@@ -53,22 +58,32 @@ export async function publishCatalog() {
       body: JSON.stringify(payload),
     });
     if (!res.ok) window.dispatchEvent(new CustomEvent(catalogErrorEvent));
+    else lastHydrateAt = Date.now();
   } catch {
     window.dispatchEvent(new CustomEvent(catalogErrorEvent));
   } finally {
     publishing = false;
     if (pending) {
       pending = false;
-      void publishCatalog();
+      void flushPublish();
     }
   }
+}
+
+export async function publishCatalog() {
+  if (typeof window === "undefined") return;
+  if (publishTimer) clearTimeout(publishTimer);
+  publishTimer = setTimeout(() => {
+    publishTimer = null;
+    void flushPublish();
+  }, PUBLISH_DEBOUNCE_MS);
 }
 
 let ready: Promise<boolean> | null = null;
 
 export function ensureCatalog() {
   if (!ready) {
-    ready = hydrateCatalog().then((ok) => {
+    ready = hydrateCatalog({ force: true }).then((ok) => {
       if (!ok) ready = null;
       return ok;
     });
@@ -76,46 +91,66 @@ export function ensureCatalog() {
   return ready;
 }
 
-export async function hydrateCatalog() {
+export async function hydrateCatalog(options?: { force?: boolean }) {
   if (typeof window === "undefined") return false;
-  try {
-    const res = await fetch("/api/catalog", { cache: "no-store" });
-    if (!res.ok) return false;
-    const payload = (await res.json()) as Record<string, string>;
-    const keys = Object.keys(payload).filter((key) => kept(key) && payload[key]);
-    if (!keys.length) return false;
-    const serverTimes = JSON.parse(payload.__times || "{}") as Record<string, number>;
-    const dirty = JSON.parse(sessionStorage.getItem(dirtyStore) || "{}") as Record<string, number>;
-    const known = JSON.parse(sessionStorage.getItem(timeStore) || "{}") as Record<string, number>;
-    let keepLocal = false;
-    const applied = new Set<string>();
-    for (const key of keys) {
-      const serverTime = Number(serverTimes[key] || 0);
-      const localTime = Number(dirty[key] || 0);
-      if (sessionStorage.getItem(key) && localTime > serverTime) {
-        keepLocal = true;
-        continue;
+  const force = Boolean(options?.force);
+  if (!force && Date.now() - lastHydrateAt < HYDRATE_MIN_MS) return true;
+  if (hydrateInFlight) return hydrateInFlight;
+
+  hydrateInFlight = (async () => {
+    try {
+      const res = await fetch("/api/catalog", { cache: "no-store" });
+      if (!res.ok) return false;
+      const payload = (await res.json()) as Record<string, string>;
+      const keys = Object.keys(payload).filter((key) => kept(key) && payload[key]);
+      if (!keys.length) {
+        lastHydrateAt = Date.now();
+        return false;
       }
-      if (key.startsWith("trione-admin:")) ingestStored(key, payload[key]);
-      else sessionStorage.setItem(key, payload[key]);
-      applied.add(key);
-      known[key] = serverTime || known[key] || Date.now();
-      if (dirty[key] && dirty[key] <= known[key]) delete dirty[key];
+      const serverTimes = JSON.parse(payload.__times || "{}") as Record<string, number>;
+      const dirty = JSON.parse(sessionStorage.getItem(dirtyStore) || "{}") as Record<string, number>;
+      const known = JSON.parse(sessionStorage.getItem(timeStore) || "{}") as Record<string, number>;
+      let keepLocal = false;
+      const applied = new Set<string>();
+      for (const key of keys) {
+        const serverTime = Number(serverTimes[key] || 0);
+        const localTime = Number(dirty[key] || 0);
+        if (sessionStorage.getItem(key) && localTime > serverTime) {
+          keepLocal = true;
+          continue;
+        }
+        const current = sessionStorage.getItem(key);
+        if (current === payload[key] && Number(known[key] || 0) === serverTime) {
+          known[key] = serverTime || known[key] || Date.now();
+          if (dirty[key] && dirty[key] <= known[key]) delete dirty[key];
+          continue;
+        }
+        if (key.startsWith("trione-admin:")) ingestStored(key, payload[key]);
+        else sessionStorage.setItem(key, payload[key]);
+        applied.add(key);
+        known[key] = serverTime || known[key] || Date.now();
+        if (dirty[key] && dirty[key] <= known[key]) delete dirty[key];
+      }
+      sessionStorage.setItem(timeStore, JSON.stringify(known));
+      sessionStorage.setItem(dirtyStore, JSON.stringify(dirty));
+      if (applied.has("trione-site-settings")) {
+        const site = await import("@/lib/site-settings");
+        site.importSiteSettings(payload["trione-site-settings"]);
+      }
+      if (applied.has("trione-demo-requests")) {
+        const orders = await import("@/lib/demo-requests");
+        orders.importRequestStore(payload["trione-demo-requests"]);
+      }
+      if (applied.size > 0) window.dispatchEvent(new Event(catalogEvent));
+      if (keepLocal) void publishCatalog();
+      lastHydrateAt = Date.now();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      hydrateInFlight = null;
     }
-    sessionStorage.setItem(timeStore, JSON.stringify(known));
-    sessionStorage.setItem(dirtyStore, JSON.stringify(dirty));
-    if (applied.has("trione-site-settings")) {
-      const site = await import("@/lib/site-settings");
-      site.importSiteSettings(payload["trione-site-settings"]);
-    }
-    if (applied.has("trione-demo-requests")) {
-      const orders = await import("@/lib/demo-requests");
-      orders.importRequestStore(payload["trione-demo-requests"]);
-    }
-    window.dispatchEvent(new Event(catalogEvent));
-    if (keepLocal) void publishCatalog();
-    return true;
-  } catch {
-    return false;
-  }
+  })();
+
+  return hydrateInFlight;
 }
