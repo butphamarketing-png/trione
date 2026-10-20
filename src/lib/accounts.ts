@@ -59,8 +59,17 @@ export function saveAccounts(list: Array<Partial<Omit<Account, "role">> & { role
   sessionStorage.setItem(KEY, JSON.stringify(next));
   void import("@/lib/catalog-sync").then((mod) => {
     mod.touchCatalogKey(KEY);
-    return mod.publishCatalog();
+    return mod.publishCatalogNow();
   });
+  return next;
+}
+
+export async function saveAccountsAndSync(list: Array<Partial<Omit<Account, "role">> & { role?: string }>) {
+  const next = list.map((item, index) => normalizeAccount(item, index)).filter((item) => item.user && item.name);
+  sessionStorage.setItem(KEY, JSON.stringify(next));
+  const mod = await import("@/lib/catalog-sync");
+  mod.touchCatalogKey(KEY);
+  await mod.publishCatalogNow();
   return next;
 }
 

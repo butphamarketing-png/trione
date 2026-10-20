@@ -10,8 +10,12 @@ export function LogoutButton({ className }: { className?: string }) {
       type="button"
       className={className}
       onClick={() => {
-        clearSession();
-        router.push("/dang-nhap");
+        void import("@/lib/catalog-sync")
+          .then((mod) => mod.publishCatalogNow())
+          .finally(() => {
+            clearSession();
+            router.push("/dang-nhap");
+          });
       }}
     >
       Đăng xuất

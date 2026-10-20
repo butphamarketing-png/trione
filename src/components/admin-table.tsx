@@ -145,7 +145,7 @@ export function AdminTable(props: {
   wide?: boolean;
   redIndexes?: number[];
   brandFilter?: boolean;
-  onCommit?: (records: AdminRecord[]) => void;
+  onCommit?: (records: AdminRecord[]) => void | Promise<void>;
   beforeSave?: (record: AdminRecord) => string;
   renderExtra?: (mode: "add" | "edit" | "view") => ReactNode;
 }) {
@@ -199,7 +199,7 @@ function AdminTableInner({
   wide?: boolean;
   redIndexes?: number[];
   brandFilter?: boolean;
-  onCommit?: (records: AdminRecord[]) => void;
+  onCommit?: (records: AdminRecord[]) => void | Promise<void>;
   beforeSave?: (record: AdminRecord) => string;
   renderExtra?: (mode: "add" | "edit" | "view") => ReactNode;
 }) {
@@ -357,11 +357,10 @@ function AdminTableInner({
     keepNotice.current = Boolean(message);
     setNotice(message);
     setError("");
-    onCommit?.(saved);
-    return saved;
+    return { saved, done: Promise.resolve(onCommit?.(saved)).then(() => undefined) };
   }
 
-  function save(current: AdminRecord, exitAfter: boolean) {
+  async function save(current: AdminRecord, exitAfter: boolean) {
     const name = current.cells[titleIndex]?.trim() ?? "";
     if (!name) {
       setError(`Nhập ${columns[titleIndex] ?? "tiêu đề"} trước khi lưu.`);
@@ -386,15 +385,17 @@ function AdminTableInner({
     }
     const pool = (live ? records : peekRecords(title)) ?? records ?? [];
     if (mode === "add") {
-      commit([...pool.filter((record) => record.id !== nextDraft.id), nextDraft], "Đã lưu.");
+      const { done } = commit([...pool.filter((record) => record.id !== nextDraft.id), nextDraft], "Đã lưu.");
+      await done;
       if (exitAfter) exit();
       else router.replace(href("edit", nextDraft.id));
       return true;
     }
-    commit(
+    const { done } = commit(
       pool.map((record) => (record.id === nextDraft.id ? nextDraft : record)),
       "Đã lưu."
     );
+    await done;
     if (exitAfter) exit();
     return true;
   }
@@ -704,7 +705,7 @@ function RecordEditor({
   columns: string[];
   initial: AdminRecord | null;
   mode: "add" | "edit" | "view";
-  onSave: (record: AdminRecord, exitAfter: boolean) => boolean;
+  onSave: (record: AdminRecord, exitAfter: boolean) => boolean | Promise<boolean>;
   onExit: () => void;
   onEdit: (id: string) => void;
   extra?: ReactNode;
@@ -740,9 +741,9 @@ function RecordEditor({
       baseline={baseline}
       mode={mode}
       onChange={updateDraft}
-      onSave={(exitAfter) => {
+      onSave={async (exitAfter) => {
         const current = draftRef.current ?? draft;
-        const saved = onSave(current, exitAfter);
+        const saved = await onSave(current, exitAfter);
         if (saved && !exitAfter) setBaseline(cloneRecord(current));
         return saved;
       }}

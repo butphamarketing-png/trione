@@ -29,6 +29,7 @@ export default function LoginPage() {
     setBusy(true);
     setErr("");
     const catalog = await import("@/lib/catalog-sync");
+    await catalog.publishCatalogNow();
     await catalog.hydrateCatalog({ force: true });
     const session = resolveLogin(user, pass);
     if (session) {
@@ -36,21 +37,20 @@ export default function LoginPage() {
       router.replace(session.role === "admin" ? "/admin" : "/nhan-vien");
       return;
     }
-    const { readAccounts } = await import("@/lib/accounts");
-    const known = readAccounts().some((item) => item.user.toLowerCase() === user.trim().toLowerCase());
-    if (!known) {
-      const envLogin = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user, pass }),
-      }).catch(() => null);
-      if (envLogin?.ok) {
-        const data = (await envLogin.json()) as { session?: { user: string; role: "admin"; name: string; title: string } };
-        if (data.session) {
-          saveSession(data.session);
-          router.replace("/admin");
-          return;
-        }
+    // Server kiểm tra catalog trước; mật khẩu môi trường chỉ dùng khi chưa có tài khoản quản trị.
+    const apiLogin = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user, pass }),
+    }).catch(() => null);
+    if (apiLogin?.ok) {
+      const data = (await apiLogin.json()) as {
+        session?: { user: string; role: "admin" | "staff"; name: string; title: string };
+      };
+      if (data.session) {
+        saveSession(data.session);
+        router.replace(data.session.role === "admin" ? "/admin" : "/nhan-vien");
+        return;
       }
     }
     setBusy(false);

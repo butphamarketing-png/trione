@@ -25,49 +25,46 @@ export function touchCatalogKey(key: string) {
   sessionStorage.setItem(dirtyStore, JSON.stringify(dirty));
 }
 
-let publishing = false;
-let pending = false;
 let publishTimer: ReturnType<typeof setTimeout> | null = null;
+let publishChain: Promise<void> = Promise.resolve();
+let publishAgain = false;
 let lastHydrateAt = 0;
 let hydrateInFlight: Promise<boolean> | null = null;
 
-async function flushPublish() {
+async function runPublish() {
   if (typeof window === "undefined") return;
-  if (publishing) {
-    pending = true;
-    return;
-  }
-  publishing = true;
-  try {
-    const payload: Record<string, string> = {};
-    const dirty = JSON.parse(sessionStorage.getItem(dirtyStore) || "{}") as Record<string, number>;
-    const known = JSON.parse(sessionStorage.getItem(timeStore) || "{}") as Record<string, number>;
-    const times: Record<string, number> = {};
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (!key || !kept(key)) continue;
-      const raw = sessionStorage.getItem(key);
-      if (!raw) continue;
-      payload[key] = raw;
-      times[key] = dirty[key] || known[key] || 0;
+  do {
+    publishAgain = false;
+    try {
+      const payload: Record<string, string> = {};
+      const dirty = JSON.parse(sessionStorage.getItem(dirtyStore) || "{}") as Record<string, number>;
+      const known = JSON.parse(sessionStorage.getItem(timeStore) || "{}") as Record<string, number>;
+      const times: Record<string, number> = {};
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (!key || !kept(key)) continue;
+        const raw = sessionStorage.getItem(key);
+        if (!raw) continue;
+        payload[key] = raw;
+        times[key] = dirty[key] || known[key] || 0;
+      }
+      payload.__times = JSON.stringify(times);
+      const res = await fetch("/api/catalog", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) window.dispatchEvent(new CustomEvent(catalogErrorEvent));
+      else lastHydrateAt = Date.now();
+    } catch {
+      window.dispatchEvent(new CustomEvent(catalogErrorEvent));
     }
-    payload.__times = JSON.stringify(times);
-    const res = await fetch("/api/catalog", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) window.dispatchEvent(new CustomEvent(catalogErrorEvent));
-    else lastHydrateAt = Date.now();
-  } catch {
-    window.dispatchEvent(new CustomEvent(catalogErrorEvent));
-  } finally {
-    publishing = false;
-    if (pending) {
-      pending = false;
-      void flushPublish();
-    }
-  }
+  } while (publishAgain);
+}
+
+function enqueuePublish() {
+  publishChain = publishChain.then(runPublish, runPublish);
+  return publishChain;
 }
 
 export async function publishCatalog() {
@@ -75,8 +72,19 @@ export async function publishCatalog() {
   if (publishTimer) clearTimeout(publishTimer);
   publishTimer = setTimeout(() => {
     publishTimer = null;
-    void flushPublish();
+    void enqueuePublish();
   }, PUBLISH_DEBOUNCE_MS);
+}
+
+/** Cancel debounce and push catalog to the server now (passwords, settings). */
+export async function publishCatalogNow() {
+  if (typeof window === "undefined") return;
+  if (publishTimer) {
+    clearTimeout(publishTimer);
+    publishTimer = null;
+  }
+  publishAgain = true;
+  await enqueuePublish();
 }
 
 let ready: Promise<boolean> | null = null;
@@ -142,7 +150,7 @@ export async function hydrateCatalog(options?: { force?: boolean }) {
         orders.importRequestStore(payload["trione-demo-requests"]);
       }
       if (applied.size > 0) window.dispatchEvent(new Event(catalogEvent));
-      if (keepLocal) void publishCatalog();
+      if (keepLocal) void publishCatalogNow();
       lastHydrateAt = Date.now();
       return true;
     } catch {

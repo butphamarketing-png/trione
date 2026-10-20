@@ -99,7 +99,7 @@ export function AdminRecordForm({
   baseline: AdminRecord;
   mode: "add" | "edit" | "view";
   onChange: (next: AdminRecord) => void;
-  onSave: (exit: boolean) => void;
+  onSave: (exit: boolean) => void | boolean | Promise<void | boolean>;
   onExit: () => void;
   onEdit: () => void;
   extra?: ReactNode;

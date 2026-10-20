@@ -2,10 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AdminTable } from "@/components/admin-table";
-import { accountRoles, readAccounts, saveAccounts, type Account, type AccountRole } from "@/lib/accounts";
+import {
+  accountRoles,
+  readAccounts,
+  saveAccounts,
+  saveAccountsAndSync,
+  type Account,
+  type AccountRole,
+  type AccountStatus,
+} from "@/lib/accounts";
 import type { AdminRecord } from "@/lib/admin-records";
 
-type PasswordDraft = { password: string; confirm: string; id: string };
+type PasswordDraft = { password: string; confirm: string; id: string; user: string };
 
 export default function UsersPage() {
   const [accounts, setAccounts] = useState<Account[] | null>(null);
@@ -16,7 +24,7 @@ export default function UsersPage() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [passwordKey, setPasswordKey] = useState(0);
-  const passwordDraft = useRef<PasswordDraft>({ password: "", confirm: "", id: "" });
+  const passwordDraft = useRef<PasswordDraft>({ password: "", confirm: "", id: "", user: "" });
 
   useEffect(() => {
     let cancelled = false;
@@ -70,36 +78,42 @@ export default function UsersPage() {
     const next = draft.password.trim();
     const again = draft.confirm.trim();
     draft.id = record.id;
+    draft.user = record.cells[2]?.trim() ?? "";
     if (!next && !again) return "";
     if (next.length < 6) return "Mật khẩu mới cần ít nhất 6 ký tự.";
     if (next !== again) return "Mật khẩu nhập lại chưa khớp.";
     return "";
   }
 
-  function sync(records: AdminRecord[]) {
+  async function sync(records: AdminRecord[]) {
     const previous = readAccounts();
     const draft = passwordDraft.current;
     const nextPassword = draft.password.trim();
-    const next = saveAccounts(
-      records.map((record) => {
-        const username = record.cells[2]?.trim() ?? "";
-        const existing = previous.find((item) => item.id === record.id || item.user.toLowerCase() === username.toLowerCase());
-        const changing = Boolean(nextPassword) && record.id === draft.id;
-        return {
-          id: existing?.id || record.id,
-          name: record.cells[1]?.trim() ?? "",
-          user: username,
-          role: record.cells[3] ?? "Nhân viên",
-          status: record.cells[4] === "Ngưng" ? "Ngưng" : "Hoạt động",
-          password: changing ? nextPassword : existing?.password || "123456",
-        };
-      })
-    );
-    if (nextPassword && records.some((record) => record.id === draft.id)) {
-      passwordDraft.current = { password: "", confirm: "", id: "" };
+    const draftUser = draft.user.trim().toLowerCase();
+    const changingId = draft.id;
+    const next = records.map((record) => {
+      const username = record.cells[2]?.trim() ?? "";
+      const existing = previous.find((item) => item.id === record.id || item.user.toLowerCase() === username.toLowerCase());
+      const changing =
+        Boolean(nextPassword) &&
+        (record.id === changingId || (draftUser !== "" && username.toLowerCase() === draftUser));
+      const status: AccountStatus = record.cells[4] === "Ngưng" ? "Ngưng" : "Hoạt động";
+      return {
+        id: existing?.id || record.id,
+        name: record.cells[1]?.trim() ?? "",
+        user: username,
+        role: (record.cells[3] ?? "Nhân viên") as AccountRole,
+        status,
+        password: changing ? nextPassword : existing?.password || "123456",
+      };
+    });
+    if (nextPassword) {
+      passwordDraft.current = { password: "", confirm: "", id: "", user: "" };
       setPasswordKey((value) => value + 1);
+      setAccounts(await saveAccountsAndSync(next));
+      return;
     }
-    setAccounts(next);
+    setAccounts(saveAccounts(next));
   }
 
   if (!accounts) return <div className="rounded-sm border-t-4 border-[#2f6fed] bg-white p-4 text-sm text-zinc-500">Đang tải...</div>;
@@ -154,8 +168,8 @@ function PasswordFields({
   const [confirm, setConfirm] = useState("");
   const readOnly = mode === "view";
 
-  function update(next: PasswordDraft) {
-    draft.current = next;
+  function update(patch: Partial<PasswordDraft>) {
+    draft.current = { ...draft.current, ...patch };
   }
 
   return (
@@ -171,7 +185,7 @@ function PasswordFields({
           onChange={(event) => {
             const value = event.target.value;
             setPassword(value);
-            update({ ...draft.current, password: value });
+            update({ password: value });
           }}
           className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#e2b100] disabled:bg-zinc-50"
         />
@@ -186,7 +200,7 @@ function PasswordFields({
           onChange={(event) => {
             const value = event.target.value;
             setConfirm(value);
-            update({ ...draft.current, confirm: value });
+            update({ confirm: value });
           }}
           className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#e2b100] disabled:bg-zinc-50"
         />
