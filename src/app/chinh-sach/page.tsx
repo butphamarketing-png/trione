@@ -56,7 +56,8 @@ export default function PolicyPage() {
         </p>
         <h1 className="mt-3 text-3xl font-bold">Chính sách {site.company}</h1>
         <p className="mt-3 text-zinc-600">
-          Liên hệ {site.hotline} hoặc {site.email}. Cửa hàng: {site.address}.
+          Liên hệ {site.hotline}
+          {site.email ? ` hoặc ${site.email}` : ""}. Cửa hàng: {site.address}.
         </p>
         <article className="mt-8 space-y-8 rounded-2xl bg-white p-6 shadow-sm">
           {sections.map((section) => (

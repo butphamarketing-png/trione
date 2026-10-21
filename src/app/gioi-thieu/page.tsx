@@ -44,7 +44,7 @@ export default function AboutPage() {
                 {site.hotline}
               </a>
             </p>
-            <p className="mt-1 text-zinc-600">Email: {site.email}</p>
+            {site.email ? <p className="mt-1 text-zinc-600">Email: {site.email}</p> : null}
           </section>
         </article>
       </main>

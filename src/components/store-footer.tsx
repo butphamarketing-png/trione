@@ -98,11 +98,14 @@ export function MarkedImage({ src, alt = "", className = "" }: { src: string; al
   );
 }
 
-export function BrandLogo({ size = 48, light = false }: { size?: number; light?: boolean }) {
+export function BrandLogo({ size = 48, light = false, wide = false }: { size?: number; light?: boolean; wide?: boolean }) {
   const site = useSiteSettings();
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
   if (ready && site.logo) {
+    if (wide) {
+      return <img src={site.logo} alt={site.company} className="w-auto object-contain object-left" style={{ height: size, maxWidth: size * 4.2 }} />;
+    }
     return <img src={site.logo} alt={site.company} width={size} height={size} className="object-contain" style={{ width: size, height: size }} />;
   }
   const label = site.company.replace(/\.vn$/i, "").trim() || site.company;
@@ -135,7 +138,7 @@ export function StoreFooter() {
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-8 md:grid-cols-4">
         <div>
           {site.logo ? (
-            <img src={site.logo} alt={site.company} className="mb-5 h-[88px] w-[88px] rounded-full object-contain" />
+            <img src={site.logo} alt={site.company} className="mb-5 h-14 w-auto max-w-[220px] object-contain object-left" />
           ) : (
             <div className="mb-5 grid h-[88px] w-[88px] place-items-center rounded-full border-[5px] border-[#e11d2e] bg-transparent">
               <span className="px-2 text-center text-[11px] font-extrabold leading-tight">{site.company}</span>
@@ -181,30 +184,46 @@ export function StoreFooter() {
         <div>
           <p className="font-bold mb-3">{site.company}</p>
           <p className="text-[13px] text-zinc-400 leading-6">
-            Địa chỉ: {site.address}
-            <br />
-            Email: {site.email}
-            <br />
-            Điện thoại:{" "}
-            <a href={phoneHref(site.phone)} className="font-semibold text-white">
-              {site.phone}
-            </a>
-            <br />
-            Hotline:{" "}
-            <a href={phoneHref(site.hotline)} className="font-semibold text-white">
-              {site.hotline}
-            </a>
-            <br />
-            Website:{" "}
-            <a href={site.website} className="font-semibold text-white">
-              {site.website.replace(/^https?:\/\//, "")}
-            </a>
-            {site.hours ? (
+            {site.address ? (
               <>
+                Địa chỉ: {site.address}
                 <br />
-                Giờ mở cửa: {site.hours}
               </>
             ) : null}
+            {site.email ? (
+              <>
+                Email: {site.email}
+                <br />
+              </>
+            ) : null}
+            {site.phone ? (
+              <>
+                Điện thoại:{" "}
+                <a href={phoneHref(site.phone)} className="font-semibold text-white">
+                  {site.phone}
+                </a>
+                <br />
+              </>
+            ) : null}
+            {site.hotline ? (
+              <>
+                Hotline:{" "}
+                <a href={phoneHref(site.hotline)} className="font-semibold text-white">
+                  {site.hotline}
+                </a>
+                <br />
+              </>
+            ) : null}
+            {site.website ? (
+              <>
+                Website:{" "}
+                <a href={site.website} className="font-semibold text-white">
+                  {site.website.replace(/^https?:\/\//, "")}
+                </a>
+                <br />
+              </>
+            ) : null}
+            {site.hours ? <>Giờ mở cửa: {site.hours}</> : null}
           </p>
           {map ? <iframe title="Bản đồ cửa hàng" src={map} className="mt-3 h-36 w-full rounded-lg border-0" loading="lazy" /> : null}
         </div>
@@ -303,7 +322,7 @@ export function WizardHeader() {
     <header className="bg-black text-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
         <Link href="/thu-cu" className="shrink-0">
-          <BrandLogo size={40} light />
+          <BrandLogo size={36} light wide />
         </Link>
         <div className="min-w-0 text-center">
           <p className="text-xs font-extrabold leading-tight tracking-wide sm:text-[20px] sm:tracking-[0.08em]">{site.seoTitle || "Chương trình thu cũ đồng hồ"}</p>
