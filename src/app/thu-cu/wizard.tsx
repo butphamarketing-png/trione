@@ -186,15 +186,16 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     "TẤT CẢ",
     ...new Set(
       exchangeProducts
-        .filter((item) => !exchangeBrand || item.parent === exchangeBrand)
+        .filter((item) => !exchangeBrand || exchangeBrand === "all" || item.parent === exchangeBrand)
         .map((item) => item.series)
         .filter(Boolean),
     ),
   ];
   const visibleGarmin = exchangeProducts.filter((item) => {
-    if (exchangeBrand && item.parent !== exchangeBrand) return false;
+    if (!exchangeBrand && !garminQ.trim()) return false;
+    if (exchangeBrand && exchangeBrand !== "all" && item.parent !== exchangeBrand) return false;
     const bySeries = series === "TẤT CẢ" || item.series === series;
-    const byQ = !garminQ.trim() || textHasTokens(`${item.name} ${item.specs} ${item.series} ${item.brandName}`, searchTokens(garminQ));
+    const byQ = !garminQ.trim() || textHasTokens(`${item.name} ${item.specs}`, searchTokens(garminQ));
     return bySeries && byQ;
   });
   const lineProducts = products.filter((item) => item.line === lineId);
@@ -214,7 +215,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       const lineEntry = allLines.find((entry) => entry.code === item.line || entry.name === item.line);
       const lineName = lineEntry?.name || "";
       const brandName = labelOf(item.parent) || labelOf(lineEntry?.parent || "");
-      const named = textHasTokens(`${item.name} ${item.specs} ${item.blurb} ${lineName}`, tokens);
+      const named = textHasTokens(`${item.name} ${item.specs} ${item.blurb}`, tokens);
       const branded = textHasTokens(brandName, tokens) || (Boolean(broadBrand) && foldText(brandName) === broadBrand);
       if (!named && !branded) return [];
       return [{ key: item.key, item, brandName, lineName, named }];
@@ -406,7 +407,10 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       const parents = new Set(readLevel1Categories().map((item) => item.code));
       const list = readExchangeProducts().filter((item) => parents.has(item.parent));
       setExchangeProducts(list);
-      setExchangeBrand((current) => (current && list.some((item) => item.parent === current) ? current : ""));
+      setExchangeBrand((current) => {
+        if (current === "all") return "all";
+        return current && list.some((item) => item.parent === current) ? current : "";
+      });
       setGarminId((current) => (current && list.some((item) => item.code === current) ? current : ""));
     }
     reload();
@@ -1141,11 +1145,11 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   <button
                     type="button"
                     onClick={() => {
-                      setExchangeBrand("");
+                      setExchangeBrand("all");
                       setSeries("TẤT CẢ");
                     }}
                     className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      !exchangeBrand ? "bg-black text-white" : "border bg-white"
+                      exchangeBrand === "all" ? "bg-black text-white" : "border bg-white"
                     }`}
                   >
                     Tất cả
@@ -1190,8 +1194,11 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   </div>
                 ) : (
                   <p className="mb-4 text-xs text-zinc-400">
-                    {exchangeBrand ? "Chọn dòng máy phía trên hoặc tìm theo tên." : "Chọn thương hiệu để lọc dòng máy, hoặc tìm theo tên bên dưới."}
+                    {exchangeBrand ? "Chọn dòng máy phía trên hoặc tìm theo tên." : "Chưa chọn thương hiệu. Chọn một hãng, hoặc gõ đúng tên sản phẩm đổi mới."}
                   </p>
+                )}
+                {visibleGarmin.length ? null : (
+                  <p className="mb-3 text-sm text-zinc-500">Chưa có sản phẩm được chọn. Hãy chọn thương hiệu hoặc nhập tên máy đổi mới.</p>
                 )}
                 <div className="grid sm:grid-cols-2 gap-3">
                   {visibleGarmin.map((g) => {

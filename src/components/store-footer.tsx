@@ -179,7 +179,7 @@ export function StoreFooter() {
           </form>
         </div>
         <div>
-          <p className="font-bold mb-3">{site.company} PHYSICAL STORE</p>
+          <p className="font-bold mb-3">{site.company}</p>
           <p className="text-[13px] text-zinc-400 leading-6">
             Địa chỉ: {site.address}
             <br />
@@ -302,14 +302,14 @@ export function WizardHeader() {
   return (
     <header className="bg-black text-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
-        <a href="/thu-cu" className="shrink-0">
+        <Link href="/thu-cu" className="shrink-0">
           <BrandLogo size={40} light />
-        </a>
+        </Link>
         <div className="min-w-0 text-center">
-          <p className="text-xs font-extrabold leading-tight tracking-wide sm:text-[20px] sm:tracking-[0.08em]">CHƯƠNG TRÌNH THU CŨ ĐỒNG HỒ</p>
+          <p className="text-xs font-extrabold leading-tight tracking-wide sm:text-[20px] sm:tracking-[0.08em]">{site.seoTitle || "Chương trình thu cũ đồng hồ"}</p>
           <p className="mt-1 hidden text-[11px] tracking-[0.28em] text-zinc-400 sm:block">{site.slogan || "ĐỊNH GIÁ NHANH · QUY TRÌNH MINH BẠCH"}</p>
         </div>
-        <a href="/dang-nhap" className="flex items-center gap-2 text-sm">
+        <Link href="/dang-nhap" className="flex items-center gap-2 text-sm">
           <span className="grid h-9 w-9 place-items-center rounded-full border border-white/30">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
               <circle cx="12" cy="8" r="3.2" />
@@ -322,7 +322,7 @@ export function WizardHeader() {
             </span>
             <span className="text-[11px] text-zinc-400">Thông tin cá nhân</span>
           </span>
-        </a>
+        </Link>
       </div>
       <div className="h-[3px] bg-[#e11d2e]" />
     </header>

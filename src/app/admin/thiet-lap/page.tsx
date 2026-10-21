@@ -86,6 +86,11 @@ export default function SettingsPage() {
 
       <div className="space-y-5">
         <Section title="Thông tin chung">
+          <Field
+            label="Tiêu đề header và link chia sẻ"
+            value={draft.seoTitle}
+            onChange={(seoTitle) => patch({ seoTitle })}
+          />
           <Field label="Tên công ty" value={draft.company} onChange={(company) => patch({ company })} />
           <Field label="Slogan" value={draft.slogan} onChange={(slogan) => patch({ slogan })} />
           <Field label="Địa chỉ" value={draft.address} rows={2} onChange={(address) => patch({ address })} />
