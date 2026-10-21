@@ -786,7 +786,7 @@ export function AdminRecordForm({
                   type="checkbox"
                   checked={draft.cells[visibleIndex] === "✓"}
                   disabled={readOnly}
-                  onChange={(event) => setCell(visibleIndex, event.target.checked ? "✓" : "")}
+                  onChange={(event) => setCell(visibleIndex, event.target.checked ? "✓" : "✗")}
                   className="accent-[#f6c445]"
                 />
                 Hiển thị

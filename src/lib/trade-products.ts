@@ -131,6 +131,24 @@ function plainText(value: string) {
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function restoreBlankVisibility(saved: AdminRecord[]) {
+  let changed = false;
+  const next = saved.map((record) => {
+    const flag = (record.cells[visibleIndex] ?? "").trim();
+    if (flag) return record;
+    const priced = priceIndexes.some((index) => money(record.cells[index] ?? "") > 0);
+    if (!priced) return record;
+    changed = true;
+    const cells = record.cells.slice();
+    while (cells.length <= visibleIndex) cells.push("");
+    cells[visibleIndex] = "✓";
+    return { ...record, cells };
+  });
+  if (!changed) return saved;
+  if (typeof window === "undefined") return next;
+  return saveRecords(tradeProductStorageKey, next);
+}
+
 function retargetOrphanLines(saved: AdminRecord[]) {
   if (typeof window === "undefined" || !loadRecords(level2StorageKey)?.length) return saved;
   const savedLines = readLevel2Categories();
@@ -152,10 +170,15 @@ function retargetOrphanLines(saved: AdminRecord[]) {
 
 export function readTradeProducts(line = ""): TradeProduct[] {
   const loaded = loadRecords(tradeProductStorageKey);
-  const saved = loaded?.length ? retargetOrphanLines(loaded) : loaded;
+  const saved = loaded?.length ? restoreBlankVisibility(retargetOrphanLines(loaded)) : loaded;
   if (!saved?.length) return fallbackTradeProducts(line);
   const mapped = saved
-    .filter((record) => record.cells[visibleIndex] === "✓" && (record.cells[titleIndex] ?? "").trim())
+    .filter((record) => {
+      const flag = (record.cells[visibleIndex] ?? "").trim();
+      if (flag === "✗" || !(record.cells[titleIndex] ?? "").trim()) return false;
+      if (flag === "✓") return true;
+      return priceIndexes.some((index) => money(record.cells[index] ?? "") > 0);
+    })
     .map((record) => {
       const name = record.cells[titleIndex].trim();
       const sku = (record.extra.sku || "").toLowerCase();

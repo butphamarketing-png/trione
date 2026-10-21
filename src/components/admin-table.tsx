@@ -441,7 +441,7 @@ function AdminTableInner({
           ? {
               ...item,
               cells: item.cells.map((cell, index) =>
-                index === visibleIndex ? (cell === "✓" ? "" : "✓") : cell
+                index === visibleIndex ? (cell === "✓" ? "✗" : "✓") : cell
               ),
             }
           : item
