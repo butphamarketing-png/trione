@@ -76,6 +76,13 @@ export default function SettingsPage() {
       </div>
       {notice ? <p className="mb-3 text-sm text-emerald-600">{notice}</p> : null}
       {error ? <p className="mb-3 text-sm text-[#e11d2e]">{error}</p> : null}
+      <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+        Đổi tên cửa hàng, logo, website và chữ hiện trên Google/Zalo tại <strong>Thông tin chung</strong> +{" "}
+        <a href="#noi-dung-seo" className="font-semibold underline">
+          Nội dung SEO
+        </a>
+        . Sau khi Lưu, mở lại trang khách hoặc đợi khoảng 1 phút để đồng bộ. Preview Zalo/Facebook có thể cache vài giờ.
+      </p>
 
       <div className="space-y-5">
         <Section title="Thông tin chung">
@@ -136,8 +143,8 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => {
-                const company = draft.company.trim() || "TRIONE.VN";
-                const origin = draft.website.replace(/\/$/, "") || "https://trione.vn";
+                const company = draft.company.trim() || "Cửa hàng";
+                const origin = draft.website.replace(/\/$/, "") || draft.canonical.replace(/\/$/, "") || "";
                 patch({
                   seoTitle: clip(`${company} | Thu cũ đổi mới đồng hồ`, 70),
                   keywords: clip(`${company}, thu cũ, đổi mới, đồng hồ`, 70),

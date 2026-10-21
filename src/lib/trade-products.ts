@@ -257,50 +257,88 @@ export function tradeSheetRows() {
 
 export function importTradePriceRows(rows: string[][]) {
   const clean = rows.filter((row) => row.some((cell) => String(cell ?? "").trim()));
-  if (!clean.length) return { updated: 0, missing: [] as string[], skipped: 0 };
+  if (!clean.length) return { updated: 0, created: 0, missing: [] as string[], skipped: 0 };
   const folded = clean[0].map((cell) => fold(String(cell ?? "")));
-  const hasHeader = folded.some((cell) => /ma san pham|gia loai|sku|^code$/.test(cell));
+  const hasHeader = folded.some((cell) => /ma san pham|gia loai|sku|^code$|ten san pham/.test(cell));
   const body = hasHeader ? clean.slice(1) : clean;
   const header = hasHeader ? clean[0].map((cell) => String(cell ?? "")) : [];
   const codeAt = hasHeader ? headerAt(header, (value) => /ma san pham|^ma$|sku|^code$/.test(value)) : 0;
   const nameAt = hasHeader ? headerAt(header, (value) => /ten san pham|^ten$|tieu de|^name$/.test(value)) : 1;
+  const catAt = hasHeader ? headerAt(header, (value) => /danh muc cap 1|thuong hieu|brand|parent/.test(value)) : 2;
+  const lineAt = hasHeader ? headerAt(header, (value) => /danh muc cap 2|dong san pham|^dong$|line/.test(value)) : 3;
   const p1 = hasHeader ? headerAt(header, (value) => /gia loai 1|loai 1|price 1/.test(value)) : 4;
   const p2 = hasHeader ? headerAt(header, (value) => /gia loai 2|loai 2|price 2/.test(value)) : 5;
   const p3 = hasHeader ? headerAt(header, (value) => /gia loai 3|loai 3|price 3/.test(value)) : 6;
   const p4 = hasHeader ? headerAt(header, (value) => /gia loai 4|loai 4|price 4/.test(value)) : 7;
   const p5 = hasHeader ? headerAt(header, (value) => /gia loai 5|loai 5|price 5/.test(value)) : 8;
-  if ([p1, p2, p3, p4, p5].every((index) => index < 0)) {
-    return { updated: 0, missing: ["Không thấy cột giá loại 1–5"], skipped: 0 };
-  }
 
   const records = ensureTradeRecords();
   const missing: string[] = [];
   let updated = 0;
+  let created = 0;
   let skipped = 0;
   for (const row of body) {
     const cells = row.map((cell) => String(cell ?? "").trim());
-    const code = (codeAt >= 0 ? cells[codeAt] : "").toLowerCase();
-    const name = nameAt >= 0 ? cells[nameAt].toLowerCase() : "";
+    const codeRaw = codeAt >= 0 ? cells[codeAt] : "";
+    const nameRaw = nameAt >= 0 ? cells[nameAt] : "";
+    const code = codeRaw.toLowerCase();
+    const name = nameRaw.toLowerCase();
+    const category = catAt >= 0 ? brandCode(cells[catAt]) : "";
+    const subCategory = lineAt >= 0 ? lineCode(cells[lineAt]) : "";
     const prices = [p1, p2, p3, p4, p5].map((index) => (index >= 0 ? cells[index] : ""));
-    if (prices.every((value) => !value)) {
+    if (!code && !name) {
       skipped += 1;
       continue;
     }
-    const record = records.find((item) => {
+    let record = records.find((item) => {
       const sku = (item.extra.sku || "").trim().toLowerCase();
       const title = (item.cells[titleIndex] ?? "").trim().toLowerCase();
       return (code && sku === code) || (name && title === name);
     });
     if (!record) {
-      missing.push(cells[nameAt] || cells[codeAt] || "dòng trống");
+      if (!nameRaw && !codeRaw) {
+        skipped += 1;
+        continue;
+      }
+      const title = nameRaw || codeRaw;
+      const sku = code || slugify(title);
+      record = normalizeRecord(
+        {
+          id: String(records.length + 1),
+          cells: [
+            String(records.length + 1),
+            title,
+            prices[0] ? vndComma(money(prices[0])) : "0",
+            prices[1] ? vndComma(money(prices[1])) : "0",
+            prices[2] ? vndComma(money(prices[2])) : "0",
+            prices[3] ? vndComma(money(prices[3])) : "0",
+            prices[4] ? vndComma(money(prices[4])) : "0",
+            "✓",
+          ],
+          extra: {
+            ...blankExtra(String(records.length + 1)),
+            sku,
+            category,
+            subCategory,
+            seoTitle: title,
+          },
+        },
+        records.length,
+      );
+      records.push(record);
+      created += 1;
       continue;
     }
+    if (nameRaw) record.cells[titleIndex] = nameRaw;
+    if (codeRaw) record.extra.sku = code;
+    if (category) record.extra.category = category;
+    if (subCategory) record.extra.subCategory = subCategory;
     prices.forEach((value, index) => {
       if (!value) return;
-      record.cells[priceIndexes[index]] = vndComma(money(value));
+      record!.cells[priceIndexes[index]] = vndComma(money(value));
     });
     updated += 1;
   }
   saveRecords(tradeProductStorageKey, records);
-  return { updated, missing, skipped };
+  return { updated, created, missing, skipped };
 }

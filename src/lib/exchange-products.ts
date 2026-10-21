@@ -165,50 +165,102 @@ export function exchangeSheetRows() {
   return rows;
 }
 
+function slugifySku(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export function importExchangePriceRows(rows: string[][]) {
   const clean = rows.filter((row) => row.some((cell) => String(cell ?? "").trim()));
-  if (!clean.length) return { updated: 0, missing: [] as string[], skipped: 0 };
+  if (!clean.length) return { updated: 0, created: 0, missing: [] as string[], skipped: 0 };
   const folded = clean[0].map((cell) => fold(String(cell ?? "")));
-  const hasHeader = folded.some((cell) => /ma san pham|gia niem yet|tro gia|sku|^code$/.test(cell));
+  const hasHeader = folded.some((cell) => /ma san pham|gia niem yet|tro gia|sku|^code$|ten san pham/.test(cell));
   const body = hasHeader ? clean.slice(1) : clean;
   const header = hasHeader ? clean[0].map((cell) => String(cell ?? "")) : [];
   const codeAt = hasHeader ? headerAt(header, (value) => /ma san pham|^ma$|sku|^code$/.test(value)) : 0;
   const nameAt = hasHeader ? headerAt(header, (value) => /ten san pham|^ten$|tieu de|^name$/.test(value)) : 1;
-  const priceAt = hasHeader ? headerAt(header, (value) => /gia niem yet|list price|^gia$|price/.test(value) && !/tro gia|loai/.test(value)) : 4;
+  const catAt = hasHeader ? headerAt(header, (value) => /danh muc cap 1|thuong hieu|brand|parent/.test(value)) : 2;
+  const seriesAt = hasHeader ? headerAt(header, (value) => /series|dong may|^dong$/.test(value)) : 3;
+  const priceAt = hasHeader
+    ? headerAt(header, (value) => /gia niem yet|list price|^gia$|price/.test(value) && !/tro gia|loai/.test(value))
+    : 4;
   const supportAt = hasHeader ? headerAt(header, (value) => /tro gia|ho tro|support/.test(value)) : 5;
-  if (priceAt < 0 && supportAt < 0) {
-    return { updated: 0, missing: ["Không thấy cột giá niêm yết hoặc trợ giá"], skipped: 0 };
-  }
 
   const records = ensureExchangeRecords();
   const missing: string[] = [];
   let updated = 0;
+  let created = 0;
   let skipped = 0;
   for (const row of body) {
     const cells = row.map((cell) => String(cell ?? "").trim());
-    const code = (codeAt >= 0 ? cells[codeAt] : "").toLowerCase();
-    const name = nameAt >= 0 ? cells[nameAt].toLowerCase() : "";
+    const codeRaw = codeAt >= 0 ? cells[codeAt] : "";
+    const nameRaw = nameAt >= 0 ? cells[nameAt] : "";
+    const code = codeRaw.toLowerCase();
+    const name = nameRaw.toLowerCase();
+    const categoryRaw = catAt >= 0 ? cells[catAt] : "";
+    const parentCode = brandCode(categoryRaw) || "garmin";
+    const brand = brands.find((item) => item.id === parentCode);
+    const brandLabel = brand?.name || categoryRaw || "Garmin";
+    const series = seriesAt >= 0 ? cells[seriesAt] : "";
     const priceRaw = priceAt >= 0 ? cells[priceAt] : "";
     const supportRaw = supportAt >= 0 ? cells[supportAt] : "";
-    if (!priceRaw && !supportRaw) {
+    if (!code && !name) {
       skipped += 1;
       continue;
     }
-    const record = records.find((item) => {
+    let record = records.find((item) => {
       const sku = (item.extra.sku || "").trim().toLowerCase();
       const title = (item.cells[titleIndex] ?? "").trim().toLowerCase();
       return (code && sku === code) || (name && title === name);
     });
     if (!record) {
-      missing.push(cells[nameAt] || cells[codeAt] || "dòng trống");
+      const title = nameRaw || codeRaw;
+      const sku = code || slugifySku(title);
+      record = normalizeRecord(
+        {
+          id: String(records.length + 1),
+          cells: [
+            String(records.length + 1),
+            "",
+            title,
+            brandLabel,
+            series,
+            priceRaw ? vndComma(money(priceRaw)) : "0",
+            supportRaw ? vndComma(money(supportRaw)) : "0",
+            "✓",
+          ],
+          extra: {
+            ...blankExtra(String(records.length + 1)),
+            sku,
+            category: parentCode,
+            seoTitle: title,
+          },
+        },
+        records.length,
+      );
+      records.push(record);
+      created += 1;
       continue;
     }
+    if (nameRaw) record.cells[titleIndex] = nameRaw;
+    if (codeRaw) record.extra.sku = code;
+    if (categoryRaw) {
+      record.extra.category = parentCode;
+      record.cells[parentIndex] = brandLabel;
+    }
+    if (series) record.cells[seriesIndex] = series;
     if (priceRaw) record.cells[priceIndex] = vndComma(money(priceRaw));
     if (supportRaw) record.cells[supportIndex] = vndComma(money(supportRaw));
     updated += 1;
   }
   saveRecords(exchangeStorageKey, records);
-  return { updated, missing, skipped };
+  return { updated, created, missing, skipped };
 }
 
 export function supportCsv() {

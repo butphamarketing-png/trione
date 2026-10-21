@@ -7,22 +7,20 @@ import { mapEmbedSrc, phoneHref, useSiteSettings } from "@/lib/site-settings";
 export function TrioneMark({
   size = 48,
   light = false,
+  label = "LOGO",
 }: {
   size?: number;
   light?: boolean;
+  label?: string;
 }) {
   return (
     <div
       className={`grid place-items-center rounded-full border-[3px] font-extrabold leading-none ${
         light ? "border-white text-white" : "border-[#e11d2e] text-[#e11d2e] bg-black"
       }`}
-      style={{ width: size, height: size, fontSize: Math.max(8, size * 0.16) }}
+      style={{ width: size, height: size, fontSize: Math.max(8, size * 0.14) }}
     >
-      <span className="text-center tracking-tight">
-        TRIONE
-        <br />
-        .VN
-      </span>
+      <span className="px-1 text-center tracking-tight">{label}</span>
     </div>
   );
 }

@@ -113,10 +113,20 @@ function ImportCard({
   );
 }
 
-function formatResult(label: string, result: { updated: number; missing: string[]; skipped: number }) {
+function formatResult(
+  label: string,
+  result: { updated: number; created?: number; missing: string[]; skipped: number },
+) {
+  const parts = [
+    result.updated ? `cập nhật ${result.updated}` : "",
+    result.created ? `tạo mới ${result.created}` : "",
+  ].filter(Boolean);
+  const summary = parts.length ? parts.join(" · ") : "không có dòng thay đổi";
   return {
-    message: `Đã cập nhật ${label} cho ${result.updated} sản phẩm${result.skipped ? ` · bỏ qua ${result.skipped} dòng trống` : ""}.`,
-    error: result.missing.length ? `Không khớp: ${result.missing.slice(0, 12).join(", ")}${result.missing.length > 12 ? "…" : ""}` : "",
+    message: `Đã ${summary} (${label})${result.skipped ? ` · bỏ qua ${result.skipped} dòng trống` : ""}.`,
+    error: result.missing.length
+      ? `Không khớp: ${result.missing.slice(0, 12).join(", ")}${result.missing.length > 12 ? "…" : ""}`
+      : "",
   };
 }
 
@@ -149,24 +159,24 @@ export default function ImportPage() {
       <div className="rounded-sm border-t-4 border-[#2f6fed] bg-white p-6">
         <h1 className="mb-2 text-lg font-semibold">Import / Export giá sản phẩm</h1>
         <p className="text-sm text-zinc-500">
-          Xuất Excel theo từng loại, chỉnh giá hàng loạt rồi import lại. Khớp theo mã sản phẩm (SKU) hoặc tên sản phẩm. Không tạo sản phẩm mới từ file — chỉ cập nhật giá của sản phẩm đã có trong admin.
+          Xuất Excel theo từng loại, chỉnh hàng loạt rồi import lại. Khớp theo mã sản phẩm (SKU) hoặc tên. Dòng chưa có trong admin sẽ được tạo mới (cần mã hoặc tên + danh mục).
         </p>
       </div>
 
       <ImportCard
-        title="Sản phẩm thu cũ — giá loại 1–5"
-        blurb="File gồm mã, tên, danh mục cấp 1/2 và giá loại 1 đến 5. Chỉ các cột giá có giá trị được ghi đè."
-        downloadLabel="Xuất giá thu cũ (.xlsx)"
-        acceptHint="Nhận .xlsx, .xls hoặc CSV. Ô giá để trống sẽ giữ nguyên giá hiện tại."
+        title="Sản phẩm thu cũ — danh sách & giá loại 1–5"
+        blurb="File gồm mã, tên, danh mục cấp 1/2 và giá loại 1 đến 5. Cập nhật sản phẩm đã có hoặc tạo mới nếu chưa khớp mã/tên."
+        downloadLabel="Xuất sản phẩm thu cũ (.xlsx)"
+        acceptHint="Nhận .xlsx, .xls hoặc CSV. Ô giá để trống khi cập nhật sẽ giữ nguyên; khi tạo mới để trống thì ghi 0."
         onDownload={() => downloadSheet("trade")}
         onImport={({ rows }) => formatResult("giá thu cũ", importTradePriceRows(rows ?? []))}
       />
 
       <ImportCard
-        title="Sản phẩm đổi mới — giá niêm yết & trợ giá"
-        blurb="File gồm mã, tên, danh mục, series, giá niêm yết và trợ giá. Công thức giá tổng = giá gốc − giá đã thu cũ − trợ giá."
-        downloadLabel="Xuất giá đổi mới (.xlsx)"
-        acceptHint="Nhận .xlsx, .xls hoặc CSV. Ô trống được bỏ qua, không xóa giá cũ."
+        title="Sản phẩm đổi mới — danh sách, giá & trợ giá"
+        blurb="File gồm mã, tên, danh mục, series, giá niêm yết và trợ giá. Cập nhật hoặc tạo mới. Giá tổng = giá gốc − giá đã thu cũ − trợ giá."
+        downloadLabel="Xuất sản phẩm đổi mới (.xlsx)"
+        acceptHint="Nhận .xlsx, .xls hoặc CSV. Ô trống khi cập nhật giữ nguyên giá cũ."
         onDownload={() => downloadSheet("exchange")}
         onImport={({ rows }) => formatResult("giá đổi mới", importExchangePriceRows(rows ?? []))}
       />

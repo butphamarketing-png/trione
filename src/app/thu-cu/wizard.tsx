@@ -490,7 +490,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   }, [routeApplied, step, activeKey, lineId, modelId, categories]);
 
   useEffect(() => {
-    const origin = (site.canonical || site.website || "https://trione.vn").replace(/\/$/, "");
+    const origin = (site.canonical || site.website || "").replace(/\/$/, "");
     const brandItem = categories.find((item) => item.key === activeKey);
     const lineItem = level2.find((item) => item.code === lineId);
     const subject = step >= 9 && pickedExchange ? pickedExchange : pickedProduct ? pickedProduct : lineItem && lineId ? lineItem : brandItem;
@@ -1138,15 +1138,29 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   />
                 </div>
                 <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExchangeBrand("");
+                      setSeries("TẤT CẢ");
+                    }}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      !exchangeBrand ? "bg-black text-white" : "border bg-white"
+                    }`}
+                  >
+                    Tất cả
+                  </button>
                   {exchangeBrands.map((item) => (
                     <button
                       key={item.key}
                       type="button"
                       onClick={() => {
-                        setExchangeBrand((current) => (current === item.code ? "" : item.code));
+                        setExchangeBrand(item.code);
                         setSeries("TẤT CẢ");
                         setGarminId((current) =>
-                          exchangeProducts.some((product) => product.code === current && product.parent === item.code) ? current : ""
+                          exchangeProducts.some((product) => product.code === current && product.parent === item.code)
+                            ? current
+                            : "",
                         );
                       }}
                       className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -1156,25 +1170,29 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                       {item.name}
                     </button>
                   ))}
-                  {!exchangeBrand ? (
-                    <span className="text-xs text-zinc-400">Chọn thương hiệu để lọc, hoặc xem tất cả bên dưới.</span>
-                  ) : null}
-                </div>
-                <div className="mb-4 flex flex-wrap items-center gap-2">
-                  {exchangeSeries.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setSeries(s)}
-                      aria-pressed={series === s}
-                      className={`pick rounded-full px-3 py-1 text-xs font-semibold ${
-                        series === s ? "is-on bg-[#e11d2e] text-white" : "bg-white border"
-                      }`}
-                    >
-                      {s === "TẤT CẢ" ? "TẤT CẢ" : s}
-                    </button>
-                  ))}
                   <span className="ml-auto text-xs text-zinc-400">{visibleGarmin.length} sản phẩm</span>
                 </div>
+                {exchangeBrand && exchangeSeries.length > 1 ? (
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
+                    {exchangeSeries.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setSeries(s)}
+                        aria-pressed={series === s}
+                        className={`pick rounded-full px-3 py-1 text-xs font-semibold ${
+                          series === s ? "is-on bg-[#e11d2e] text-white" : "bg-white border"
+                        }`}
+                      >
+                        {s === "TẤT CẢ" ? "TẤT CẢ" : s}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mb-4 text-xs text-zinc-400">
+                    {exchangeBrand ? "Chọn dòng máy phía trên hoặc tìm theo tên." : "Chọn thương hiệu để lọc dòng máy, hoặc tìm theo tên bên dưới."}
+                  </p>
+                )}
                 <div className="grid sm:grid-cols-2 gap-3">
                   {visibleGarmin.map((g) => {
                     const extra = exchangeDue(g.price, tradeIn, g.supportPrice);

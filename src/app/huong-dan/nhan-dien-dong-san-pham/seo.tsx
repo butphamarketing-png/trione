@@ -6,7 +6,7 @@ import { setPageSeo, useSiteSettings } from "@/lib/site-settings";
 export function GuideSeo() {
   const site = useSiteSettings();
   useEffect(() => {
-    const origin = (site.canonical || site.website || "https://trione.vn").replace(/\/$/, "");
+    const origin = (site.canonical || site.website || "").replace(/\/$/, "");
     setPageSeo({
       title: `Cách nhận diện dòng đồng hồ | ${site.company}`,
       description: `Xem mặt lưng, hộp hoặc ứng dụng kết nối để chọn đúng dòng đồng hồ trước khi thu cũ đổi mới tại ${site.company}.`,

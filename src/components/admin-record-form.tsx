@@ -26,7 +26,7 @@ function fitParts(parts: string[], max: number) {
 }
 
 function buildSeo(title: string, path: string, product: boolean, site: SiteSettings = defaultSiteSettings) {
-  const origin = site.website.replace(/\/$/, "") || "https://trione.vn";
+  const origin = site.website.replace(/\/$/, "") || site.canonical.replace(/\/$/, "") || "";
   const url = path ? `${origin}/${path}` : `${origin}/`;
   return {
     seoTitle: clipText(`${title} | ${site.company}`, 70),
@@ -197,7 +197,7 @@ export function AdminRecordForm({
   }
 
   const slug = draft.extra.slug || slugify(name);
-  const origin = site.website.replace(/\/$/, "") || "https://trione.vn";
+  const origin = site.website.replace(/\/$/, "") || site.canonical.replace(/\/$/, "") || "";
   const sample = slug ? `${origin}/${slug}` : `${origin}/`;
   const discount = discountPercent(draft.extra.salePrice, draft.extra.newPrice);
   const album = draft.extra.album ?? [];
