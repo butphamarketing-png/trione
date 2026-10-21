@@ -32,8 +32,18 @@ function load(): Store {
   }
 }
 
+function dropOldBrand(value: string) {
+  return value.replace(/trione\.vn/gi, "LENDOI.COM").replace(/\btrione\b/gi, "Lendoi");
+}
+
 function withStatus(request: TradeRequest): TradeRequest {
-  return { ...request, status: normalizeRequestStatus(request.status) };
+  return {
+    ...request,
+    status: normalizeRequestStatus(request.status),
+    username: request.username === "khach.trione" ? "khach" : request.username,
+    name: dropOldBrand(request.name),
+    source: dropOldBrand(request.source),
+  };
 }
 
 function computeAll(store: Store): TradeRequest[] {
@@ -120,7 +130,7 @@ export function removeRequests(ids: string[]) {
 export function makeRequestCode() {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `TRI-${String(d.getFullYear()).slice(2)}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+  return `LEN-${String(d.getFullYear()).slice(2)}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
 }
 
 function countStatus(list: TradeRequest[], status: RequestStatus) {

@@ -68,15 +68,17 @@ export function quoteTradeIn(input: {
   screen?: string;
   body?: string;
 }) {
-  const status = input.functionStatus ?? "ok";
+  const status = input.functionStatus;
   const stored = (level: 1 | 2 | 3 | 4 | 5) => {
     if (input.product) return input.product.prices[level] || 0;
     return input.fallback?.[level] ?? 0;
   };
+  if (status !== "ok" && status !== "issues" && status !== "dead") return 0;
   if (status === "dead") return stored(5);
   if (status === "ok") {
-    const screenLevel = screenGrade[input.screen ?? "excellent"] ?? 1;
-    const bodyLevel = bodyGrade[input.body ?? "excellent"] ?? 1;
+    const screenLevel = input.screen ? screenGrade[input.screen] : undefined;
+    const bodyLevel = input.body ? bodyGrade[input.body] : undefined;
+    if (!screenLevel || !bodyLevel) return 0;
     return stored(Math.max(screenLevel, bodyLevel) as 1 | 2 | 4);
   }
   const grade = Math.min(5, Math.max(1, input.grade)) as 1 | 2 | 3 | 4 | 5;

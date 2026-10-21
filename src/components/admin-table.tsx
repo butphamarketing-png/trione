@@ -17,6 +17,7 @@ import {
 } from "@/lib/admin-records";
 import { brands } from "@/data/catalog";
 import { exchangeStorageKey, migrateExchangeRecord } from "@/lib/exchange-products";
+import { groupVnd } from "@/lib/pricing";
 
 function foldSearch(value: string) {
   return value
@@ -24,6 +25,11 @@ function foldSearch(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/đ/gi, "d")
     .toLowerCase();
+}
+
+function shownCell(column: string, cell: string) {
+  if (!/giá/i.test(column)) return cell;
+  return groupVnd(cell);
 }
 
 function slugify(value: string) {
@@ -638,7 +644,7 @@ function AdminTableInner({
                         </div>
                       </div>
                     ) : (
-                      cell
+                      shownCell(columns[index] ?? "", cell)
                     )}
                   </td>
                 ))}

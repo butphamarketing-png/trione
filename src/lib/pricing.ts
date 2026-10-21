@@ -44,6 +44,12 @@ export function vnd(n: number) {
   return `${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} đ`;
 }
 
+export function groupVnd(value: string) {
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) return value;
+  return trimmed.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
 export function vndComma(n: number) {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }

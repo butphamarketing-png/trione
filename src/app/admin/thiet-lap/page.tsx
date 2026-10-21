@@ -141,6 +141,7 @@ export default function SettingsPage() {
           <p className="mb-3 text-xs text-zinc-400">Dán thẻ meta google-site-verification hoặc riêng chuỗi content. Thẻ được in trong HTML của trang.</p>
           <Field label="Head JS" value={draft.headJs} rows={3} mono onChange={(headJs) => patch({ headJs })} />
           <Field label="Body JS" value={draft.bodyJs} rows={3} mono onChange={(bodyJs) => patch({ bodyJs })} />
+          <p className="mb-3 text-xs text-zinc-400">Mã trong Head và Body được gắn vào trang khách. Trang quản trị và trang nhân viên không chạy đoạn này.</p>
         </Section>
 
         <Section

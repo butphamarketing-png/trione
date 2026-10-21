@@ -31,6 +31,17 @@ type FunctionStatus = "ok" | "issues" | "dead";
 const lineGuideHref = "/huong-dan/nhan-dien-dong-san-pham";
 const allGenerations = "Tất cả thế hệ";
 
+function hasTradePrice(item: { prices: { 1: number; 2: number; 3: number; 4: number; 5: number } }) {
+  return item.prices[1] > 0 || item.prices[2] > 0 || item.prices[3] > 0 || item.prices[4] > 0 || item.prices[5] > 0;
+}
+
+function exchangeOffer(price: number, extra: number, ready: boolean) {
+  if (!ready) return "Đang tải giá";
+  if (price <= 0) return "Chưa có giá sản phẩm";
+  if (extra === 0) return "Không cần trả thêm";
+  return `Cần trả thêm ${vnd(extra)}`;
+}
+
 function foldText(value: string) {
   return value
     .normalize("NFD")
@@ -87,11 +98,11 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const [modelId, setModelId] = useState(opening.modelId);
   const [serial, setSerial] = useState("");
   const [openMenu, setOpenMenu] = useState<"brand" | "line" | "model" | "">("");
-  const [fn, setFn] = useState<FunctionStatus>("ok");
+  const [fn, setFn] = useState<FunctionStatus | "">("");
   const [issueIds, setIssueIds] = useState<string[]>([]);
   const [issueNote, setIssueNote] = useState("");
-  const [screen, setScreen] = useState("excellent");
-  const [body, setBody] = useState("excellent");
+  const [screen, setScreen] = useState("");
+  const [body, setBody] = useState("");
   const battery = "good";
   const strap = "good";
   const [photos, setPhotos] = useState<Record<string, string>>({});
@@ -163,7 +174,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         ? `${model.name}${model.specs && !model.name.includes(model.specs.split(" · ")[0]) ? ` · ${model.specs.split(" · ")[0]}` : ""}`
         : "";
   const grade = resolveGrade({
-    functionStatus: fn,
+    functionStatus: fn || undefined,
     issueIds,
     screen,
     body,
@@ -175,23 +186,24 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     grade,
     issueIds: fn === "issues" ? issueIds : [],
     fallback: catalogModel?.prices,
-    functionStatus: fn,
+    functionStatus: fn || undefined,
     screen,
     body,
   });
   const due = exchangeDue(garmin.listPrice, tradeIn, garmin.supportPrice);
   const photoCount = photoSlots.filter((p) => photos[p.id]).length;
-  const exchangeBrands = categories.filter((item) => exchangeProducts.some((product) => product.parent === item.code));
+  const pricedExchange = exchangeProducts.filter((item) => item.price > 0);
+  const exchangeBrands = categories.filter((item) => pricedExchange.some((product) => product.parent === item.code));
   const exchangeSeries = [
     "TẤT CẢ",
     ...new Set(
-      exchangeProducts
+      pricedExchange
         .filter((item) => !exchangeBrand || exchangeBrand === "all" || item.parent === exchangeBrand)
         .map((item) => item.series)
         .filter(Boolean),
     ),
   ];
-  const visibleGarmin = exchangeProducts.filter((item) => {
+  const visibleGarmin = pricedExchange.filter((item) => {
     if (!exchangeBrand && !garminQ.trim()) return false;
     if (exchangeBrand && exchangeBrand !== "all" && item.parent !== exchangeBrand) return false;
     const bySeries = series === "TẤT CẢ" || item.series === series;
@@ -236,19 +248,19 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
 
   const displayStep = step === 11 || step <= 3 ? 1 : step === 4 ? 2 : step === 5 || step === 52 ? 3 : step === 6 ? 4 : step === 7 ? 5 : step === 8 ? 6 : 7;
   const canNext = useMemo(() => {
-    if (step === 1) return brandId === "other" ? otherBrand.trim().length >= 2 : !!modelId;
+    if (step === 1) return brandId === "other" ? otherBrand.trim().length >= 2 : Boolean(pickedProduct && hasTradePrice(pickedProduct));
     if (step === 2) return brandId === "other" || !!lineId;
-    if (step === 3) return brandId === "other" || !!modelId;
+    if (step === 3) return brandId === "other" || Boolean(pickedProduct && hasTradePrice(pickedProduct));
     if (step === 4) return true;
     if (step === 5) return !!fn;
     if (step === 52) return issueIds.length > 0;
     if (step === 6) return !!screen;
     if (step === 7) return !!body;
     if (step === 8) return true;
-    if (step === 9) return pricesReady && !!garminId;
+    if (step === 9) return pricesReady && !!pickedExchange && pickedExchange.price > 0;
     if (step === 10) return pricesReady && agreed;
     return true;
-  }, [step, brandId, otherBrand, lineId, modelId, serial, fn, issueIds, screen, body, battery, strap, garminId, agreed, pricesReady]);
+  }, [step, brandId, otherBrand, lineId, modelId, pickedProduct, serial, fn, issueIds, screen, body, battery, strap, pickedExchange, agreed, pricesReady]);
 
   function chooseCategory(item: Level1Category) {
     setActiveKey(item.key);
@@ -359,7 +371,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   }, [brandId, categories]);
 
   useEffect(() => {
-    const reload = () => setProducts(readTradeProducts(lineId));
+    const reload = () => setProducts(readTradeProducts(lineId).filter(hasTradePrice));
     reload();
     window.addEventListener("trione-catalog", reload);
     window.addEventListener("focus", reload);
@@ -376,7 +388,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       const linesNow = readLevel2Categories();
       const visibleCodes = new Set(linesNow.map((item) => item.code));
       setAllLines(linesNow);
-      setCatalogProducts(readTradeProducts().filter((item) => visibleCodes.has(item.line)));
+      setCatalogProducts(readTradeProducts().filter((item) => visibleCodes.has(item.line) && hasTradePrice(item)));
     };
     void import("@/lib/catalog-sync").then(async (mod) => {
       await mod.ensureCatalog();
@@ -411,7 +423,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         if (current === "all") return "all";
         return current && list.some((item) => item.parent === current) ? current : "";
       });
-      setGarminId((current) => (current && list.some((item) => item.code === current) ? current : ""));
+      setGarminId((current) => (current && list.some((item) => item.code === current && item.price > 0) ? current : ""));
     }
     reload();
     window.addEventListener("trione-catalog", reload);
@@ -453,7 +465,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         setLineId(line.code);
         const productList = readTradeProducts(line.code);
         const product = productSlug ? productList.find((entry) => entry.slug === productSlug || entry.code === productSlug) : undefined;
-        if (product) {
+        if (product && hasTradePrice(product)) {
           setModelId(product.code);
           setStep(4);
         } else {
@@ -553,27 +565,29 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       return;
     }
     if (step === 9) {
+      if (!pickedExchange || pickedExchange.price <= 0) return;
       setRequestCode(makeRequestCode());
       setStep(10);
       return;
     }
     if (step === 10 && agreed) {
+      if ((brandId !== "other" && (!pickedProduct || !hasTradePrice(pickedProduct))) || !pickedExchange || pickedExchange.price <= 0) return;
       const code = requestCode || makeRequestCode();
       sendingLock.current = true;
       setSending(true);
       const uploadedPhotos = await uploadRequestPhotos(code);
       const now = new Date();
       const tags = [
-        fn === "ok" ? "CHỨC NĂNG TỐT" : fn === "dead" ? "KHÔNG HOẠT ĐỘNG" : "CÓ VẤN ĐỀ",
-        `MÀN HÌNH ${screen === "excellent" ? "XUẤT SẮC" : screen === "light" ? "NHẸ" : "HƯ HỎNG"}`,
-        `THÂN MÁY ${body === "excellent" ? "XUẤT SẮC" : body === "light" ? "MÒN" : "NẶNG"}`,
+        fn === "ok" ? "CHỨC NĂNG TỐT" : fn === "dead" ? "KHÔNG HOẠT ĐỘNG" : fn === "issues" ? "CÓ VẤN ĐỀ" : "CHƯA CHỌN",
+        `MÀN HÌNH ${screen === "excellent" ? "XUẤT SẮC" : screen === "light" ? "NHẸ" : screen === "broken" ? "HƯ HỎNG" : "CHƯA CHỌN"}`,
+        `THÂN MÁY ${body === "excellent" ? "XUẤT SẮC" : body === "light" ? "MÒN" : body === "heavy" ? "NẶNG" : "CHƯA CHỌN"}`,
       ];
       const session = readSession();
       const byStaff = session && session.role !== "admin";
       const profile = byStaff ? readStaffProfile(session.user, session.name) : null;
       saveTradeRequest({
         id: code,
-        username: byStaff ? session.user : "khach.trione",
+        username: byStaff ? session.user : "khach",
         name: byStaff ? profile?.name || session.name : `Khách ${site.company}`,
         createdAt: formatCreatedAt(now),
         updatedAt: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
@@ -698,7 +712,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   {deviceLabel} → {garmin.name}
                 </p>
                 <p className="mt-2 text-sm">
-                  Giá thu cũ {vnd(tradeIn)} · Trợ giá − {vnd(garmin.supportPrice)} · Giá tổng {vnd(due)}
+                  {garmin.listPrice > 0
+                    ? `Giá thu cũ ${vnd(tradeIn)} · Trợ giá − ${vnd(garmin.supportPrice)} · Giá tổng ${vnd(due)}`
+                    : "Chưa có giá sản phẩm đổi mới"}
                 </p>
               </div>
               <div className="rounded-xl bg-white/80 px-4 py-3 text-sm">
@@ -1162,7 +1178,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                         setExchangeBrand(item.code);
                         setSeries("TẤT CẢ");
                         setGarminId((current) =>
-                          exchangeProducts.some((product) => product.code === current && product.parent === item.code)
+                          pricedExchange.some((product) => product.code === current && product.parent === item.code)
                             ? current
                             : "",
                         );
@@ -1225,8 +1241,8 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                           <span className="block text-xs text-zinc-500">{g.specs}</span>
                           <span className="mt-1 block text-xs text-zinc-500">Giá sản phẩm {pricesReady ? vnd(g.price) : "Đang tải"}</span>
                           {pricesReady && g.supportPrice > 0 ? <span className="block text-xs text-emerald-700">Trợ giá nhà sản xuất − {vnd(g.supportPrice)}</span> : null}
-                          <span className={`block text-sm font-semibold ${pricesReady && extra === 0 ? "text-emerald-700" : "text-[#e11d2e]"}`}>
-                            {!pricesReady ? "Đang tải giá" : extra === 0 ? "Không cần trả thêm" : `Cần trả thêm ${vnd(extra)}`}
+                          <span className={`block text-sm font-semibold ${pricesReady && g.price > 0 && extra === 0 ? "text-emerald-700" : "text-[#e11d2e]"}`}>
+                            {exchangeOffer(g.price, extra, pricesReady)}
                           </span>
                           {garminId === g.code ? (
                             <span className="mt-2 inline-block rounded-full bg-rose-50 px-3 py-1 text-xs text-trione">ĐÃ CHỌN</span>
@@ -1297,7 +1313,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   <div className="mt-3 shrink-0 border-t border-zinc-100 pt-3">
                     <p className="flex items-end justify-between gap-3">
                       <span className="text-[11px] text-zinc-500">GIÁ TỔNG</span>
-                      <span className="text-xl font-bold text-[#e11d2e]">{pricesReady ? vnd(due) : "Đang tải"}</span>
+                      <span className="text-xl font-bold text-[#e11d2e]">
+                        {pricesReady ? (garmin.listPrice > 0 ? vnd(due) : "Chưa có giá") : "Đang tải"}
+                      </span>
                     </p>
                     <button
                       type="button"
@@ -1341,9 +1359,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   </div>
                 </div>
                 <p className="mt-2 text-xs text-zinc-500">
-                  {fn === "ok" ? "Hoạt động tốt" : fn === "dead" ? "Không hoạt động" : "Có vấn đề"} · Màn hình{" "}
-                  {screen === "excellent" ? "xuất sắc" : screen === "light" ? "đã qua sử dụng nhẹ" : "hư hỏng"} · Thân máy{" "}
-                  {body === "excellent" ? "xuất sắc" : body === "light" ? "hao mòn thường" : "hao mòn nặng"}
+                  {fn === "ok" ? "Hoạt động tốt" : fn === "dead" ? "Không hoạt động" : fn === "issues" ? "Có vấn đề" : "Chưa chọn"} · Màn hình{" "}
+                  {screen === "excellent" ? "xuất sắc" : screen === "light" ? "đã qua sử dụng nhẹ" : screen === "broken" ? "hư hỏng" : "chưa chọn"} · Thân máy{" "}
+                  {body === "excellent" ? "xuất sắc" : body === "light" ? "hao mòn thường" : body === "heavy" ? "hao mòn nặng" : "chưa chọn"}
                 </p>
                 <p className="mt-3 text-sm">
                   Giá loại {fn === "dead" ? 5 : grade} · Giá thu cũ <b>{pricesReady ? vnd(tradeIn) : "Đang tải"}</b>
@@ -1395,7 +1413,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 </div>
                 <div>
                   <p className="text-[11px] text-zinc-400">GIÁ TỔNG</p>
-                  <p className="text-xl font-bold text-[#e11d2e]">{pricesReady ? vnd(due) : "Đang tải"}</p>
+                  <p className="text-xl font-bold text-[#e11d2e]">
+                    {pricesReady ? (garmin.listPrice > 0 ? vnd(due) : "Chưa có giá sản phẩm") : "Đang tải"}
+                  </p>
                   <p className="text-xs text-zinc-500">
                     {pricesReady ? `${vnd(garmin.listPrice)} − ${vnd(tradeIn)} − ${vnd(garmin.supportPrice)}` : "Đang tải giá từ kho chung"}
                   </p>
@@ -1457,22 +1477,32 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 </>
               )}
               {step === 4 && (serial.trim() ? serial : "Không bắt buộc — bấm Bỏ qua để tiếp tục")}
-              {step === 5 && (
-                <>
-                  Đã chọn:{" "}
-                  <b className="text-emerald-700">
-                    {fn === "ok" ? "Hoạt động tốt" : fn === "issues" ? "Có vấn đề" : "Không hoạt động"}
-                  </b>
-                </>
-              )}
+              {step === 5 &&
+                (fn === "ok" ? (
+                  <>
+                    Đã chọn: <b className="text-emerald-700">Hoạt động tốt</b>
+                  </>
+                ) : fn === "issues" ? (
+                  <>
+                    Đã chọn: <b className="text-emerald-700">Có vấn đề</b>
+                  </>
+                ) : fn === "dead" ? (
+                  <>
+                    Đã chọn: <b className="text-emerald-700">Không hoạt động</b>
+                  </>
+                ) : (
+                  "Chọn tình trạng hoạt động"
+                ))}
               {step === 6 && (
                 <>
-                  Đã chọn: <b className="text-emerald-700">{screenOptions.find((o) => o.id === screen)?.name}</b>
+                  {screenOptions.some((o) => o.id === screen) ? "Đã chọn: " : "Chọn tình trạng màn hình"}
+                  <b className="text-emerald-700">{screenOptions.find((o) => o.id === screen)?.name}</b>
                 </>
               )}
               {step === 7 && (
                 <>
-                  Đã chọn: <b className="text-emerald-700">{bodyOptions.find((o) => o.id === body)?.name}</b>
+                  {bodyOptions.some((o) => o.id === body) ? "Đã chọn: " : "Chọn tình trạng thân máy"}
+                  <b className="text-emerald-700">{bodyOptions.find((o) => o.id === body)?.name}</b>
                 </>
               )}
               {step === 8 && (

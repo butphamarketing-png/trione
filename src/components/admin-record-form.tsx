@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { brands, lines, models } from "@/data/catalog";
 import { cloneRecord, type AdminAlbumImage, type AdminExtra, type AdminRecord } from "@/lib/admin-records";
 import { fileToDataUrl } from "@/lib/demo-media";
+import { groupVnd } from "@/lib/pricing";
 import { defaultSiteSettings, readSiteSettings, useSiteSettings, type SiteSettings } from "@/lib/site-settings";
 import { readLevel1Categories, type Level1Category } from "@/lib/level1-categories";
 import { matchedSavedLevel2, readLevel2Categories, type Level2Category } from "@/lib/level2-categories";
@@ -60,11 +61,29 @@ function MoneyField({
   disabled: boolean;
   onChange: (value: string) => void;
 }) {
+  const [text, setText] = useState(() => groupVnd(value));
+  const [focus, setFocus] = useState(false);
+  useEffect(() => {
+    if (!focus) setText(groupVnd(value));
+  }, [value, focus]);
   return (
     <label className="block text-sm">
       <span className="mb-1 block">{label}</span>
       <span className="flex items-center gap-2">
-        <input value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} className={inputClass} />
+        <input
+          value={text}
+          disabled={disabled}
+          onFocus={() => setFocus(true)}
+          onBlur={() => {
+            setFocus(false);
+            setText(groupVnd(text));
+          }}
+          onChange={(event) => {
+            setText(event.target.value);
+            onChange(event.target.value);
+          }}
+          className={inputClass}
+        />
         <span className="text-xs text-zinc-400">VNĐ</span>
       </span>
     </label>
@@ -181,6 +200,15 @@ export function AdminRecordForm({
     }
   }
 
+  function publicPath(slugValue: string, record: AdminRecord = draft) {
+    if (!slugValue) return "";
+    if (!isProduct) return slugValue;
+    const brandItem = level1Parents.find((item) => item.code === record.extra.category || item.name === record.extra.category);
+    const lineItem = level2Options.find((item) => item.code === record.extra.subCategory || item.name === record.extra.subCategory);
+    if (!brandItem || !lineItem) return slugValue;
+    return `thu-cu/${brandItem.slug}/${lineItem.slug}/${slugValue}`;
+  }
+
   function createSeo() {
     const title = name.trim();
     if (!title) {
@@ -188,9 +216,9 @@ export function AdminRecordForm({
       setSeoAsk(false);
       return;
     }
-    const path = draft.extra.slug || slugify(title);
     const current = draftRef.current;
-    commit({ ...current, extra: { ...current.extra, slug: path, ...buildSeo(title, path, isProduct, readSiteSettings()) } });
+    const path = current.extra.slug || slugify(title);
+    commit({ ...current, extra: { ...current.extra, slug: path, ...buildSeo(title, publicPath(path, current), isProduct, readSiteSettings()) } });
     setSeoNote(`Đã điền Nội dung SEO từ tiêu đề và thông tin ${site.company}.`);
     setSeoAsk(false);
     requestAnimationFrame(() => document.getElementById("noi-dung-seo")?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -198,7 +226,8 @@ export function AdminRecordForm({
 
   const slug = draft.extra.slug || slugify(name);
   const origin = site.website.replace(/\/$/, "") || site.canonical.replace(/\/$/, "") || "";
-  const sample = slug ? `${origin}/${slug}` : `${origin}/`;
+  const publicUrl = publicPath(slug);
+  const sample = publicUrl ? `${origin}/${publicUrl}` : `${origin}/`;
   const discount = discountPercent(draft.extra.salePrice, draft.extra.newPrice);
   const album = draft.extra.album ?? [];
 

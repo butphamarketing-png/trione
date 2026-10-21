@@ -232,14 +232,11 @@ export function StoreFooter() {
           <ul className="space-y-1.5 text-[13px] text-zinc-400">
             {[
               [`Giới thiệu về ${site.company}`, "/gioi-thieu"],
-              ["Nam", "/thu-cu"],
-              ["Nữ", "/thu-cu"],
+              ["Thu cũ đổi mới", "/thu-cu"],
               ["Garmin", "/thu-cu/garmin"],
-              ["Đồng hồ thể thao", "/thu-cu"],
-              ["Dinh dưỡng", "/gioi-thieu"],
-              ["Cũ người, mới ta", "/thu-cu"],
-              ["Phụ kiện", "/gioi-thieu"],
-              ["Tin tức - Sự kiện", "/gioi-thieu"],
+              ["Suunto", "/thu-cu/suunto"],
+              ["Apple", "/thu-cu/apple"],
+              ["Hướng dẫn nhận diện dòng", "/huong-dan/nhan-dien-dong-san-pham"],
               ["Hệ thống cửa hàng", "/gioi-thieu#cua-hang"],
             ].map(([label, href]) => (
               <li key={label}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
 import { facebookPixelId, readPageSeo, subscribePageSeo, useSiteSettings } from "@/lib/site-settings";
 
 function usePageSeo() {
@@ -40,6 +41,7 @@ function canonical(href: string) {
 export function SiteDocument() {
   const site = useSiteSettings();
   const page = usePageSeo();
+  const pathname = usePathname();
 
   useEffect(() => {
     let cancelled = false;
@@ -117,5 +119,42 @@ export function SiteDocument() {
     document.head.appendChild(script);
   }, [site, page]);
 
+  useEffect(() => {
+    const path = pathname || window.location.pathname;
+    const skip = path.startsWith("/admin") || path.startsWith("/nhan-vien");
+    document.querySelectorAll("[data-site-snippet]").forEach((node) => node.remove());
+    if (skip) return;
+    activateSnippet("head", site.headJs);
+    activateSnippet("body", site.bodyJs);
+    return () => {
+      document.querySelectorAll("[data-site-snippet]").forEach((node) => node.remove());
+    };
+  }, [site.headJs, site.bodyJs, pathname]);
+
   return null;
+}
+
+function activateSnippet(slot: "head" | "body", source: string) {
+  const html = source.trim();
+  if (!html) return;
+  const parent = slot === "head" ? document.head : document.body;
+  const host = document.createElement("template");
+  host.innerHTML = html.startsWith("<") ? html : `<script>${html}</script>`;
+  host.content.childNodes.forEach((node) => {
+    if (!(node instanceof HTMLElement)) return;
+    if (node instanceof HTMLScriptElement) {
+      const script = document.createElement("script");
+      script.dataset.siteSnippet = slot;
+      for (const attr of node.attributes) {
+        if (attr.name === "src" || attr.name === "type" || attr.name === "async" || attr.name === "defer" || attr.name === "crossorigin" || attr.name.startsWith("data-")) {
+          script.setAttribute(attr.name, attr.value);
+        }
+      }
+      script.text = node.text;
+      parent.appendChild(script);
+      return;
+    }
+    node.dataset.siteSnippet = slot;
+    parent.appendChild(node);
+  });
 }
