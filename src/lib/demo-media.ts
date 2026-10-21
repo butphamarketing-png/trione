@@ -1,20 +1,68 @@
+import { readExchangeProducts } from "@/lib/exchange-products";
+import { readLevel2Categories } from "@/lib/level2-categories";
+import { isMediaSlotId } from "@/lib/media-ids";
+import { readTradeProducts } from "@/lib/trade-products";
+
 export type MediaItem = {
   id: string;
   label: string;
   fallback: string;
   usedOn: string;
+  group: "site" | "line" | "trade" | "exchange";
 };
 
+export { isMediaSlotId } from "@/lib/media-ids";
+
 export const mediaLibrary: MediaItem[] = [
-  { id: "login-bg", label: "Banner đăng nhập", fallback: "", usedOn: "Trang đăng nhập" },
-  { id: "line:ultra", label: "Apple Watch Ultra", fallback: "/watches/ultra-2.jpg", usedOn: "Wizard · dòng máy" },
-  { id: "line:series", label: "Apple Watch Series", fallback: "/watches/series-10.jpg", usedOn: "Wizard · dòng máy" },
-  { id: "line:se", label: "Apple Watch SE", fallback: "/watches/se-2.jpg", usedOn: "Wizard · dòng máy" },
-  { id: "model:ultra2", label: "Ultra 2", fallback: "/watches/ultra-2.jpg", usedOn: "Wizard · mẫu thu cũ" },
-  { id: "model:ultra1", label: "Ultra 1", fallback: "/watches/ultra-1.jpg", usedOn: "Wizard · mẫu thu cũ" },
-  { id: "garmin:fenix8", label: "fēnix 8 AMOLED", fallback: "/watches/fenix-6x.jpg", usedOn: "Wizard · đổi mới" },
-  { id: "garmin:fr970", label: "Forerunner 970", fallback: "/watches/forerunner-970.jpg", usedOn: "Wizard · đổi mới" },
+  { id: "login-bg", label: "Banner đăng nhập", fallback: "", usedOn: "Trang đăng nhập", group: "site" },
 ];
+
+/** Live slots from catalog — same keys wizard uses (`line:`, `model:`, `garmin:`). */
+export function buildCatalogMediaLibrary(): MediaItem[] {
+  const items: MediaItem[] = [...mediaLibrary];
+  const seen = new Set(items.map((item) => item.id));
+
+  for (const line of readLevel2Categories()) {
+    const id = `line:${line.code}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    items.push({
+      id,
+      label: line.name,
+      fallback: line.image || "",
+      usedOn: `Dòng sản phẩm · ${line.parent || "—"}`,
+      group: "line",
+    });
+  }
+
+  for (const product of readTradeProducts()) {
+    const id = `model:${product.code}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    items.push({
+      id,
+      label: product.name,
+      fallback: product.image || "",
+      usedOn: `Thu cũ · ${product.parent || "—"}`,
+      group: "trade",
+    });
+  }
+
+  for (const product of readExchangeProducts()) {
+    const id = `garmin:${product.code}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    items.push({
+      id,
+      label: product.name,
+      fallback: product.image || "",
+      usedOn: `Đổi mới · ${product.brandName || product.parent || "—"}`,
+      group: "exchange",
+    });
+  }
+
+  return items;
+}
 
 const KEY = "trione-demo-media";
 const listeners = new Set<() => void>();
@@ -78,6 +126,7 @@ export function mediaSrc(id: string, fallback: string, overrides = getMediaSnaps
 }
 
 export function saveMedia(id: string, dataUrl: string) {
+  if (!isMediaSlotId(id)) return;
   const next = { ...load(), [id]: dataUrl };
   localStorage.setItem(KEY, JSON.stringify(next));
   emit();
@@ -85,8 +134,8 @@ export function saveMedia(id: string, dataUrl: string) {
 
 export function replaceMediaMap(map: Record<string, string>) {
   const next: Record<string, string> = {};
-  for (const item of mediaLibrary) {
-    if (map[item.id]) next[item.id] = map[item.id];
+  for (const [id, url] of Object.entries(map)) {
+    if (url && isMediaSlotId(id)) next[id] = url;
   }
   localStorage.setItem(KEY, JSON.stringify(next));
   emit();

@@ -1,7 +1,7 @@
 import { mkdir, readFile, readdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
-import { mediaLibrary } from "@/lib/demo-media";
+import { isMediaSlotId } from "@/lib/media-ids";
 import { createServiceClient, ensureMediaBucket, MEDIA_BUCKET, mediaPublicUrl, storagePath } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -56,7 +56,7 @@ async function localMap() {
     for (const name of names) {
       if (!name.endsWith(".img")) continue;
       const id = name.slice(0, -4).replace(/__/g, ":");
-      if (!mediaLibrary.some((item) => item.id === id)) continue;
+      if (!isMediaSlotId(id)) continue;
       const meta = await readLocal(id);
       map[id] = localUrl(id, meta?.updatedAt || Date.now());
     }
@@ -71,13 +71,13 @@ async function remoteMap() {
   if (!supabase) return {};
   try {
     await ensureMediaBucket(supabase);
-    const { data, error } = await supabase.storage.from(MEDIA_BUCKET).list("", { limit: 100 });
+    const { data, error } = await supabase.storage.from(MEDIA_BUCKET).list("", { limit: 1000 });
     if (error || !data) return {};
     const map: Record<string, string> = {};
     for (const item of data) {
       if (item.name.endsWith("/")) continue;
       const id = item.name.replace(/\.jpg$/i, "").replace(/__/g, ":");
-      if (!mediaLibrary.some((entry) => entry.id === id)) continue;
+      if (!isMediaSlotId(id)) continue;
       map[id] = mediaPublicUrl(id, item.updated_at ?? item.created_at ?? Date.now().toString());
     }
     return map;
@@ -107,8 +107,8 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const id = safeId(String(form.get("id") ?? ""));
   const file = form.get("file");
-  if (!id || !(file instanceof File)) {
-    return NextResponse.json({ error: "Thiếu id hoặc file" }, { status: 400 });
+  if (!id || !isMediaSlotId(id) || !(file instanceof File)) {
+    return NextResponse.json({ error: "Thiếu id hợp lệ hoặc file" }, { status: 400 });
   }
   const buf = Buffer.from(await file.arrayBuffer());
   const type = file.type || "image/jpeg";
@@ -142,7 +142,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   const id = safeId(new URL(req.url).searchParams.get("id") ?? "");
-  if (!id) return NextResponse.json({ error: "Thiếu id" }, { status: 400 });
+  if (!id || !isMediaSlotId(id)) return NextResponse.json({ error: "Thiếu id hợp lệ" }, { status: 400 });
   await unlink(path.join(dir, fileName(id))).catch(() => undefined);
   await unlink(path.join(dir, `${fileName(id)}.json`)).catch(() => undefined);
   const supabase = createServiceClient();
