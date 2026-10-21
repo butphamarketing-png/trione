@@ -5,6 +5,8 @@ import { defaultSiteSettings } from "@/lib/site-defaults";
 import { readServerSiteSettings } from "@/lib/server-site-settings";
 import "./globals.css";
 
+export const dynamic = "force-dynamic";
+
 const beVietnam = Be_Vietnam_Pro({
   variable: "--font-be-vietnam",
   subsets: ["latin", "vietnamese"],
