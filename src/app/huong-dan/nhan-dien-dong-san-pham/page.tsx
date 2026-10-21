@@ -49,7 +49,7 @@ export default function LineGuidePage() {
           <section>
             <h2 className="text-xl font-semibold">4. Vẫn chưa chắc</h2>
             <p className="mt-2 text-zinc-600">
-              Quay lại trang thu cũ, chọn đúng thương hiệu, rồi chọn dòng gần giống nhất. Nếu máy không thuộc các hãng trong danh sách, chọn Thương hiệu khác và ghi tên bạn nhìn thấy trên vỏ. Nhân viên TRIONE.VN sẽ đối chiếu lại khi nhận máy.
+              Quay lại trang thu cũ, chọn đúng thương hiệu, rồi chọn dòng gần giống nhất. Nếu máy không thuộc các hãng trong danh sách, chọn Thương hiệu khác và ghi tên bạn nhìn thấy trên vỏ. Nhân viên cửa hàng sẽ đối chiếu lại khi nhận máy.
             </p>
             <SiteSupportNote />
           </section>

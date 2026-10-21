@@ -157,6 +157,60 @@ export function supportSheetRows() {
   return rows;
 }
 
+export function exchangeSheetRows() {
+  const rows = [["mã sản phẩm", "tên sản phẩm", "danh mục cấp 1", "series", "giá niêm yết", "trợ giá"]];
+  for (const item of readExchangeProducts()) {
+    rows.push([item.code, item.name, item.parent, item.series, String(item.price), String(item.supportPrice)]);
+  }
+  return rows;
+}
+
+export function importExchangePriceRows(rows: string[][]) {
+  const clean = rows.filter((row) => row.some((cell) => String(cell ?? "").trim()));
+  if (!clean.length) return { updated: 0, missing: [] as string[], skipped: 0 };
+  const folded = clean[0].map((cell) => fold(String(cell ?? "")));
+  const hasHeader = folded.some((cell) => /ma san pham|gia niem yet|tro gia|sku|^code$/.test(cell));
+  const body = hasHeader ? clean.slice(1) : clean;
+  const header = hasHeader ? clean[0].map((cell) => String(cell ?? "")) : [];
+  const codeAt = hasHeader ? headerAt(header, (value) => /ma san pham|^ma$|sku|^code$/.test(value)) : 0;
+  const nameAt = hasHeader ? headerAt(header, (value) => /ten san pham|^ten$|tieu de|^name$/.test(value)) : 1;
+  const priceAt = hasHeader ? headerAt(header, (value) => /gia niem yet|list price|^gia$|price/.test(value) && !/tro gia|loai/.test(value)) : 4;
+  const supportAt = hasHeader ? headerAt(header, (value) => /tro gia|ho tro|support/.test(value)) : 5;
+  if (priceAt < 0 && supportAt < 0) {
+    return { updated: 0, missing: ["Không thấy cột giá niêm yết hoặc trợ giá"], skipped: 0 };
+  }
+
+  const records = ensureExchangeRecords();
+  const missing: string[] = [];
+  let updated = 0;
+  let skipped = 0;
+  for (const row of body) {
+    const cells = row.map((cell) => String(cell ?? "").trim());
+    const code = (codeAt >= 0 ? cells[codeAt] : "").toLowerCase();
+    const name = nameAt >= 0 ? cells[nameAt].toLowerCase() : "";
+    const priceRaw = priceAt >= 0 ? cells[priceAt] : "";
+    const supportRaw = supportAt >= 0 ? cells[supportAt] : "";
+    if (!priceRaw && !supportRaw) {
+      skipped += 1;
+      continue;
+    }
+    const record = records.find((item) => {
+      const sku = (item.extra.sku || "").trim().toLowerCase();
+      const title = (item.cells[titleIndex] ?? "").trim().toLowerCase();
+      return (code && sku === code) || (name && title === name);
+    });
+    if (!record) {
+      missing.push(cells[nameAt] || cells[codeAt] || "dòng trống");
+      continue;
+    }
+    if (priceRaw) record.cells[priceIndex] = vndComma(money(priceRaw));
+    if (supportRaw) record.cells[supportIndex] = vndComma(money(supportRaw));
+    updated += 1;
+  }
+  saveRecords(exchangeStorageKey, records);
+  return { updated, missing, skipped };
+}
+
 export function supportCsv() {
   return supportSheetRows()
     .map((row) => row.map(csvCell).join(","))

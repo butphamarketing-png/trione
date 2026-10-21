@@ -40,9 +40,7 @@ function foldText(value: string) {
     .toLowerCase();
 }
 
-type ProductSearchHit =
-  | { kind: "product"; key: string; item: TradeProduct; brandName: string; lineName: string }
-  | { kind: "line"; key: string; line: Level2Category; brandName: string };
+type ProductSearchHit = { key: string; item: TradeProduct; brandName: string; lineName: string };
 
 function searchTokens(value: string) {
   return foldText(value).trim().split(/\s+/).filter(Boolean);
@@ -57,7 +55,7 @@ function openingFromSlug(slug: string[]) {
   const categories = fallbackLevel1();
   const [brandSlug] = slug;
   const brand = brandSlug ? categories.find((item) => item.slug === brandSlug || item.code === brandSlug) : undefined;
-  if (!brand) return { brandId: "apple", activeKey: "apple", lineId: "", modelId: "", step: 1 };
+  if (!brand) return { brandId: "", activeKey: "", lineId: "", modelId: "", step: 1 };
   if (brand.code === "other") return { brandId: "other", activeKey: brand.key, lineId: "", modelId: "", step: 1 };
   return {
     brandId: brand.code,
@@ -115,7 +113,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const [catalogProducts, setCatalogProducts] = useState<TradeProduct[]>([]);
   const [allLines, setAllLines] = useState<Level2Category[]>([]);
   const [exchangeProducts, setExchangeProducts] = useState<ExchangeProduct[]>(fallbackExchangeProducts);
-  const [exchangeBrand, setExchangeBrand] = useState("garmin");
+  const [exchangeBrand, setExchangeBrand] = useState("");
   const [activeKey, setActiveKey] = useState(opening.activeKey);
   const brandRef = useRef(brandId);
   useEffect(() => {
@@ -184,9 +182,17 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const due = exchangeDue(garmin.listPrice, tradeIn, garmin.supportPrice);
   const photoCount = photoSlots.filter((p) => photos[p.id]).length;
   const exchangeBrands = categories.filter((item) => exchangeProducts.some((product) => product.parent === item.code));
-  const exchangeSeries = ["TẤT CẢ", ...new Set(exchangeProducts.filter((item) => item.parent === exchangeBrand).map((item) => item.series).filter(Boolean))];
+  const exchangeSeries = [
+    "TẤT CẢ",
+    ...new Set(
+      exchangeProducts
+        .filter((item) => !exchangeBrand || item.parent === exchangeBrand)
+        .map((item) => item.series)
+        .filter(Boolean),
+    ),
+  ];
   const visibleGarmin = exchangeProducts.filter((item) => {
-    if (item.parent !== exchangeBrand) return false;
+    if (exchangeBrand && item.parent !== exchangeBrand) return false;
     const bySeries = series === "TẤT CẢ" || item.series === series;
     const byQ = !garminQ.trim() || textHasTokens(`${item.name} ${item.specs} ${item.series} ${item.brandName}`, searchTokens(garminQ));
     return bySeries && byQ;
@@ -204,13 +210,6 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       return folded === query || (query.length >= 2 && folded.startsWith(query));
     });
     const broadBrand = matchedBrands.length === 1 ? foldText(matchedBrands[0]) : "";
-    const lineRows: ProductSearchHit[] = allLines.flatMap((line) => {
-      const brandName = labelOf(line.parent);
-      const byName = textHasTokens(`${line.name} ${line.blurb} ${line.keywords}`, tokens);
-      const byBrand = Boolean(broadBrand) && foldText(brandName) === broadBrand;
-      if (!byName && !byBrand) return [];
-      return [{ kind: "line", key: `line:${line.code}`, line, brandName }];
-    });
     const productRows = catalogProducts.flatMap((item) => {
       const lineEntry = allLines.find((entry) => entry.code === item.line || entry.name === item.line);
       const lineName = lineEntry?.name || "";
@@ -218,11 +217,14 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       const named = textHasTokens(`${item.name} ${item.specs} ${item.blurb} ${lineName}`, tokens);
       const branded = textHasTokens(brandName, tokens) || (Boolean(broadBrand) && foldText(brandName) === broadBrand);
       if (!named && !branded) return [];
-      return [{ kind: "product" as const, key: item.key, item, brandName, lineName, named }];
+      return [{ key: item.key, item, brandName, lineName, named }];
     });
     const ordered: ProductSearchHit[] = broadBrand
-      ? [...lineRows, ...productRows]
-      : [...productRows.filter((row) => row.named), ...lineRows, ...productRows.filter((row) => !row.named)];
+      ? productRows.map(({ named: _named, ...row }) => row)
+      : [
+          ...productRows.filter((row) => row.named).map(({ named: _named, ...row }) => row),
+          ...productRows.filter((row) => !row.named).map(({ named: _named, ...row }) => row),
+        ];
     return ordered.slice(0, 30);
   }, [productQ, catalogProducts, categories, allLines]);
   const visibleModels = lineProducts.filter((item) => {
@@ -278,40 +280,16 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
     setProductQ("");
   }
 
-  function pickSearchedLine(line: Level2Category) {
-    const category = categories.find((item) => item.code === line.parent);
-    if (category) {
-      appliedKey.current = category.key;
-      setActiveKey(category.key);
-      const known = brands.some((entry) => entry.id === category.code);
-      if (known) {
-        setBrandId(category.code);
-        setOtherBrand("");
-      } else {
-        setBrandId("other");
-        setOtherBrand(category.code === "other" ? "" : category.name);
-      }
-    } else if (line.parent) {
-      setBrandId(line.parent);
-      setOtherBrand("");
-    }
-    const matches = catalogProducts.filter((item) => item.line === line.code || item.line === line.name);
-    setLineId(line.code);
-    setModelId(matches.length === 1 ? matches[0].code : "");
-    setModelGen(allGenerations);
-    setModelQ("");
-    setProductQ("");
-  }
-
   useEffect(() => {
     function sync() {
       const list = readLevel1Categories();
       setCategories(list);
       setActiveKey((current) => {
         if (list.some((item) => item.key === current)) return current;
+        if (!brandRef.current) return "";
         const sameBrand = list.find((item) => item.code === brandRef.current);
         if (sameBrand) return sameBrand.key;
-        return (list.find((item) => item.code === "apple") ?? list[0])?.key ?? "";
+        return "";
       });
       if (!list.length) setBrandId("");
     }
@@ -428,7 +406,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       const parents = new Set(readLevel1Categories().map((item) => item.code));
       const list = readExchangeProducts().filter((item) => parents.has(item.parent));
       setExchangeProducts(list);
-      setExchangeBrand((current) => (list.some((item) => item.parent === current) ? current : list[0]?.parent || "garmin"));
+      setExchangeBrand((current) => (current && list.some((item) => item.parent === current) ? current : ""));
       setGarminId((current) => (current && list.some((item) => item.code === current) ? current : ""));
     }
     reload();
@@ -614,7 +592,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         supportPrice: garmin.supportPrice,
         note: issueNote,
         status: "dang-cho-duyet",
-        source: byStaff ? `Tạo bởi nhân viên ${session.user}` : "Tạo bởi khách hàng TRIONE.VN",
+        source: byStaff ? `Tạo bởi nhân viên ${session.user}` : `Tạo bởi khách hàng ${site.company}`,
       });
       setRequestCode(code);
       setSubmitted(true);
@@ -770,43 +748,28 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
               {productQ.trim() ? (
                 <div className="mt-2 max-h-72 overflow-auto rounded-xl border bg-zinc-50 p-1">
                   {productHits.length ? (
-                    productHits.map((hit) =>
-                      hit.kind === "line" ? (
-                        <button
-                          key={hit.key}
-                          type="button"
-                          onClick={() => pickSearchedLine(hit.line)}
-                          className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-white"
-                        >
-                          <LiveImage mediaId={`line:${hit.line.code}`} src={hit.line.image} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
-                          <span className="min-w-0">
-                            <span className="block font-semibold">{hit.line.name}</span>
-                            <span className="block text-xs text-zinc-500">{[hit.brandName, "Dòng sản phẩm"].filter(Boolean).join(" · ")}</span>
+                    productHits.map((hit) => (
+                      <button
+                        key={hit.key}
+                        type="button"
+                        onClick={() => pickSearchedProduct(hit.item)}
+                        className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-white"
+                      >
+                        <LiveImage mediaId={`model:${hit.item.code}`} src={hit.item.image} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                        <span className="min-w-0">
+                          <span className="block font-semibold">{hit.item.name}</span>
+                          <span className="block text-xs text-zinc-500">
+                            {[hit.brandName, hit.lineName, hit.item.specs].filter(Boolean).join(" · ")}
                           </span>
-                        </button>
-                      ) : (
-                        <button
-                          key={hit.key}
-                          type="button"
-                          onClick={() => pickSearchedProduct(hit.item)}
-                          className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-white"
-                        >
-                          <LiveImage mediaId={`model:${hit.item.code}`} src={hit.item.image} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
-                          <span className="min-w-0">
-                            <span className="block font-semibold">{hit.item.name}</span>
-                            <span className="block text-xs text-zinc-500">
-                              {[hit.brandName, hit.lineName, hit.item.specs].filter(Boolean).join(" · ")}
-                            </span>
-                          </span>
-                        </button>
-                      ),
-                    )
+                        </span>
+                      </button>
+                    ))
                   ) : (
-                    <p className="px-2 py-3 text-sm text-zinc-500">Không có dòng hoặc sản phẩm phù hợp.</p>
+                    <p className="px-2 py-3 text-sm text-zinc-500">Không có sản phẩm thu cũ phù hợp.</p>
                   )}
                 </div>
               ) : (
-                <p className="mt-2 text-xs text-zinc-400">Gõ tên để chọn nhanh. Thương hiệu, dòng và mẫu sẽ được điền theo sản phẩm.</p>
+                <p className="mt-2 text-xs text-zinc-400">Gõ tên để chọn nhanh. Chỉ hiện sản phẩm thu cũ; thương hiệu, dòng và mẫu sẽ được điền theo sản phẩm.</p>
               )}
             </div>
             <div className="grid gap-4 md:grid-cols-3">
@@ -905,7 +868,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         {step === 11 && (
           <Section
             title="Cần tư vấn trực tiếp"
-            sub={`${chosenName} chưa có trong danh mục định giá trực tuyến. TRIONE.VN sẽ báo giá khi xem máy tại cửa hàng hoặc qua điện thoại.`}
+            sub={`${chosenName} chưa có trong danh mục định giá trực tuyến. ${site.company} sẽ báo giá khi xem máy tại cửa hàng hoặc qua điện thoại.`}
             chip={<span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">● Thương hiệu khác</span>}
           >
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
@@ -1180,7 +1143,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                       key={item.key}
                       type="button"
                       onClick={() => {
-                        setExchangeBrand(item.code);
+                        setExchangeBrand((current) => (current === item.code ? "" : item.code));
                         setSeries("TẤT CẢ");
                         setGarminId((current) =>
                           exchangeProducts.some((product) => product.code === current && product.parent === item.code) ? current : ""
@@ -1193,6 +1156,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                       {item.name}
                     </button>
                   ))}
+                  {!exchangeBrand ? (
+                    <span className="text-xs text-zinc-400">Chọn thương hiệu để lọc, hoặc xem tất cả bên dưới.</span>
+                  ) : null}
                 </div>
                 <div className="mb-4 flex flex-wrap items-center gap-2">
                   {exchangeSeries.map((s) => (
@@ -1520,7 +1486,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                 </button>
                 {step === 10 && (
                   <p className="mt-2 max-w-[240px] text-[11px] leading-4 text-zinc-400">
-                    Bằng việc gửi yêu cầu, khách hàng đồng ý với chính sách thu cũ của TRIONE.VN.
+                    Bằng việc gửi yêu cầu, khách hàng đồng ý với chính sách thu cũ của {site.company}.
                   </p>
                 )}
               </div>

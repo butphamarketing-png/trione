@@ -1,7 +1,17 @@
 import { brands, lines, models } from "@/data/catalog";
-import { albumSources, loadRecords, normalizeConditionPrices, normalizeGradePrices, saveRecords, shownProductImage, type AdminRecord } from "@/lib/admin-records";
+import {
+  albumSources,
+  blankExtra,
+  loadRecords,
+  normalizeConditionPrices,
+  normalizeGradePrices,
+  normalizeRecord,
+  saveRecords,
+  shownProductImage,
+  type AdminRecord,
+} from "@/lib/admin-records";
 import { level2StorageKey, readLevel2Categories } from "@/lib/level2-categories";
-import type { FunctionStatus } from "@/lib/pricing";
+import { vndComma, type FunctionStatus } from "@/lib/pricing";
 
 export const tradeProductStorageKey = "Danh sách Sản phẩm thu cũ";
 
@@ -181,4 +191,116 @@ export function readTradeProducts(line = ""): TradeProduct[] {
     });
   if (!line) return mapped;
   return mapped.filter((item) => onLine(item, line));
+}
+
+function ensureTradeRecords(): AdminRecord[] {
+  const saved = loadRecords(tradeProductStorageKey);
+  if (saved?.length) return saved.map((record, index) => normalizeRecord(record, index));
+  return fallbackTradeProducts().map((item, index) =>
+    normalizeRecord(
+      {
+        id: String(index + 1),
+        cells: [
+          String(index + 1),
+          item.name,
+          vndComma(item.prices[1]),
+          vndComma(item.prices[2]),
+          vndComma(item.prices[3]),
+          vndComma(item.prices[4]),
+          vndComma(item.prices[5]),
+          "✓",
+        ],
+        extra: {
+          ...blankExtra(String(index + 1)),
+          sku: item.code,
+          category: item.parent,
+          subCategory: item.line,
+          seoTitle: item.name,
+          shortDesc: item.blurb,
+        },
+      },
+      index,
+    ),
+  );
+}
+
+function fold(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase()
+    .trim();
+}
+
+function headerAt(header: string[], test: (value: string) => boolean) {
+  return header.findIndex((cell) => test(fold(cell)));
+}
+
+export function tradeSheetRows() {
+  const rows = [["mã sản phẩm", "tên sản phẩm", "danh mục cấp 1", "danh mục cấp 2", "giá loại 1", "giá loại 2", "giá loại 3", "giá loại 4", "giá loại 5"]];
+  for (const item of readTradeProducts()) {
+    rows.push([
+      item.code,
+      item.name,
+      item.parent,
+      item.line,
+      String(item.prices[1]),
+      String(item.prices[2]),
+      String(item.prices[3]),
+      String(item.prices[4]),
+      String(item.prices[5]),
+    ]);
+  }
+  return rows;
+}
+
+export function importTradePriceRows(rows: string[][]) {
+  const clean = rows.filter((row) => row.some((cell) => String(cell ?? "").trim()));
+  if (!clean.length) return { updated: 0, missing: [] as string[], skipped: 0 };
+  const folded = clean[0].map((cell) => fold(String(cell ?? "")));
+  const hasHeader = folded.some((cell) => /ma san pham|gia loai|sku|^code$/.test(cell));
+  const body = hasHeader ? clean.slice(1) : clean;
+  const header = hasHeader ? clean[0].map((cell) => String(cell ?? "")) : [];
+  const codeAt = hasHeader ? headerAt(header, (value) => /ma san pham|^ma$|sku|^code$/.test(value)) : 0;
+  const nameAt = hasHeader ? headerAt(header, (value) => /ten san pham|^ten$|tieu de|^name$/.test(value)) : 1;
+  const p1 = hasHeader ? headerAt(header, (value) => /gia loai 1|loai 1|price 1/.test(value)) : 4;
+  const p2 = hasHeader ? headerAt(header, (value) => /gia loai 2|loai 2|price 2/.test(value)) : 5;
+  const p3 = hasHeader ? headerAt(header, (value) => /gia loai 3|loai 3|price 3/.test(value)) : 6;
+  const p4 = hasHeader ? headerAt(header, (value) => /gia loai 4|loai 4|price 4/.test(value)) : 7;
+  const p5 = hasHeader ? headerAt(header, (value) => /gia loai 5|loai 5|price 5/.test(value)) : 8;
+  if ([p1, p2, p3, p4, p5].every((index) => index < 0)) {
+    return { updated: 0, missing: ["Không thấy cột giá loại 1–5"], skipped: 0 };
+  }
+
+  const records = ensureTradeRecords();
+  const missing: string[] = [];
+  let updated = 0;
+  let skipped = 0;
+  for (const row of body) {
+    const cells = row.map((cell) => String(cell ?? "").trim());
+    const code = (codeAt >= 0 ? cells[codeAt] : "").toLowerCase();
+    const name = nameAt >= 0 ? cells[nameAt].toLowerCase() : "";
+    const prices = [p1, p2, p3, p4, p5].map((index) => (index >= 0 ? cells[index] : ""));
+    if (prices.every((value) => !value)) {
+      skipped += 1;
+      continue;
+    }
+    const record = records.find((item) => {
+      const sku = (item.extra.sku || "").trim().toLowerCase();
+      const title = (item.cells[titleIndex] ?? "").trim().toLowerCase();
+      return (code && sku === code) || (name && title === name);
+    });
+    if (!record) {
+      missing.push(cells[nameAt] || cells[codeAt] || "dòng trống");
+      continue;
+    }
+    prices.forEach((value, index) => {
+      if (!value) return;
+      record.cells[priceIndexes[index]] = vndComma(money(value));
+    });
+    updated += 1;
+  }
+  saveRecords(tradeProductStorageKey, records);
+  return { updated, missing, skipped };
 }

@@ -191,7 +191,7 @@ export function AdminRecordForm({
     const path = draft.extra.slug || slugify(title);
     const current = draftRef.current;
     commit({ ...current, extra: { ...current.extra, slug: path, ...buildSeo(title, path, isProduct, readSiteSettings()) } });
-    setSeoNote("Đã điền Nội dung SEO từ tiêu đề và thông tin TRIONE.VN.");
+    setSeoNote(`Đã điền Nội dung SEO từ tiêu đề và thông tin ${site.company}.`);
     setSeoAsk(false);
     requestAnimationFrame(() => document.getElementById("noi-dung-seo")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }

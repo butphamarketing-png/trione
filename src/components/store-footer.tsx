@@ -107,7 +107,17 @@ export function BrandLogo({ size = 48, light = false }: { size?: number; light?:
   if (ready && site.logo) {
     return <img src={site.logo} alt={site.company} width={size} height={size} className="object-contain" style={{ width: size, height: size }} />;
   }
-  return <TrioneMark size={size} light={light} />;
+  const label = site.company.replace(/\.vn$/i, "").trim() || site.company;
+  return (
+    <div
+      className={`grid place-items-center rounded-full border-[3px] font-extrabold leading-none ${
+        light ? "border-white text-white" : "border-[#e11d2e] text-[#e11d2e] bg-black"
+      }`}
+      style={{ width: size, height: size, fontSize: Math.max(8, size * 0.14) }}
+    >
+      <span className="px-1 text-center tracking-tight">{label}</span>
+    </div>
+  );
 }
 
 export function StoreFooter() {
@@ -149,7 +159,7 @@ export function StoreFooter() {
                 return;
               }
               setNewsEmail("");
-              setNewsNote("Đã ghi nhận email. TRIONE.VN sẽ gửi tin khi có ưu đãi.");
+              setNewsNote(`Đã ghi nhận email. ${site.company} sẽ gửi tin khi có ưu đãi.`);
             }}
           >
             <div className="flex border border-zinc-500">
@@ -204,7 +214,7 @@ export function StoreFooter() {
           <p className="font-bold mb-3">VỀ CHÚNG TÔI</p>
           <ul className="space-y-1.5 text-[13px] text-zinc-400">
             {[
-              ["Giới thiệu về Trione.vn", "/gioi-thieu"],
+              [`Giới thiệu về ${site.company}`, "/gioi-thieu"],
               ["Nam", "/thu-cu"],
               ["Nữ", "/thu-cu"],
               ["Garmin", "/thu-cu/garmin"],

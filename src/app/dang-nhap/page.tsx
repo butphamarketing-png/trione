@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { TrioneMark } from "@/components/store-footer";
+import { BrandLogo } from "@/components/store-footer";
 import { resolveLogin, saveSession } from "@/lib/session";
 import { useMediaSrc } from "@/lib/use-live-media";
 import { useSiteSettings } from "@/lib/site-settings";
@@ -73,7 +73,7 @@ export default function LoginPage() {
                   <img src={site.logo} alt={site.company} className="h-12 w-auto max-w-[200px] object-contain" />
                 </span>
               ) : (
-                <TrioneMark size={72} />
+                <BrandLogo size={72} />
               )}
               <p className="mt-4 text-[11px] font-bold tracking-[0.22em] text-[#e11d2e] uppercase" suppressHydrationWarning>
                 {site.company}
