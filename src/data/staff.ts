@@ -76,7 +76,7 @@ export const requests: TradeRequest[] = [
     tradeIn: 8_500_000,
     note: "Khách hàng mang đầy đủ dây đeo và cáp sạc. Ưu tiên kiểm tra và phân hồi báo giá trong ngày.",
     status: "dang-cho-duyet",
-    source: "Tạo bởi khách hàng TRIONE.VN",
+    source: "Tạo bởi khách hàng",
   },
   {
     id: "TRI-000127",
@@ -118,7 +118,7 @@ export const requests: TradeRequest[] = [
     tradeIn: 7_100_000,
     note: "",
     status: "dang-cho-duyet",
-    source: "Tạo bởi khách hàng TRIONE.VN",
+    source: "Tạo bởi khách hàng",
   },
   {
     id: "TRI-000125",
@@ -139,7 +139,7 @@ export const requests: TradeRequest[] = [
     tradeIn: 4_600_000,
     note: "",
     status: "da-duyet",
-    source: "Tạo bởi khách hàng TRIONE.VN",
+    source: "Tạo bởi khách hàng",
   },
   {
     id: "TRI-000124",
@@ -175,6 +175,6 @@ export const customers = [
 
 export const adminUsers = [
   { id: "u1", name: "Nguyễn Minh Anh", role: "Nhân viên", user: "nv.anh", status: "Hoạt động" },
-  { id: "u2", name: "Admin TRIONE", role: "Quản trị", user: "admin", status: "Hoạt động" },
+  { id: "u2", name: "Admin", role: "Quản trị", user: "admin", status: "Hoạt động" },
   { id: "u3", name: "CTV Sala", role: "Cộng tác viên", user: "sala.hcm", status: "Hoạt động" },
 ];
