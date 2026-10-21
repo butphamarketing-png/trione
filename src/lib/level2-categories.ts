@@ -140,3 +140,11 @@ export function readLevel2Categories(parent = ""): Level2Category[] {
   if (!parent) return mapped;
   return mapped.filter((item) => item.parent === parent);
 }
+
+export function level2SheetRows() {
+  const rows = [["mã", "tên", "danh mục cấp 1", "slug", "hiển thị"]];
+  for (const item of readLevel2Categories()) {
+    rows.push([item.code, item.name, item.parent, item.slug, "✓"]);
+  }
+  return rows;
+}

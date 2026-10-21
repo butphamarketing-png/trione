@@ -353,6 +353,27 @@ export function AdminRecordForm({
         </button>
       </div>
 
+      {showCazo && (isProduct || isExchange) ? (
+        <div className="mb-4 flex flex-wrap gap-2 text-xs">
+          {isProduct ? (
+            <a href="#gia-sku" className="rounded-full border border-zinc-200 bg-white px-3 py-1 font-semibold text-zinc-700 hover:border-[#e2b100]">
+              Giá / SKU
+            </a>
+          ) : null}
+          {isExchange ? (
+            <a href="#gia-doi-moi" className="rounded-full border border-zinc-200 bg-white px-3 py-1 font-semibold text-zinc-700 hover:border-[#e2b100]">
+              Giá / Trợ giá
+            </a>
+          ) : null}
+          <a href="#hinh-anh" className="rounded-full border border-zinc-200 bg-white px-3 py-1 font-semibold text-zinc-700 hover:border-[#e2b100]">
+            Hình ảnh
+          </a>
+          <a href="#noi-dung-seo" className="rounded-full border border-zinc-200 bg-white px-3 py-1 font-semibold text-zinc-700 hover:border-[#e2b100]">
+            SEO
+          </a>
+        </div>
+      ) : null}
+
       {showCazo ? (
         <div className="space-y-5">
           {isProduct ? (
@@ -404,6 +425,46 @@ export function AdminRecordForm({
                 </select>
                 <p className="mt-1 text-xs text-zinc-400">Sản phẩm hiện trong bước chọn máy, cùng thương hiệu và dòng. Đường dẫn dạng /thu-cu/apple/apple-watch-ultra/apple-watch-ultra-2.</p>
               </label>
+            </Section>
+          ) : null}
+          {isProduct ? (
+            <Section id="gia-sku" title="Giá thu & mã sản phẩm">
+              <label className="mb-3 block text-sm">
+                <span className="mb-1 block">Mã sản phẩm (SKU):</span>
+                <input value={draft.extra.sku} disabled={readOnly} onChange={(event) => setExtra("sku", event.target.value)} className={inputClass} />
+              </label>
+              <div className="mb-2 space-y-4">
+                <p className="text-xs leading-5 text-zinc-500">
+                  5 mức giá cố định theo tình trạng. Khách chỉ chọn tình trạng, không nhập giá. Ô trống = 0 đ.
+                </p>
+                {priceColumns.map((grade, gradeIndex) => {
+                  const levelIndex = columns.indexOf(grade);
+                  const note =
+                    gradeIndex === 0
+                      ? "Hoạt động tốt, màn hình xuất sắc, thân máy xuất sắc."
+                      : gradeIndex === 1
+                        ? "Màn hình dùng nhẹ, thân máy hao mòn thường, hoặc 1 lỗi."
+                        : gradeIndex === 2
+                          ? "Đúng 2 lỗi."
+                          : gradeIndex === 3
+                            ? "Màn hình hư, thân máy mòn nặng, hoặc từ 3 lỗi."
+                            : "Đồng hồ không hoạt động.";
+                  return (
+                    <div key={grade} className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                      <p className="mb-1 text-sm font-semibold">{grade}</p>
+                      <p className="mb-3 text-xs text-zinc-500">{note}</p>
+                      {levelIndex >= 0 ? (
+                        <MoneyField
+                          label="Giá thu của loại này"
+                          value={draft.cells[levelIndex] ?? ""}
+                          disabled={readOnly}
+                          onChange={(value) => setCell(levelIndex, value)}
+                        />
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
             </Section>
           ) : null}
           <Section title="Đường dẫn" note="(Vui lòng không nhập trùng tiêu đề)">
@@ -483,7 +544,7 @@ export function AdminRecordForm({
             ) : null}
           </Section>
 
-          <Section title={isProduct ? "Hình ảnh Sản phẩm" : "Hình ảnh"}>
+          <Section id="hinh-anh" title={isProduct ? "Hình ảnh Sản phẩm" : "Hình ảnh"}>
             <div
               className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-4 text-center"
               onDragOver={(event) => event.preventDefault()}
@@ -614,50 +675,11 @@ export function AdminRecordForm({
             </Section>
           ) : null}
 
-          <Section title={isProduct ? "Thông tin Sản phẩm" : "Thông tin"}>
+          <Section id={isExchange ? "gia-doi-moi" : undefined} title={isProduct ? "Thông tin thêm" : "Thông tin"}>
             {isProduct ? (
               <>
                 <label className="mb-3 block text-sm">
-                  <span className="mb-1 block">Mã sản phẩm:</span>
-                  <input value={draft.extra.sku} disabled={readOnly} onChange={(event) => setExtra("sku", event.target.value)} className={inputClass} />
-                </label>
-                <div className="mb-4 space-y-4">
-                  <div>
-                    <p className="text-sm">5 loại giá theo tình trạng:</p>
-                    <p className="mt-1 text-xs leading-5 text-zinc-500">
-                      Giá mỗi loại là mức cố định. Khách chỉ chọn tình trạng, không nhập giá. Ô để trống thì giá thu của loại đó là 0. Hoạt động tốt lấy mức xấu hơn giữa màn hình và thân máy: xuất sắc là loại 1, dùng nhẹ là loại 2, hư hỏng hoặc mòn nặng là loại 4. Có vấn đề: 1 lỗi là loại 2, 2 lỗi là loại 3, từ 3 lỗi là loại 4; nếu màn hình hoặc thân máy xấu hơn thì lấy mức xấu hơn. Không hoạt động là loại 5.
-                    </p>
-                  </div>
-                  {priceColumns.map((grade, gradeIndex) => {
-                    const levelIndex = columns.indexOf(grade);
-                    const note =
-                      gradeIndex === 0
-                        ? "Hoạt động tốt, màn hình xuất sắc, thân máy xuất sắc."
-                        : gradeIndex === 1
-                          ? "Màn hình đã qua sử dụng nhẹ, thân máy hao mòn thông thường, hoặc 1 lỗi."
-                          : gradeIndex === 2
-                            ? "Đúng 2 lỗi."
-                            : gradeIndex === 3
-                              ? "Màn hình hư hỏng, thân máy hao mòn nặng, hoặc từ 3 lỗi."
-                              : "Đồng hồ không hoạt động.";
-                    return (
-                      <div key={grade} className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                        <p className="mb-1 text-sm font-semibold">{grade}</p>
-                        <p className="mb-3 text-xs text-zinc-500">{note}</p>
-                        {levelIndex >= 0 ? (
-                          <MoneyField
-                            label="Giá thu của loại này"
-                            value={draft.cells[levelIndex] ?? ""}
-                            disabled={readOnly}
-                            onChange={(value) => setCell(levelIndex, value)}
-                          />
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-                <label className="mb-3 block text-sm">
-                  <span className="mb-1 block">Giá mới:</span>
+                  <span className="mb-1 block">Giá mới (tham khảo):</span>
                   <span className="flex items-center gap-2">
                     <input value={draft.extra.newPrice} disabled={readOnly} onChange={(event) => setExtra("newPrice", event.target.value)} className={inputClass} />
                     <span className="text-xs text-zinc-400">VNĐ</span>

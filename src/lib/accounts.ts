@@ -20,7 +20,7 @@ export const accountRoles: AccountRole[] = ["Quản trị", "Nhân viên", "Cộ
 
 const seed: Account[] = [
   { id: "1", name: "Nguyễn Minh Anh", user: "nv.anh", role: "Nhân viên", status: "Hoạt động", password: "123456" },
-  { id: "2", name: "Admin TRIONE", user: "admin", role: "Quản trị", status: "Hoạt động", password: "123456" },
+  { id: "2", name: "Admin", user: "admin", role: "Quản trị", status: "Hoạt động", password: "123456" },
   { id: "3", name: "CTV Sala", user: "sala.hcm", role: "Cộng tác viên", status: "Hoạt động", password: "123456" },
 ];
 

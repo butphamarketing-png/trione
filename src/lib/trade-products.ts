@@ -255,9 +255,12 @@ export function tradeSheetRows() {
   return rows;
 }
 
-export function importTradePriceRows(rows: string[][]) {
+export type ImportPreviewRow = { action: "create" | "update" | "skip"; label: string; detail: string };
+
+export function importTradePriceRows(rows: string[][], options?: { dryRun?: boolean }) {
+  const dryRun = Boolean(options?.dryRun);
   const clean = rows.filter((row) => row.some((cell) => String(cell ?? "").trim()));
-  if (!clean.length) return { updated: 0, created: 0, missing: [] as string[], skipped: 0 };
+  if (!clean.length) return { updated: 0, created: 0, missing: [] as string[], skipped: 0, preview: [] as ImportPreviewRow[] };
   const folded = clean[0].map((cell) => fold(String(cell ?? "")));
   const hasHeader = folded.some((cell) => /ma san pham|gia loai|sku|^code$|ten san pham/.test(cell));
   const body = hasHeader ? clean.slice(1) : clean;
@@ -274,6 +277,7 @@ export function importTradePriceRows(rows: string[][]) {
 
   const records = ensureTradeRecords();
   const missing: string[] = [];
+  const preview: ImportPreviewRow[] = [];
   let updated = 0;
   let created = 0;
   let skipped = 0;
@@ -286,8 +290,10 @@ export function importTradePriceRows(rows: string[][]) {
     const category = catAt >= 0 ? brandCode(cells[catAt]) : "";
     const subCategory = lineAt >= 0 ? lineCode(cells[lineAt]) : "";
     const prices = [p1, p2, p3, p4, p5].map((index) => (index >= 0 ? cells[index] : ""));
+    const label = nameRaw || codeRaw || "dòng trống";
     if (!code && !name) {
       skipped += 1;
+      preview.push({ action: "skip", label, detail: "Thiếu mã và tên" });
       continue;
     }
     let record = records.find((item) => {
@@ -298,10 +304,20 @@ export function importTradePriceRows(rows: string[][]) {
     if (!record) {
       if (!nameRaw && !codeRaw) {
         skipped += 1;
+        preview.push({ action: "skip", label, detail: "Thiếu mã và tên" });
         continue;
       }
       const title = nameRaw || codeRaw;
       const sku = code || slugify(title);
+      preview.push({
+        action: "create",
+        label: title,
+        detail: [sku, category, subCategory].filter(Boolean).join(" · "),
+      });
+      if (dryRun) {
+        created += 1;
+        continue;
+      }
       record = normalizeRecord(
         {
           id: String(records.length + 1),
@@ -329,6 +345,15 @@ export function importTradePriceRows(rows: string[][]) {
       created += 1;
       continue;
     }
+    preview.push({
+      action: "update",
+      label: nameRaw || record.cells[titleIndex] || codeRaw,
+      detail: code || record.extra.sku || "",
+    });
+    if (dryRun) {
+      updated += 1;
+      continue;
+    }
     if (nameRaw) record.cells[titleIndex] = nameRaw;
     if (codeRaw) record.extra.sku = code;
     if (category) record.extra.category = category;
@@ -339,6 +364,6 @@ export function importTradePriceRows(rows: string[][]) {
     });
     updated += 1;
   }
-  saveRecords(tradeProductStorageKey, records);
-  return { updated, created, missing, skipped };
+  if (!dryRun) saveRecords(tradeProductStorageKey, records);
+  return { updated, created, missing, skipped, preview };
 }

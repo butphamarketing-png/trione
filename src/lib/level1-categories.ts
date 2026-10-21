@@ -98,3 +98,11 @@ function readSavedLevel1() {
     return null;
   }
 }
+
+export function level1SheetRows() {
+  const rows = [["mã", "tên", "slug", "hiển thị"]];
+  for (const item of readLevel1Categories(true)) {
+    rows.push([item.code, item.name, item.slug, "✓"]);
+  }
+  return rows;
+}

@@ -176,9 +176,12 @@ function slugifySku(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-export function importExchangePriceRows(rows: string[][]) {
+export type ImportPreviewRow = { action: "create" | "update" | "skip"; label: string; detail: string };
+
+export function importExchangePriceRows(rows: string[][], options?: { dryRun?: boolean }) {
+  const dryRun = Boolean(options?.dryRun);
   const clean = rows.filter((row) => row.some((cell) => String(cell ?? "").trim()));
-  if (!clean.length) return { updated: 0, created: 0, missing: [] as string[], skipped: 0 };
+  if (!clean.length) return { updated: 0, created: 0, missing: [] as string[], skipped: 0, preview: [] as ImportPreviewRow[] };
   const folded = clean[0].map((cell) => fold(String(cell ?? "")));
   const hasHeader = folded.some((cell) => /ma san pham|gia niem yet|tro gia|sku|^code$|ten san pham/.test(cell));
   const body = hasHeader ? clean.slice(1) : clean;
@@ -194,6 +197,7 @@ export function importExchangePriceRows(rows: string[][]) {
 
   const records = ensureExchangeRecords();
   const missing: string[] = [];
+  const preview: ImportPreviewRow[] = [];
   let updated = 0;
   let created = 0;
   let skipped = 0;
@@ -210,8 +214,10 @@ export function importExchangePriceRows(rows: string[][]) {
     const series = seriesAt >= 0 ? cells[seriesAt] : "";
     const priceRaw = priceAt >= 0 ? cells[priceAt] : "";
     const supportRaw = supportAt >= 0 ? cells[supportAt] : "";
+    const label = nameRaw || codeRaw || "dòng trống";
     if (!code && !name) {
       skipped += 1;
+      preview.push({ action: "skip", label, detail: "Thiếu mã và tên" });
       continue;
     }
     let record = records.find((item) => {
@@ -222,6 +228,11 @@ export function importExchangePriceRows(rows: string[][]) {
     if (!record) {
       const title = nameRaw || codeRaw;
       const sku = code || slugifySku(title);
+      preview.push({ action: "create", label: title, detail: [sku, brandLabel, series].filter(Boolean).join(" · ") });
+      if (dryRun) {
+        created += 1;
+        continue;
+      }
       record = normalizeRecord(
         {
           id: String(records.length + 1),
@@ -248,6 +259,15 @@ export function importExchangePriceRows(rows: string[][]) {
       created += 1;
       continue;
     }
+    preview.push({
+      action: "update",
+      label: nameRaw || record.cells[titleIndex] || codeRaw,
+      detail: [code || record.extra.sku, brandLabel, series].filter(Boolean).join(" · "),
+    });
+    if (dryRun) {
+      updated += 1;
+      continue;
+    }
     if (nameRaw) record.cells[titleIndex] = nameRaw;
     if (codeRaw) record.extra.sku = code;
     if (categoryRaw) {
@@ -259,8 +279,8 @@ export function importExchangePriceRows(rows: string[][]) {
     if (supportRaw) record.cells[supportIndex] = vndComma(money(supportRaw));
     updated += 1;
   }
-  saveRecords(exchangeStorageKey, records);
-  return { updated, created, missing, skipped };
+  if (!dryRun) saveRecords(exchangeStorageKey, records);
+  return { updated, created, missing, skipped, preview };
 }
 
 export function supportCsv() {
@@ -341,9 +361,10 @@ function headerAt(header: string[], test: (value: string) => boolean) {
   return header.findIndex((cell) => test(fold(cell)));
 }
 
-export function importSupportRows(rows: string[][]) {
+export function importSupportRows(rows: string[][], options?: { dryRun?: boolean }) {
+  const dryRun = Boolean(options?.dryRun);
   const clean = rows.filter((row) => row.some((cell) => cell.trim()));
-  if (!clean.length) return { updated: 0, missing: [] as string[], skipped: 0 };
+  if (!clean.length) return { updated: 0, created: 0, missing: [] as string[], skipped: 0, preview: [] as ImportPreviewRow[] };
   const folded = clean[0].map(fold);
   const hasHeader = folded.some((cell) => /ma san pham|tro gia|sku|^code$/.test(cell));
   const body = hasHeader ? clean.slice(1) : clean;
@@ -354,18 +375,23 @@ export function importSupportRows(rows: string[][]) {
     : (clean[0]?.length ?? 0) >= 4
       ? 3
       : 2;
-  if (supportAt < 0) return { updated: 0, missing: ["Không thấy cột trợ giá"], skipped: 0 };
+  if (supportAt < 0) {
+    return { updated: 0, created: 0, missing: ["Không thấy cột trợ giá"], skipped: 0, preview: [] as ImportPreviewRow[] };
+  }
 
   const records = ensureExchangeRecords();
   const missing: string[] = [];
+  const preview: ImportPreviewRow[] = [];
   let updated = 0;
   let skipped = 0;
   for (const row of body) {
     const code = (row[codeAt] ?? "").trim().toLowerCase();
     const name = nameAt >= 0 ? (row[nameAt] ?? "").trim().toLowerCase() : "";
     const raw = (row[supportAt] ?? "").trim();
+    const label = row[nameAt] || row[codeAt] || "dòng trống";
     if (!raw) {
       skipped += 1;
+      preview.push({ action: "skip", label, detail: "Ô trợ giá trống" });
       continue;
     }
     const record = records.find((item) => {
@@ -374,18 +400,24 @@ export function importSupportRows(rows: string[][]) {
       return (code && sku === code) || (name && title === name);
     });
     if (!record) {
-      missing.push(row[nameAt] || row[codeAt] || "dòng trống");
+      missing.push(label);
+      preview.push({ action: "skip", label, detail: "Không khớp sản phẩm" });
+      continue;
+    }
+    preview.push({ action: "update", label, detail: `trợ giá → ${raw}` });
+    if (dryRun) {
+      updated += 1;
       continue;
     }
     record.cells[supportIndex] = vndComma(money(raw));
     updated += 1;
   }
-  saveRecords(exchangeStorageKey, records);
-  return { updated, missing, skipped };
+  if (!dryRun) saveRecords(exchangeStorageKey, records);
+  return { updated, created: 0, missing, skipped, preview };
 }
 
-export function importSupportCsv(text: string) {
-  return importSupportRows(parseCsv(text));
+export function importSupportCsv(text: string, options?: { dryRun?: boolean }) {
+  return importSupportRows(parseCsv(text), options);
 }
 
 function readSavedExchange() {
