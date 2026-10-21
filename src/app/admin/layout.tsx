@@ -35,7 +35,10 @@ const groups: NavGroup[] = [
   },
   {
     label: "Quản lý Option",
-    children: [{ href: "/admin/option", label: "Option" }],
+    children: [
+      { href: "/admin/option", label: "Option" },
+      { href: "/admin/dinh-gia", label: "Rule định giá" },
+    ],
   },
   {
     label: "Quản lý đơn hàng",

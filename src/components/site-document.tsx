@@ -42,6 +42,36 @@ export function SiteDocument() {
   const page = usePageSeo();
 
   useEffect(() => {
+    let cancelled = false;
+    let timer = 0;
+    const cleanups: Array<() => void> = [];
+    void import("@/lib/catalog-sync").then((mod) => {
+      if (cancelled) return;
+      void mod.ensureCatalog();
+      const pull = () => {
+        if (document.visibilityState === "hidden") return;
+        void mod.hydrateCatalog();
+      };
+      const onVisible = () => {
+        if (document.visibilityState === "visible") pull();
+      };
+      window.addEventListener("focus", pull);
+      document.addEventListener("visibilitychange", onVisible);
+      timer = window.setInterval(pull, 45_000);
+      cleanups.push(() => {
+        window.removeEventListener("focus", pull);
+        document.removeEventListener("visibilitychange", onVisible);
+        window.clearInterval(timer);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cleanups.forEach((fn) => fn());
+      if (timer) window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
     const title = page?.title || site.seoTitle;
     const description = page?.description || site.description;
     const keywords = page?.keywords || site.keywords;
