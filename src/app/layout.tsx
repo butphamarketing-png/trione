@@ -3,6 +3,7 @@ import { Be_Vietnam_Pro } from "next/font/google";
 import Script from "next/script";
 import { SiteDocument } from "@/components/site-document";
 import { defaultSiteSettings, googleMeasurementId, googleSiteVerification } from "@/lib/site-defaults";
+import { localBusinessJson, siteOrigin } from "@/lib/public-seo";
 import { readServerSiteSettings } from "@/lib/server-site-settings";
 import "./globals.css";
 
@@ -21,18 +22,24 @@ export async function generateMetadata(): Promise<Metadata> {
     .map((item) => item.trim())
     .filter(Boolean);
   const google = googleSiteVerification(site.webmaster);
+  const origin = siteOrigin(site);
+  const title = site.seoTitle || site.company || "Chương trình thu cũ đồng hồ";
   return {
-    title: site.seoTitle || site.company || "Chương trình thu cũ đồng hồ",
+    metadataBase: new URL(origin),
+    title: { default: title, template: `%s | ${site.company}` },
     description: site.description,
     keywords: keywords.length ? keywords : undefined,
+    robots: site.robots === "noindex" ? { index: false, follow: false } : { index: true, follow: true },
     verification: google ? { google } : undefined,
     openGraph: {
-      title: site.seoTitle || site.company,
+      title,
       description: site.description,
       siteName: site.ogSite || site.company,
-      url: site.ogUrl || site.canonical || site.website || undefined,
-      type: (site.ogType as "website") || "website",
+      url: site.ogUrl || site.canonical || `${origin}/thu-cu`,
+      locale: "vi_VN",
+      type: "website",
     },
+    twitter: { card: "summary", title, description: site.description },
   };
 }
 
@@ -41,10 +48,13 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const measurementId = googleMeasurementId((await readServerSiteSettings()).analytics);
+  const site = await readServerSiteSettings();
+  const measurementId = googleMeasurementId(site.analytics);
+  const structured = JSON.stringify(localBusinessJson(site)).replace(/</g, "\\u003c");
   return (
     <html lang="vi" className={`${beVietnam.variable} ${beVietnam.className} h-full antialiased`}>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structured }} />
         {measurementId ? (
           <>
             <Script src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`} strategy="afterInteractive" />
