@@ -68,7 +68,7 @@ export const defaultSiteSettings: SiteSettings = {
   ogUrl: "",
 };
 
-const brandTextKeys: Array<keyof SiteSettings> = [
+const brandTextKeys = [
   "company",
   "slogan",
   "address",
@@ -90,7 +90,7 @@ const brandTextKeys: Array<keyof SiteSettings> = [
   "canonical",
   "ogSite",
   "ogUrl",
-];
+] as const satisfies ReadonlyArray<Exclude<keyof SiteSettings, "robots">>;
 
 function stripLegacyBrand(value: string) {
   return value
