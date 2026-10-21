@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
+import Script from "next/script";
 import { SiteDocument } from "@/components/site-document";
-import { defaultSiteSettings } from "@/lib/site-defaults";
+import { defaultSiteSettings, googleMeasurementId, googleSiteVerification } from "@/lib/site-defaults";
 import { readServerSiteSettings } from "@/lib/server-site-settings";
 import "./globals.css";
 
@@ -19,10 +20,12 @@ export async function generateMetadata(): Promise<Metadata> {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+  const google = googleSiteVerification(site.webmaster);
   return {
     title: site.seoTitle || site.company || "Chương trình thu cũ đồng hồ",
     description: site.description,
     keywords: keywords.length ? keywords : undefined,
+    verification: google ? { google } : undefined,
     openGraph: {
       title: site.seoTitle || site.company,
       description: site.description,
@@ -33,14 +36,23 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const measurementId = googleMeasurementId((await readServerSiteSettings()).analytics);
   return (
     <html lang="vi" className={`${beVietnam.variable} ${beVietnam.className} h-full antialiased`}>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        {measurementId ? (
+          <>
+            <Script src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`} strategy="afterInteractive" />
+            <Script id="google-gtag" strategy="afterInteractive">
+              {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${measurementId}');`}
+            </Script>
+          </>
+        ) : null}
         <SiteDocument />
         {children}
       </body>

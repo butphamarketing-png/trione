@@ -52,9 +52,9 @@ export const defaultSiteSettings: SiteSettings = {
   instagram: "",
   tiktok: "",
   map: "",
-  analytics: "",
+  analytics: "G-ZKL5DX4X98",
   facebookPixel: "",
-  webmaster: "",
+  webmaster: "EVAwagGYZKLktHO0IFKYcJ2ES1UglSjP7Njj5X2LQf8",
   headJs: "",
   bodyJs: "",
   seoTitle: "Chương trình thu cũ đồng hồ",
@@ -124,5 +124,21 @@ export function normalizeSiteSettings(value: Partial<SiteSettings> | null | unde
   if (next.website && !/^https?:\/\//i.test(next.website)) next.website = "";
   if (next.canonical && !/^https?:\/\//i.test(next.canonical)) next.canonical = "";
   if (next.ogUrl && !/^https?:\/\//i.test(next.ogUrl)) next.ogUrl = "";
+  if (!googleMeasurementId(next.analytics)) next.analytics = defaultSiteSettings.analytics;
+  if (!googleSiteVerification(next.webmaster)) next.webmaster = defaultSiteSettings.webmaster;
   return next;
+}
+
+/** GA4 / Ads / Tag Manager id taken from a bare id or a pasted gtag snippet. */
+export function googleMeasurementId(value: string) {
+  const match = value.match(/\b(G-[A-Z0-9]{6,}|AW-[A-Z0-9]{6,}|GT-[A-Z0-9]{6,}|GTM-[A-Z0-9]{4,}|UA-\d{4,}-\d+)\b/);
+  return match?.[1] ?? "";
+}
+
+/** Google Search Console token taken from a bare token or a verification meta tag. */
+export function googleSiteVerification(value: string) {
+  const fromMeta = value.match(/content=["']([A-Za-z0-9_-]{20,128})["']/i);
+  if (fromMeta) return fromMeta[1];
+  const bare = value.trim();
+  return /^[A-Za-z0-9_-]{20,128}$/.test(bare) ? bare : "";
 }

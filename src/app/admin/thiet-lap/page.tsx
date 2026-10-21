@@ -134,9 +134,11 @@ export default function SettingsPage() {
 
         <Section title="Mã nhúng">
           <Field label="Google Analytics" value={draft.analytics} rows={3} mono onChange={(analytics) => patch({ analytics })} />
+          <p className="mb-3 text-xs text-zinc-400">Dán mã G-… hoặc cả đoạn gtag. Trang chỉ lấy mã đo, không chạy nguyên đoạn script.</p>
           <Field label="Facebook Pixel" value={draft.facebookPixel} rows={4} mono onChange={(facebookPixel) => patch({ facebookPixel })} />
           <p className="mb-3 text-xs text-zinc-400">Dán Pixel ID hoặc đoạn code có fbq(&apos;init&apos;, &apos;1234567890&apos;). Hệ thống chỉ lấy mã pixel, không chạy mã tùy ý.</p>
           <Field label="Google Webmaster Tool" value={draft.webmaster} rows={3} mono onChange={(webmaster) => patch({ webmaster })} />
+          <p className="mb-3 text-xs text-zinc-400">Dán thẻ meta google-site-verification hoặc riêng chuỗi content. Thẻ được in trong HTML của trang.</p>
           <Field label="Head JS" value={draft.headJs} rows={3} mono onChange={(headJs) => patch({ headJs })} />
           <Field label="Body JS" value={draft.bodyJs} rows={3} mono onChange={(bodyJs) => patch({ bodyJs })} />
         </Section>
