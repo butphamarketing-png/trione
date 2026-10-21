@@ -1,76 +1,10 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
+import { defaultSiteSettings, normalizeSiteSettings, type SiteSettings } from "@/lib/site-defaults";
 
-export type SiteSettings = {
-  company: string;
-  slogan: string;
-  address: string;
-  phone: string;
-  hotline: string;
-  email: string;
-  website: string;
-  hours: string;
-  copyright: string;
-  logo: string;
-  favicon: string;
-  watermark: string;
-  facebook: string;
-  zalo: string;
-  youtube: string;
-  instagram: string;
-  tiktok: string;
-  map: string;
-  analytics: string;
-  facebookPixel: string;
-  webmaster: string;
-  headJs: string;
-  bodyJs: string;
-  seoTitle: string;
-  keywords: string;
-  description: string;
-  summary: string;
-  canonical: string;
-  robots: "index" | "noindex";
-  ogSite: string;
-  ogType: string;
-  ogUrl: string;
-};
-
-export const defaultSiteSettings: SiteSettings = {
-  company: "Cửa hàng",
-  slogan: "",
-  address: "",
-  phone: "",
-  hotline: "",
-  email: "",
-  website: "",
-  hours: "",
-  copyright: "",
-  logo: "",
-  favicon: "",
-  watermark: "",
-  facebook: "",
-  zalo: "",
-  youtube: "",
-  instagram: "",
-  tiktok: "",
-  map: "",
-  analytics: "",
-  facebookPixel: "",
-  webmaster: "",
-  headJs: "",
-  bodyJs: "",
-  seoTitle: "Chương trình thu cũ đồng hồ",
-  keywords: "thu cũ, đổi mới, đồng hồ",
-  description: "Định giá nhanh, quy trình minh bạch. Thu cũ đổi mới đồng hồ thể thao.",
-  summary: "Thu cũ đổi mới đồng hồ",
-  canonical: "",
-  robots: "index",
-  ogSite: "",
-  ogType: "website",
-  ogUrl: "",
-};
+export type { SiteSettings };
+export { defaultSiteSettings };
 
 const KEY = "trione-site-settings";
 const listeners = new Set<() => void>();
@@ -101,9 +35,7 @@ export function readPageSeo() {
 }
 
 function normalize(value: Partial<SiteSettings> | null | undefined): SiteSettings {
-  const next = { ...defaultSiteSettings, ...(value ?? {}) };
-  next.robots = next.robots === "noindex" ? "noindex" : "index";
-  return next;
+  return normalizeSiteSettings(value);
 }
 
 export function readSiteSettings(): SiteSettings {

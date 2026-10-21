@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import { SiteDocument } from "@/components/site-document";
+import { defaultSiteSettings } from "@/lib/site-defaults";
 import { readServerSiteSettings } from "@/lib/server-site-settings";
 import "./globals.css";
 
@@ -12,7 +13,7 @@ const beVietnam = Be_Vietnam_Pro({
 
 export async function generateMetadata(): Promise<Metadata> {
   const site = await readServerSiteSettings();
-  const keywords = site.keywords
+  const keywords = (site.keywords || defaultSiteSettings.keywords)
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);

@@ -1,13 +1,11 @@
 import { readFile } from "fs/promises";
 import path from "path";
-import { defaultSiteSettings, type SiteSettings } from "@/lib/site-settings";
+import { defaultSiteSettings, normalizeSiteSettings, type SiteSettings } from "@/lib/site-defaults";
 
 const localFile = path.join(process.cwd(), ".data", "catalog.json");
 
 function normalize(value: Partial<SiteSettings> | null | undefined): SiteSettings {
-  const next = { ...defaultSiteSettings, ...(value ?? {}) };
-  next.robots = next.robots === "noindex" ? "noindex" : "index";
-  return next;
+  return normalizeSiteSettings(value);
 }
 
 /** Read published site settings for SSR metadata (crawlers / first paint). */
