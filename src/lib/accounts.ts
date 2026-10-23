@@ -2,7 +2,7 @@
 
 import type { DemoRole, DemoSession } from "@/lib/session";
 
-export type AccountRole = "Quản trị" | "Nhân viên" | "Cộng tác viên";
+export type AccountRole = "Quản trị" | "Nhân viên" | "Khách hàng" | "Cộng tác viên";
 export type AccountStatus = "Hoạt động" | "Ngưng";
 
 export type Account = {
@@ -16,17 +16,20 @@ export type Account = {
 
 const KEY = "trione-accounts";
 
-export const accountRoles: AccountRole[] = ["Quản trị", "Nhân viên", "Cộng tác viên"];
+export const accountRoles: AccountRole[] = ["Quản trị", "Nhân viên", "Khách hàng", "Cộng tác viên"];
 
 const seed: Account[] = [
   { id: "1", name: "Nguyễn Minh Anh", user: "nv.anh", role: "Nhân viên", status: "Hoạt động", password: "123456" },
   { id: "2", name: "Admin", user: "admin", role: "Quản trị", status: "Hoạt động", password: "123456" },
   { id: "3", name: "CTV Sala", user: "sala.hcm", role: "Cộng tác viên", status: "Hoạt động", password: "123456" },
+  { id: "4", name: "Khách hàng", user: "khach", role: "Khách hàng", status: "Hoạt động", password: "123456" },
 ];
 
 function normalizeRole(value: string): AccountRole {
-  if (value === "Quản trị" || value.toLowerCase().includes("admin") || value.toLowerCase().includes("quản trị")) return "Quản trị";
-  if (value === "Cộng tác viên" || value.toLowerCase().includes("ctv") || value.toLowerCase().includes("cộng tác")) return "Cộng tác viên";
+  const text = value.toLowerCase();
+  if (value === "Quản trị" || text.includes("admin") || text.includes("quản trị")) return "Quản trị";
+  if (value === "Khách hàng" || text.includes("khách") || text.includes("khach")) return "Khách hàng";
+  if (value === "Cộng tác viên" || text.includes("ctv") || text.includes("cộng tác")) return "Cộng tác viên";
   return "Nhân viên";
 }
 
@@ -74,7 +77,15 @@ export async function saveAccountsAndSync(list: Array<Partial<Omit<Account, "rol
 }
 
 export function roleSession(account: Account): DemoSession {
-  const role: DemoRole = account.role === "Quản trị" ? "admin" : account.role === "Cộng tác viên" ? "ctv" : "staff";
-  const title = account.role === "Quản trị" ? "Quản trị hệ thống" : account.role === "Cộng tác viên" ? "Cộng tác viên" : "Nhân viên thẩm định";
+  const role: DemoRole =
+    account.role === "Quản trị" ? "admin" : account.role === "Khách hàng" ? "customer" : account.role === "Cộng tác viên" ? "ctv" : "staff";
+  const title =
+    account.role === "Quản trị"
+      ? "Quản trị hệ thống"
+      : account.role === "Khách hàng"
+        ? "Khách hàng"
+        : account.role === "Cộng tác viên"
+          ? "Cộng tác viên"
+          : "Nhân viên thẩm định";
   return { user: account.user, role, name: account.name, title };
 }

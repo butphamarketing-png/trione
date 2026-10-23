@@ -83,6 +83,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.replace("/dang-nhap");
       return;
     }
+    if (s.role === "customer") {
+      router.replace("/thu-cu");
+      return;
+    }
     if (s.role !== "admin") {
       router.replace("/nhan-vien");
       return;

@@ -1,6 +1,6 @@
 import { readAccounts, roleSession } from "@/lib/accounts";
 
-export type DemoRole = "admin" | "staff" | "ctv";
+export type DemoRole = "admin" | "staff" | "ctv" | "customer";
 
 export type DemoSession = {
   user: string;
@@ -26,6 +26,12 @@ export function readSession(): DemoSession | null {
 
 export function clearSession() {
   sessionStorage.removeItem(KEY);
+}
+
+export function homeForRole(role: DemoRole) {
+  if (role === "admin") return "/admin";
+  if (role === "customer") return "/thu-cu";
+  return "/nhan-vien";
 }
 
 export function resolveLogin(user: string, pass: string): DemoSession | null {

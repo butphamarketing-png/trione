@@ -1,14 +1,29 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { BrandLogo } from "@/components/store-footer";
-import { resolveLogin, saveSession } from "@/lib/session";
+import { homeForRole, resolveLogin, saveSession, type DemoSession } from "@/lib/session";
 import { useMediaSrc } from "@/lib/use-live-media";
 import { useSiteSettings } from "@/lib/site-settings";
 
+function tradeInReturn(value: string | null) {
+  if (!value || (value !== "/thu-cu" && !value.startsWith("/thu-cu/"))) return null;
+  if (value.includes("\\") || value.includes("://") || value.includes("//")) return null;
+  return value;
+}
+
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="grid min-h-screen place-items-center bg-[#111] text-sm text-white">Đang mở đăng nhập...</div>}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const nextPath = tradeInReturn(useSearchParams().get("next"));
   const loginBg = useMediaSrc("login-bg", "");
   const site = useSiteSettings();
   const [user, setUser] = useState("");
@@ -34,7 +49,7 @@ export default function LoginPage() {
     const session = resolveLogin(user, pass);
     if (session) {
       saveSession(session);
-      router.replace(session.role === "admin" ? "/admin" : "/nhan-vien");
+      router.replace(nextPath ?? homeForRole(session.role));
       return;
     }
     // Server kiểm tra catalog trước; mật khẩu môi trường chỉ dùng khi chưa có tài khoản quản trị.
@@ -44,12 +59,10 @@ export default function LoginPage() {
       body: JSON.stringify({ user, pass }),
     }).catch(() => null);
     if (apiLogin?.ok) {
-      const data = (await apiLogin.json()) as {
-        session?: { user: string; role: "admin" | "staff"; name: string; title: string };
-      };
+      const data = (await apiLogin.json()) as { session?: DemoSession };
       if (data.session) {
         saveSession(data.session);
-        router.replace(data.session.role === "admin" ? "/admin" : "/nhan-vien");
+        router.replace(nextPath ?? homeForRole(data.session.role));
         return;
       }
     }

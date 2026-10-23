@@ -10,7 +10,7 @@ import {
   shownProductImage,
   type AdminRecord,
 } from "@/lib/admin-records";
-import { level2StorageKey, readLevel2Categories } from "@/lib/level2-categories";
+import { level2StorageKey, readLevel2Categories, type Level2Category } from "@/lib/level2-categories";
 import { vndComma, type FunctionStatus } from "@/lib/pricing";
 
 export const tradeProductStorageKey = "Danh sách Sản phẩm thu cũ";
@@ -91,10 +91,17 @@ function brandCode(value: string) {
   return brands.find((brand) => brand.id === clean || brand.name === clean)?.id ?? clean;
 }
 
-function lineCode(value: string) {
+function lineCode(value: string, saved: Level2Category[] = readLevel2Categories()) {
   const clean = value.trim();
   if (!clean) return "";
-  return lines.find((line) => line.id === clean)?.id ?? clean;
+  const folded = fold(clean);
+  const staticLine = lines.find((line) => fold(line.id) === folded || fold(line.name) === folded);
+  const savedLine = saved.find((line) => {
+    if (fold(line.code) === folded || fold(line.name) === folded) return true;
+    if (!staticLine) return false;
+    return fold(line.code) === fold(staticLine.id) || fold(line.name) === fold(staticLine.name);
+  });
+  return savedLine?.code || staticLine?.id || clean;
 }
 
 function onLine(item: { line: string }, line: string) {
@@ -174,6 +181,7 @@ export function readTradeProducts(line = ""): TradeProduct[] {
   const loaded = loadRecords(tradeProductStorageKey);
   const saved = loaded?.length ? restoreBlankVisibility(retargetOrphanLines(loaded)) : loaded;
   if (!saved?.length) return fallbackTradeProducts(line);
+  const savedLines = readLevel2Categories();
   const mapped = saved
     .filter((record) => {
       const flag = (record.cells[visibleIndex] ?? "").trim();
@@ -186,7 +194,7 @@ export function readTradeProducts(line = ""): TradeProduct[] {
       const sku = (record.extra.sku || "").toLowerCase();
       const known = models.find((model) => model.id === sku || model.name === name);
       const code = sku || known?.id || `custom:${record.id}`;
-      const productLine = lineCode(record.extra.subCategory);
+      const productLine = lineCode(record.extra.subCategory, savedLines);
       const parent = brandCode(record.extra.category) || lines.find((item) => item.id === productLine)?.brandId || "";
       return {
         key: record.id,
@@ -301,6 +309,7 @@ export function importTradePriceRows(rows: string[][], options?: { dryRun?: bool
   const p5 = hasHeader ? headerAt(header, (value) => /gia loai 5|loai 5|price 5/.test(value)) : 8;
 
   const records = ensureTradeRecords();
+  const savedLines = readLevel2Categories();
   const missing: string[] = [];
   const preview: ImportPreviewRow[] = [];
   let updated = 0;
@@ -313,7 +322,7 @@ export function importTradePriceRows(rows: string[][], options?: { dryRun?: bool
     const code = codeRaw.toLowerCase();
     const name = nameRaw.toLowerCase();
     const category = catAt >= 0 ? brandCode(cells[catAt]) : "";
-    const subCategory = lineAt >= 0 ? lineCode(cells[lineAt]) : "";
+    const subCategory = lineAt >= 0 ? lineCode(cells[lineAt], savedLines) : "";
     const prices = [p1, p2, p3, p4, p5].map((index) => (index >= 0 ? cells[index] : ""));
     const label = nameRaw || codeRaw || "dòng trống";
     if (!code && !name) {

@@ -583,12 +583,13 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         `THÂN MÁY ${body === "excellent" ? "XUẤT SẮC" : body === "light" ? "MÒN" : body === "heavy" ? "NẶNG" : "CHƯA CHỌN"}`,
       ];
       const session = readSession();
-      const byStaff = session && session.role !== "admin";
-      const profile = byStaff ? readStaffProfile(session.user, session.name) : null;
+      const byStaff = session?.role === "staff" || session?.role === "ctv";
+      const byCustomer = session?.role === "customer";
+      const profile = session && byStaff ? readStaffProfile(session.user, session.name) : null;
       saveTradeRequest({
         id: code,
-        username: byStaff ? session.user : "khach",
-        name: byStaff ? profile?.name || session.name : `Khách ${site.company}`,
+        username: session && (byStaff || byCustomer) ? session.user : "khach",
+        name: byStaff && session ? profile?.name || session.name : byCustomer && session ? session.name : `Khách ${site.company}`,
         createdAt: formatCreatedAt(now),
         updatedAt: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
         address: profile?.address || site.address,
@@ -610,7 +611,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         supportPrice: garmin.supportPrice,
         note: issueNote,
         status: "dang-cho-duyet",
-        source: byStaff ? `Tạo bởi nhân viên ${session.user}` : `Tạo bởi khách hàng ${site.company}`,
+        source: byStaff && session ? `Tạo bởi nhân viên ${session.user}` : byCustomer && session ? `Tạo bởi khách ${session.user}` : `Tạo bởi khách hàng ${site.company}`,
       });
       setRequestCode(code);
       setSubmitted(true);

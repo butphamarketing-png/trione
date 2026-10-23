@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { accountRoles } from "@/lib/accounts";
 import { brands, lines, models } from "@/data/catalog";
 import { cloneRecord, type AdminAlbumImage, type AdminExtra, type AdminRecord } from "@/lib/admin-records";
 import { fileToDataUrl } from "@/lib/demo-media";
@@ -866,7 +867,7 @@ export function AdminRecordForm({
         <div className="rounded-xl bg-white p-4 shadow-sm">
           {columns.map((column, index) => {
             if (index === 0 || index === visibleIndex) return null;
-            const choices = column === "Vai trò" ? ["Quản trị", "Nhân viên", "Cộng tác viên"] : column === "Trạng thái" ? ["Hoạt động", "Ngưng"] : null;
+            const choices = column === "Vai trò" ? accountRoles : column === "Trạng thái" ? ["Hoạt động", "Ngưng"] : null;
             return (
               <label key={column} className="mb-3 block text-sm">
                 <span className="mb-1 block">{column === "Vai trò" ? "Phân quyền" : column}</span>

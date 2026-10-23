@@ -79,6 +79,14 @@ function isAdminRole(role: string | undefined) {
   return value.includes("quản trị") || value.includes("admin");
 }
 
+function sessionFromRole(role: string | undefined) {
+  const value = (role || "").toLowerCase();
+  if (isAdminRole(role)) return { role: "admin" as const, title: "Quản trị hệ thống" };
+  if (value.includes("khách") || value.includes("khach")) return { role: "customer" as const, title: "Khách hàng" };
+  if (value.includes("ctv") || value.includes("cộng tác")) return { role: "ctv" as const, title: "Cộng tác viên" };
+  return { role: "staff" as const, title: role?.trim() || "Nhân viên thẩm định" };
+}
+
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as { user?: string; pass?: string } | null;
   const user = body?.user?.trim() ?? "";
@@ -91,14 +99,14 @@ export async function POST(request: Request) {
     if (account.status === "Ngưng" || account.password !== pass) {
       return NextResponse.json({ ok: false }, { status: 401 });
     }
-    const admin = isAdminRole(account.role);
+    const sessionRole = sessionFromRole(account.role);
     return NextResponse.json({
       ok: true,
       session: {
         user: account.user?.trim() || user,
-        role: admin ? "admin" : "staff",
+        role: sessionRole.role,
         name: account.name?.trim() || user,
-        title: admin ? "Quản trị hệ thống" : account.role || "Nhân viên thẩm định",
+        title: sessionRole.title,
       },
     });
   }

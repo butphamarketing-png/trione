@@ -124,7 +124,7 @@ export default function UsersPage() {
     <div>
       <div className="mb-4 max-w-4xl rounded-sm border-t-4 border-[#2f6fed] bg-white p-4">
         <p className="mb-1 font-semibold">Tạo tài khoản</p>
-        <p className="mb-3 text-xs text-zinc-500">Admin tạo tài khoản và phân quyền Quản trị, Nhân viên hoặc Cộng tác viên.</p>
+        <p className="mb-3 text-xs text-zinc-500">Admin tạo tài khoản và phân quyền Quản trị, Nhân viên, Khách hàng hoặc Cộng tác viên. Khách hàng đăng nhập xong vào trang thu cũ.</p>
         <div className="grid gap-2 sm:grid-cols-5">
           <input value={name} onChange={(event) => setName(event.target.value)} className="rounded border px-3 py-2 text-sm" placeholder="Họ tên" />
           <input value={user} onChange={(event) => setUser(event.target.value)} className="rounded border px-3 py-2 text-sm" placeholder="Tài khoản" />
