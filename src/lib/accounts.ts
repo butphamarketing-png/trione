@@ -40,7 +40,7 @@ function normalizeAccount(value: (Partial<Omit<Account, "role">> & { role?: stri
     user: value?.user?.trim() || "",
     role: normalizeRole(value?.role || "Nhân viên"),
     status: value?.status === "Ngưng" ? "Ngưng" : "Hoạt động",
-    password: value?.password || "123456",
+    password: typeof value?.password === "string" ? value.password : "123456",
   };
 }
 
@@ -57,9 +57,14 @@ export function readAccounts(): Account[] {
   }
 }
 
-export function saveAccounts(list: Array<Partial<Omit<Account, "role">> & { role?: string }>) {
+export function writeAccounts(list: Array<Partial<Omit<Account, "role">> & { role?: string }>) {
   const next = list.map((item, index) => normalizeAccount(item, index)).filter((item) => item.user && item.name);
-  sessionStorage.setItem(KEY, JSON.stringify(next));
+  if (typeof window !== "undefined") sessionStorage.setItem(KEY, JSON.stringify(next));
+  return next;
+}
+
+export function saveAccounts(list: Array<Partial<Omit<Account, "role">> & { role?: string }>) {
+  const next = writeAccounts(list);
   void import("@/lib/catalog-sync").then((mod) => {
     mod.touchCatalogKey(KEY);
     return mod.publishCatalogNow();
@@ -68,12 +73,11 @@ export function saveAccounts(list: Array<Partial<Omit<Account, "role">> & { role
 }
 
 export async function saveAccountsAndSync(list: Array<Partial<Omit<Account, "role">> & { role?: string }>) {
-  const next = list.map((item, index) => normalizeAccount(item, index)).filter((item) => item.user && item.name);
-  sessionStorage.setItem(KEY, JSON.stringify(next));
+  const next = writeAccounts(list);
   const mod = await import("@/lib/catalog-sync");
   mod.touchCatalogKey(KEY);
-  await mod.publishCatalogNow();
-  return next;
+  const ok = await mod.publishCatalogNow();
+  return { accounts: next, ok };
 }
 
 export function roleSession(account: Account): DemoSession {

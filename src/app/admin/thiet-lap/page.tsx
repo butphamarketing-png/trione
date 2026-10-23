@@ -27,16 +27,21 @@ export default function SettingsPage() {
     setError("");
   }
 
-  function save() {
+  async function save() {
     if (!draft) return;
     if (!draft.company.trim()) {
       setError("Nhập tên công ty trước khi lưu.");
       setNotice("");
       return;
     }
-    const saved = saveSiteSettings({ ...draft, company: draft.company.trim() });
+    const { saved, ok } = await saveSiteSettings({ ...draft, company: draft.company.trim() });
     setDraft(saved);
     setBaseline(saved);
+    if (!ok) {
+      setNotice("");
+      setError("Đã lưu trên máy này, nhưng chưa lên trang chủ. Bấm Lưu lại.");
+      return;
+    }
     setError("");
     setNotice("Đã lưu.");
   }

@@ -91,7 +91,9 @@ export default function MediaPage() {
     setBusy(id);
     setErr("");
     try {
-      await fetch(`/api/media?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      const res = await fetch(`/api/media?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(json.error || "Không khôi phục được ảnh");
       resetMedia(id);
       await hydrateMediaFromCloud();
     } catch (e) {

@@ -8,7 +8,7 @@ import { useSiteSettings } from "@/lib/site-settings";
 import { LogoutButton } from "@/components/logout-button";
 import { staffStatusLabel } from "@/data/staff";
 import { useLiveRequests } from "@/lib/use-live-requests";
-import { readSession, type DemoSession } from "@/lib/session";
+import { confirmServerSession, readSession, type DemoSession } from "@/lib/session";
 
 const nav = [
   { href: "/nhan-vien", label: "Bảng điều khiển", icon: GridIcon },
@@ -29,21 +29,33 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
   }, [path]);
   const [me, setMe] = useState<DemoSession | null>(null);
   useEffect(() => {
-    const s = readSession();
-    if (!s) {
-      router.replace("/dang-nhap");
-      return;
-    }
-    if (s.role === "customer") {
-      router.replace("/thu-cu");
-      return;
-    }
-    setMe(s);
-    setAllowed(true);
+    let cancelled = false;
     const pull = () => void import("@/lib/catalog-sync").then((mod) => mod.hydrateCatalog());
-    pull();
+    void (async () => {
+      const s = readSession();
+      if (!s) {
+        router.replace("/dang-nhap");
+        return;
+      }
+      if (s.role === "customer") {
+        router.replace("/thu-cu");
+        return;
+      }
+      const confirmed = await confirmServerSession();
+      if (cancelled) return;
+      if (!confirmed) {
+        router.replace("/dang-nhap");
+        return;
+      }
+      setMe(confirmed);
+      setAllowed(true);
+      pull();
+    })();
     window.addEventListener("focus", pull);
-    return () => window.removeEventListener("focus", pull);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", pull);
+    };
   }, [router]);
   const waiting = useLiveRequests().filter((r) => r.status === "dang-cho-duyet");
   if (!allowed || !me) {

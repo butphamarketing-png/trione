@@ -34,7 +34,7 @@ export type SiteSettings = {
 };
 
 export const defaultSiteSettings: SiteSettings = {
-  company: "Cửa hàng",
+  company: "LENDOI.COM",
   slogan: "",
   address: "",
   phone: "",

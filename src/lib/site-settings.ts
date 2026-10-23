@@ -57,16 +57,15 @@ export function importSiteSettings(raw: string) {
   return cache;
 }
 
-export function saveSiteSettings(next: SiteSettings) {
+export async function saveSiteSettings(next: SiteSettings) {
   const saved = normalize(next);
   cache = saved;
   sessionStorage.setItem(KEY, JSON.stringify(saved));
   listeners.forEach((listener) => listener());
-  void import("@/lib/catalog-sync").then((mod) => {
-    mod.touchCatalogKey(KEY);
-    return mod.publishCatalog();
-  });
-  return saved;
+  const mod = await import("@/lib/catalog-sync");
+  mod.touchCatalogKey(KEY);
+  const ok = await mod.publishCatalogNow();
+  return { saved, ok };
 }
 
 export function subscribeSiteSettings(listener: () => void) {

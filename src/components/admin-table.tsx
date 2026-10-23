@@ -10,7 +10,6 @@ import {
   normalizeRecord,
   peekRecords,
   reindex,
-  saveRecords,
   saveRecordsLocal,
   seedRecords,
   type AdminRecord,
@@ -151,7 +150,7 @@ export function AdminTable(props: {
   wide?: boolean;
   redIndexes?: number[];
   brandFilter?: boolean;
-  onCommit?: (records: AdminRecord[]) => void | Promise<void>;
+  onCommit?: (records: AdminRecord[]) => void | boolean | Promise<void | boolean>;
   beforeSave?: (record: AdminRecord) => string;
   renderExtra?: (mode: "add" | "edit" | "view") => ReactNode;
 }) {
@@ -205,7 +204,7 @@ function AdminTableInner({
   wide?: boolean;
   redIndexes?: number[];
   brandFilter?: boolean;
-  onCommit?: (records: AdminRecord[]) => void | Promise<void>;
+  onCommit?: (records: AdminRecord[]) => void | boolean | Promise<void | boolean>;
   beforeSave?: (record: AdminRecord) => string;
   renderExtra?: (mode: "add" | "edit" | "view") => ReactNode;
 }) {
@@ -324,7 +323,10 @@ function AdminTableInner({
   }, [mode, editId]);
 
   useEffect(() => {
-    const onError = () => setError("Đã lưu trên máy này, nhưng chưa lên trang chủ. Bấm Lưu lại.");
+    const onError = () => {
+      setNotice("");
+      setError("Đã lưu trên máy này, nhưng chưa lên trang chủ. Bấm Lưu lại.");
+    };
     window.addEventListener("trione-catalog-error", onError);
     return () => window.removeEventListener("trione-catalog-error", onError);
   }, []);
@@ -358,12 +360,18 @@ function AdminTableInner({
   }
 
   function commit(next: AdminRecord[], message: string) {
-    const saved = saveRecords(title, next);
+    const saved = saveRecordsLocal(title, next);
     setRecords(saved);
     keepNotice.current = Boolean(message);
     setNotice(message);
     setError("");
-    return { saved, done: Promise.resolve(onCommit?.(saved)).then(() => undefined) };
+    const done = Promise.resolve(onCommit?.(saved)).then(async (extra) => {
+      if (extra === false) return false;
+      if (extra === true) return true;
+      const mod = await import("@/lib/catalog-sync");
+      return mod.publishCatalogNow();
+    });
+    return { saved, done };
   }
 
   async function save(current: AdminRecord, exitAfter: boolean) {
@@ -392,7 +400,12 @@ function AdminTableInner({
     const pool = (live ? records : peekRecords(title)) ?? records ?? [];
     if (mode === "add") {
       const { done } = commit([...pool.filter((record) => record.id !== nextDraft.id), nextDraft], "Đã lưu.");
-      await done;
+      const stored = await done;
+      if (stored === false) {
+        setNotice("");
+        setError("Đã lưu trên máy này, nhưng chưa lên trang chủ. Bấm Lưu lại.");
+        return false;
+      }
       if (exitAfter) exit();
       else router.replace(href("edit", nextDraft.id));
       return true;
@@ -401,17 +414,35 @@ function AdminTableInner({
       pool.map((record) => (record.id === nextDraft.id ? nextDraft : record)),
       "Đã lưu."
     );
-    await done;
+    const stored = await done;
+    if (stored === false) {
+      setNotice("");
+      setError("Đã lưu trên máy này, nhưng chưa lên trang chủ. Bấm Lưu lại.");
+      return false;
+    }
     if (exitAfter) exit();
     return true;
   }
 
   function copy(record: AdminRecord) {
+    const cells = record.cells.map((cell, index) => (index === titleIndex ? `${cell} (copy)` : cell));
+    const userIndex = columns.indexOf("Tài khoản");
+    if (userIndex >= 0) {
+      const taken = new Set((records ?? []).map((item) => (item.cells[userIndex] || "").trim().toLowerCase()));
+      const base = (record.cells[userIndex] || "user").trim() || "user";
+      let nextUser = `${base}.copy`;
+      let count = 2;
+      while (taken.has(nextUser.toLowerCase())) {
+        nextUser = `${base}.copy${count}`;
+        count += 1;
+      }
+      cells[userIndex] = nextUser;
+    }
     const duplicate: AdminRecord = {
       ...cloneRecord(record),
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      cells: record.cells.map((cell, index) => (index === titleIndex ? `${cell} (copy)` : cell)),
-      extra: { ...record.extra, order: String((records?.length ?? 0) + 1) },
+      cells,
+      extra: { ...record.extra, sku: "", slug: "", serial: "", order: String((records?.length ?? 0) + 1) },
     };
     commit([...(records ?? []), duplicate], `Đã sao chép «${record.cells[titleIndex]}».`);
   }

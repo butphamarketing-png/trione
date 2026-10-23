@@ -26,6 +26,7 @@ export default function RequestDetailPage({
   const [draft, setDraft] = useState<RequestStatus>("dang-cho-duyet");
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState("");
+  const [savedOk, setSavedOk] = useState(true);
 
   useEffect(() => {
     setReady(true);
@@ -85,8 +86,10 @@ export default function RequestDetailPage({
           <button
             type="button"
             onClick={() => {
-              patchRequest(found.id, { status: draft });
-              setSaved(`Đã cập nhật yêu cầu ${found.id} · trạng thái ${staffStatusLabel[draft]}`);
+              void patchRequest(found.id, { status: draft }).then((ok) => {
+                setSavedOk(ok);
+                setSaved(ok ? `Đã cập nhật yêu cầu ${found.id} · trạng thái ${staffStatusLabel[draft]}` : `Chưa lưu được yêu cầu ${found.id}. Thử lại.`);
+              });
             }}
             className="rounded-lg bg-[#e11d2e] px-4 py-2 text-sm font-semibold text-white"
           >
@@ -151,7 +154,7 @@ export default function RequestDetailPage({
       </div>
 
       {saved && (
-        <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-800">{saved}</p>
+        <p className={`mt-3 rounded-lg px-4 py-2 text-sm ${savedOk ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-[#e11d2e]"}`}>{saved}</p>
       )}
 
       <div className="mt-4 rounded-2xl bg-white p-5">
@@ -165,8 +168,10 @@ export default function RequestDetailPage({
         <button
           type="button"
           onClick={() => {
-            patchRequest(found.id, { note });
-            setSaved(`Đã lưu ghi chú yêu cầu ${found.id}`);
+            void patchRequest(found.id, { note }).then((ok) => {
+              setSavedOk(ok);
+              setSaved(ok ? `Đã lưu ghi chú yêu cầu ${found.id}` : `Chưa lưu được ghi chú yêu cầu ${found.id}. Thử lại.`);
+            });
           }}
           className="mt-2 rounded-lg bg-[#e11d2e] px-4 py-2 text-sm font-semibold text-white"
         >

@@ -1,6 +1,6 @@
 "use client";
 
-import { readAccounts, saveAccounts } from "@/lib/accounts";
+import { readAccounts, writeAccounts } from "@/lib/accounts";
 import { readSession, saveSession } from "@/lib/session";
 
 export type StaffProfile = {
@@ -49,7 +49,7 @@ export function readStaffProfile(user: string, fallbackName = ""): StaffProfile 
   }
 }
 
-export function saveStaffProfile(user: string, profile: StaffProfile) {
+export async function saveStaffProfile(user: string, profile: StaffProfile) {
   const next = {
     name: profile.name.trim(),
     address: profile.address.trim(),
@@ -57,17 +57,17 @@ export function saveStaffProfile(user: string, profile: StaffProfile) {
   };
   const storageKey = key(user);
   sessionStorage.setItem(storageKey, JSON.stringify(next));
-  void import("@/lib/catalog-sync").then((mod) => {
-    mod.touchCatalogKey(storageKey);
-    return mod.publishCatalog();
-  });
   const session = readSession();
   if (session && session.user === user) saveSession({ ...session, name: next.name });
   const accounts = readAccounts();
   const index = accounts.findIndex((item) => item.user.toLowerCase() === user.toLowerCase());
-  if (index >= 0 && accounts[index].name !== next.name) {
-    const nextAccounts = accounts.map((item, itemIndex) => (itemIndex === index ? { ...item, name: next.name } : item));
-    saveAccounts(nextAccounts);
+  const nameChanged = index >= 0 && accounts[index].name !== next.name;
+  if (nameChanged) {
+    writeAccounts(accounts.map((item, itemIndex) => (itemIndex === index ? { ...item, name: next.name } : item)));
   }
-  return next;
+  const mod = await import("@/lib/catalog-sync");
+  mod.touchCatalogKey(storageKey);
+  if (nameChanged) mod.touchCatalogKey("trione-accounts");
+  const ok = await mod.publishCatalogNow();
+  return { profile: next, ok };
 }

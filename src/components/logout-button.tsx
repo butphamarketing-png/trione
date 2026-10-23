@@ -12,6 +12,7 @@ export function LogoutButton({ className }: { className?: string }) {
       onClick={() => {
         void import("@/lib/catalog-sync")
           .then((mod) => mod.publishCatalogNow())
+          .finally(() => fetch("/api/logout", { method: "POST" }).catch(() => undefined))
           .finally(() => {
             clearSession();
             router.push("/dang-nhap");

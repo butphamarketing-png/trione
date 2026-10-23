@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
+import { withSessionCookie, type ApiRole } from "@/lib/api-session";
 import { createServiceClient, ensurePrivateBucket, MEDIA_BUCKET, PRIVATE_BUCKET } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -100,15 +101,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false }, { status: 401 });
     }
     const sessionRole = sessionFromRole(account.role);
-    return NextResponse.json({
-      ok: true,
-      session: {
-        user: account.user?.trim() || user,
-        role: sessionRole.role,
-        name: account.name?.trim() || user,
-        title: sessionRole.title,
-      },
-    });
+    const session = {
+      user: account.user?.trim() || user,
+      role: sessionRole.role,
+      name: account.name?.trim() || user,
+      title: sessionRole.title,
+    };
+    return withSessionCookie(NextResponse.json({ ok: true, session }), session.user, session.role as ApiRole);
   }
 
   // Chỉ dùng mật khẩu môi trường khi catalog chưa có tài khoản quản trị.
@@ -121,13 +120,11 @@ export async function POST(request: Request) {
   if (!adminUser || !adminPass || user.toLowerCase() !== adminUser.toLowerCase() || pass !== adminPass) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
-  return NextResponse.json({
-    ok: true,
-    session: {
-      user: adminUser,
-      role: "admin",
-      name: "Admin Lendoi",
-      title: "Quản trị hệ thống",
-    },
-  });
+  const session = {
+    user: adminUser,
+    role: "admin" as const,
+    name: "Admin Lendoi",
+    title: "Quản trị hệ thống",
+  };
+  return withSessionCookie(NextResponse.json({ ok: true, session }), session.user, session.role);
 }

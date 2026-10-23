@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "@/components/store-footer";
 import { useSiteSettings } from "@/lib/site-settings";
 import { LogoutButton } from "@/components/logout-button";
-import { readSession } from "@/lib/session";
+import { confirmServerSession, readSession } from "@/lib/session";
 
 type NavItem = { href: string; label: string };
 type NavGroup = { label: string; children: NavItem[] };
@@ -78,21 +78,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [hello, setHello] = useState("");
   const site = useSiteSettings();
   useEffect(() => {
-    const s = readSession();
-    if (!s) {
-      router.replace("/dang-nhap");
-      return;
-    }
-    if (s.role === "customer") {
-      router.replace("/thu-cu");
-      return;
-    }
-    if (s.role !== "admin") {
-      router.replace("/nhan-vien");
-      return;
-    }
-    setHello(s.user);
-    setAllowed(true);
+    let cancelled = false;
+    void (async () => {
+      const s = readSession();
+      if (!s) {
+        router.replace("/dang-nhap");
+        return;
+      }
+      if (s.role === "customer") {
+        router.replace("/thu-cu");
+        return;
+      }
+      if (s.role !== "admin") {
+        router.replace("/nhan-vien");
+        return;
+      }
+      const confirmed = await confirmServerSession();
+      if (cancelled) return;
+      if (!confirmed) {
+        router.replace("/dang-nhap");
+        return;
+      }
+      setHello(confirmed.user);
+      setAllowed(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
   useEffect(() => {
     const pull = () => void import("@/lib/catalog-sync").then((mod) => mod.hydrateCatalog());

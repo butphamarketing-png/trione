@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { BrandLogo } from "@/components/store-footer";
-import { homeForRole, readSession, resolveLogin, saveSession, type DemoSession } from "@/lib/session";
+import { homeForRole, readSession, saveSession, type DemoSession } from "@/lib/session";
 import { useMediaSrc } from "@/lib/use-live-media";
 import { useSiteSettings } from "@/lib/site-settings";
 
@@ -47,16 +47,6 @@ function LoginForm() {
     }
     setBusy(true);
     setErr("");
-    const catalog = await import("@/lib/catalog-sync");
-    await catalog.publishCatalogNow();
-    await catalog.hydrateCatalog({ force: true });
-    const session = resolveLogin(user, pass);
-    if (session) {
-      saveSession(session);
-      router.replace(nextPath ?? homeForRole(session.role));
-      return;
-    }
-    // Server kiểm tra catalog trước; mật khẩu môi trường chỉ dùng khi chưa có tài khoản quản trị.
     const apiLogin = await fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -66,6 +56,8 @@ function LoginForm() {
       const data = (await apiLogin.json()) as { session?: DemoSession };
       if (data.session) {
         saveSession(data.session);
+        const catalog = await import("@/lib/catalog-sync");
+        await catalog.hydrateCatalog({ force: true });
         router.replace(nextPath ?? homeForRole(data.session.role));
         return;
       }

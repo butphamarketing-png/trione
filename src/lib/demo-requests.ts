@@ -58,13 +58,12 @@ function emit() {
   listeners.forEach((l) => l());
 }
 
-function save(store: Store) {
+async function persist(store: Store) {
   sessionStorage.setItem(KEY, JSON.stringify(store));
   emit();
-  void import("@/lib/catalog-sync").then((mod) => {
-    mod.touchCatalogKey(KEY);
-    return mod.publishCatalog();
-  });
+  const mod = await import("@/lib/catalog-sync");
+  mod.touchCatalogKey(KEY);
+  return mod.publishCatalogNow();
 }
 
 export function importRequestStore(raw: string) {
@@ -105,26 +104,41 @@ export function findRequest(id: string): TradeRequest | undefined {
   return allRequests().find((r) => r.id === id);
 }
 
-export function saveTradeRequest(request: TradeRequest) {
+export async function saveTradeRequest(request: TradeRequest) {
   const store = load();
   store.extra = [request, ...store.extra.filter((r) => r.id !== request.id)];
-  save(store);
+  return persist(store);
 }
 
-export function patchRequest(id: string, patch: Partial<TradeRequest>) {
+export async function patchRequest(id: string, patch: Partial<TradeRequest>) {
   const store = load();
   store.overrides[id] = { ...store.overrides[id], ...patch };
-  save(store);
+  return persist(store);
 }
 
-export function removeRequests(ids: string[]) {
+export async function removeRequests(ids: string[]) {
   const drop = new Set(ids.filter(Boolean));
-  if (!drop.size) return;
+  if (!drop.size) return true;
   const store = load();
   store.removed = [...new Set([...(store.removed ?? []), ...drop])];
   store.extra = store.extra.filter((item) => !drop.has(item.id));
   for (const id of drop) delete store.overrides[id];
-  save(store);
+  return persist(store);
+}
+
+export async function saveRequestEdits(edit: { removeIds?: string[]; patches?: Array<{ id: string; patch: Partial<TradeRequest> }> }) {
+  const store = load();
+  const drop = new Set((edit.removeIds ?? []).filter(Boolean));
+  if (drop.size) {
+    store.removed = [...new Set([...(store.removed ?? []), ...drop])];
+    store.extra = store.extra.filter((item) => !drop.has(item.id));
+    for (const id of drop) delete store.overrides[id];
+  }
+  for (const item of edit.patches ?? []) {
+    if (!item.id || drop.has(item.id)) continue;
+    store.overrides[item.id] = { ...store.overrides[item.id], ...item.patch };
+  }
+  return persist(store);
 }
 
 export function makeRequestCode() {

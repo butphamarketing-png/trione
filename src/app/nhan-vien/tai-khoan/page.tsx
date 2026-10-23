@@ -21,14 +21,15 @@ export default function StaffAccountPage() {
     setProfile({ ...stored, name: official?.name || stored.name });
   }, []);
 
-  function save(event: React.FormEvent) {
+  async function save(event: React.FormEvent) {
     event.preventDefault();
     if (!profile.name.trim() || !profile.address.trim() || !profile.phone.trim()) {
       setNotice("Nhập đủ tên, địa chỉ và số điện thoại.");
       return;
     }
-    setProfile(saveStaffProfile(user, profile));
-    setNotice("Đã lưu thông tin tài khoản.");
+    const { profile: saved, ok } = await saveStaffProfile(user, profile);
+    setProfile(saved);
+    setNotice(ok ? "Đã lưu thông tin tài khoản." : "Chưa lưu được thông tin tài khoản. Thử lại.");
   }
 
   return (

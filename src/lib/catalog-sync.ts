@@ -26,13 +26,14 @@ export function touchCatalogKey(key: string) {
 }
 
 let publishTimer: ReturnType<typeof setTimeout> | null = null;
-let publishChain: Promise<void> = Promise.resolve();
+let publishChain: Promise<boolean> = Promise.resolve(true);
 let publishAgain = false;
 let lastHydrateAt = 0;
 let hydrateInFlight: Promise<boolean> | null = null;
 
 async function runPublish() {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") return false;
+  let ok = true;
   do {
     publishAgain = false;
     try {
@@ -49,17 +50,41 @@ async function runPublish() {
         times[key] = dirty[key] || known[key] || 0;
       }
       payload.__times = JSON.stringify(times);
+      payload.__dirty = JSON.stringify(Object.keys(dirty));
+      const dirtyAtSend = dirty;
       const res = await fetch("/api/catalog", {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) window.dispatchEvent(new CustomEvent(catalogErrorEvent));
-      else lastHydrateAt = Date.now();
+      if (!res.ok) {
+        ok = false;
+        window.dispatchEvent(new CustomEvent(catalogErrorEvent));
+      } else {
+        const body = (await res.json().catch(() => ({}))) as { times?: string };
+        const serverTimes = JSON.parse(body.times || "{}") as Record<string, number>;
+        const latestDirty = JSON.parse(sessionStorage.getItem(dirtyStore) || "{}") as Record<string, number>;
+        const knownNow = JSON.parse(sessionStorage.getItem(timeStore) || "{}") as Record<string, number>;
+        let pending = false;
+        for (const key of Object.keys(dirtyAtSend)) {
+          if (Number(latestDirty[key] || 0) > Number(dirtyAtSend[key] || 0)) {
+            pending = true;
+            continue;
+          }
+          delete latestDirty[key];
+          if (serverTimes[key]) knownNow[key] = Number(serverTimes[key]);
+        }
+        sessionStorage.setItem(dirtyStore, JSON.stringify(latestDirty));
+        sessionStorage.setItem(timeStore, JSON.stringify(knownNow));
+        if (pending) publishAgain = true;
+        lastHydrateAt = Date.now();
+      }
     } catch {
+      ok = false;
       window.dispatchEvent(new CustomEvent(catalogErrorEvent));
     }
   } while (publishAgain);
+  return ok;
 }
 
 function enqueuePublish() {
@@ -78,13 +103,13 @@ export async function publishCatalog() {
 
 /** Cancel debounce and push catalog to the server now (passwords, settings). */
 export async function publishCatalogNow() {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") return false;
   if (publishTimer) {
     clearTimeout(publishTimer);
     publishTimer = null;
   }
   publishAgain = true;
-  await enqueuePublish();
+  return enqueuePublish();
 }
 
 let ready: Promise<boolean> | null = null;
@@ -102,8 +127,11 @@ export function ensureCatalog() {
 export async function hydrateCatalog(options?: { force?: boolean }) {
   if (typeof window === "undefined") return false;
   const force = Boolean(options?.force);
+  if (hydrateInFlight) {
+    const pending = await hydrateInFlight;
+    if (!force) return pending;
+  }
   if (!force && Date.now() - lastHydrateAt < HYDRATE_MIN_MS) return true;
-  if (hydrateInFlight) return hydrateInFlight;
 
   hydrateInFlight = (async () => {
     try {

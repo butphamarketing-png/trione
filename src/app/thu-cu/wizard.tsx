@@ -118,6 +118,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   const photoFiles = useRef<Record<string, File>>({});
   const sendingLock = useRef(false);
   const [sending, setSending] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [garminId, setGarminId] = useState("");
   const [series, setSeries] = useState("TẤT CẢ");
   const [agreed, setAgreed] = useState(false);
@@ -536,20 +537,17 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   async function uploadRequestPhotos(code: string) {
     const files = photoSlots.map((slot) => photoFiles.current[slot.id]).filter((file): file is File => Boolean(file));
     const urls: string[] = [];
-    for (const file of files) {
-      try {
-        const dataUrl = await fileToDataUrl(file, 900);
-        if (!dataUrl.startsWith("data:image/")) continue;
-        const blob = await (await fetch(dataUrl)).blob();
-        const body = new FormData();
-        body.set("id", `yeucau-${code}-${urls.length}`);
-        body.set("file", new File([blob], "photo.webp", { type: blob.type || "image/webp" }));
-        const uploaded = await fetch("/api/media", { method: "POST", body });
-        const saved = (await uploaded.json()) as { url?: string };
-        if (uploaded.ok && saved.url) urls.push(saved.url);
-      } catch {
-        /* keep the request even if one photo fails */
-      }
+    for (const [index, file] of files.entries()) {
+      const dataUrl = await fileToDataUrl(file, 900);
+      if (!dataUrl.startsWith("data:image/")) throw new Error("photo");
+      const blob = await (await fetch(dataUrl)).blob();
+      const body = new FormData();
+      body.set("id", `yeucau-${code}-${index}`);
+      body.set("file", new File([blob], "photo.webp", { type: blob.type || "image/webp" }));
+      const uploaded = await fetch("/api/media", { method: "POST", body });
+      const saved = (await uploaded.json().catch(() => ({}))) as { url?: string };
+      if (!uploaded.ok || !saved.url) throw new Error("photo");
+      urls.push(saved.url);
     }
     return urls;
   }
@@ -584,6 +582,8 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       const code = requestCode || makeRequestCode();
       sendingLock.current = true;
       setSending(true);
+      setSubmitError("");
+      try {
       const uploadedPhotos = await uploadRequestPhotos(code);
       const now = new Date();
       const tags = [
@@ -595,7 +595,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
       const byStaff = session?.role === "staff" || session?.role === "ctv";
       const byCustomer = session?.role === "customer";
       const profile = session && byStaff ? readStaffProfile(session.user, session.name) : null;
-      saveTradeRequest({
+      const saved = await saveTradeRequest({
         id: code,
         username: session && (byStaff || byCustomer) ? session.user : "khach",
         name: byStaff && session ? profile?.name || session.name : byCustomer && session ? session.name : `Khách ${site.company}`,
@@ -622,9 +622,22 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
         status: "dang-cho-duyet",
         source: byStaff && session ? `Tạo bởi nhân viên ${session.user}` : byCustomer && session ? `Tạo bởi khách ${session.user}` : `Tạo bởi khách hàng ${site.company}`,
       });
+      if (!saved) {
+        setSubmitError("Chưa gửi được yêu cầu. Kiểm tra đăng nhập rồi thử lại.");
+        return;
+      }
       setRequestCode(code);
       setSubmitted(true);
-      setSending(false);
+      } catch (error) {
+        setSubmitError(
+          error instanceof Error && error.message === "photo"
+            ? "Chưa tải được ảnh thiết bị. Thử lại."
+            : "Chưa gửi được yêu cầu. Kiểm tra đăng nhập rồi thử lại."
+        );
+      } finally {
+        sendingLock.current = false;
+        setSending(false);
+      }
       return;
     }
     setStep((s) => Math.min(10, s + 1));
@@ -1449,6 +1462,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
                   {sending ? "Đang gửi…" : "Gửi yêu cầu về admin"}
                 </button>
               </div>
+              {submitError ? <p className="mt-3 text-sm text-[#e11d2e]">{submitError}</p> : null}
             </div>
           </Section>
         )}

@@ -5,7 +5,6 @@ import { AdminTable } from "@/components/admin-table";
 import {
   accountRoles,
   readAccounts,
-  saveAccounts,
   saveAccountsAndSync,
   type Account,
   type AccountRole,
@@ -40,7 +39,7 @@ export default function UsersPage() {
     };
   }, []);
 
-  function add() {
+  async function add() {
     const nextName = name.trim();
     const nextUser = user.trim();
     if (!nextName || !nextUser) {
@@ -53,7 +52,7 @@ export default function UsersPage() {
       setNotice("");
       return;
     }
-    const next = saveAccounts([
+    const { accounts: next, ok } = await saveAccountsAndSync([
       ...accounts,
       {
         id: `${Date.now()}`,
@@ -69,6 +68,11 @@ export default function UsersPage() {
     setUser("");
     setPassword("");
     setRole("Nhân viên");
+    if (!ok) {
+      setNotice("");
+      setError("Đã lưu trên máy này, nhưng chưa lên trang chủ. Bấm tạo lại.");
+      return;
+    }
     setError("");
     setNotice(`Đã tạo ${nextUser} với quyền ${role}.`);
   }
@@ -91,8 +95,19 @@ export default function UsersPage() {
     const nextPassword = draft.password.trim();
     const draftUser = draft.user.trim().toLowerCase();
     const changingId = draft.id;
+    const seen = new Set<string>();
     const next = records.map((record) => {
-      const username = record.cells[2]?.trim() ?? "";
+      let username = record.cells[2]?.trim() ?? "";
+      if (username && seen.has(username.toLowerCase())) {
+        const base = username;
+        let count = 2;
+        username = `${base}.copy`;
+        while (seen.has(username.toLowerCase())) {
+          username = `${base}.copy${count}`;
+          count += 1;
+        }
+      }
+      if (username) seen.add(username.toLowerCase());
       const existing = previous.find((item) => item.id === record.id || item.user.toLowerCase() === username.toLowerCase());
       const changing =
         Boolean(nextPassword) &&
@@ -104,16 +119,16 @@ export default function UsersPage() {
         user: username,
         role: (record.cells[3] ?? "Nhân viên") as AccountRole,
         status,
-        password: changing ? nextPassword : existing?.password || "123456",
+        password: changing ? nextPassword : existing?.password || "",
       };
     });
     if (nextPassword) {
       passwordDraft.current = { password: "", confirm: "", id: "", user: "" };
       setPasswordKey((value) => value + 1);
-      setAccounts(await saveAccountsAndSync(next));
-      return;
     }
-    setAccounts(saveAccounts(next));
+    const { accounts: saved, ok } = await saveAccountsAndSync(next);
+    setAccounts(saved);
+    return ok;
   }
 
   if (!accounts) return <div className="rounded-sm border-t-4 border-[#2f6fed] bg-white p-4 text-sm text-zinc-500">Đang tải...</div>;

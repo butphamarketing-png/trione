@@ -36,6 +36,22 @@ export function homeForRole(role: DemoRole) {
 
 export function resolveLogin(user: string, pass: string): DemoSession | null {
   const account = readAccounts().find((item) => item.user.toLowerCase() === user.trim().toLowerCase());
-  if (!account || account.password !== pass || account.status !== "Hoạt động") return null;
+  if (!account || !account.password || account.password !== pass || account.status !== "Hoạt động") return null;
   return roleSession(account);
+}
+
+export async function confirmServerSession() {
+  const local = readSession();
+  if (!local) return null;
+  const res = await fetch("/api/session", { cache: "no-store" }).catch(() => null);
+  if (!res?.ok) {
+    clearSession();
+    return null;
+  }
+  const data = (await res.json()) as { user?: string; role?: DemoRole };
+  if (!data.user || data.user.toLowerCase() !== local.user.toLowerCase() || data.role !== local.role) {
+    clearSession();
+    return null;
+  }
+  return local;
 }

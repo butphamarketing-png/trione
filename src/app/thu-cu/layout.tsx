@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { readSession } from "@/lib/session";
+import { confirmServerSession, readSession } from "@/lib/session";
 
 export default function ThuCuLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -10,12 +10,25 @@ export default function ThuCuLayout({ children }: { children: React.ReactNode })
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    if (!readSession()) {
-      const next = path === "/thu-cu" || path.startsWith("/thu-cu/") ? path : "/thu-cu";
-      router.replace(`/dang-nhap?next=${encodeURIComponent(next)}`);
-      return;
-    }
-    setAllowed(true);
+    let cancelled = false;
+    void (async () => {
+      if (!readSession()) {
+        const next = path === "/thu-cu" || path.startsWith("/thu-cu/") ? path : "/thu-cu";
+        router.replace(`/dang-nhap?next=${encodeURIComponent(next)}`);
+        return;
+      }
+      const confirmed = await confirmServerSession();
+      if (cancelled) return;
+      if (!confirmed) {
+        const next = path === "/thu-cu" || path.startsWith("/thu-cu/") ? path : "/thu-cu";
+        router.replace(`/dang-nhap?next=${encodeURIComponent(next)}`);
+        return;
+      }
+      setAllowed(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [path, router]);
 
   if (!allowed) {
