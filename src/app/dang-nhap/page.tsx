@@ -52,7 +52,17 @@ function LoginForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user, pass }),
     }).catch(() => null);
-    if (apiLogin?.ok) {
+    if (!apiLogin) {
+      setBusy(false);
+      setErr("Chưa kết nối được. Thử lại.");
+      return;
+    }
+    if (apiLogin.status === 503) {
+      setBusy(false);
+      setErr("Chưa kiểm tra được tài khoản. Thử lại.");
+      return;
+    }
+    if (apiLogin.ok) {
       const data = (await apiLogin.json()) as { session?: DemoSession };
       if (data.session) {
         saveSession(data.session);

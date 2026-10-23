@@ -7,6 +7,7 @@ import {
   normalizeGradePrices,
   normalizeRecord,
   saveRecords,
+  saveRecordsAndSync,
   shownProductImage,
   type AdminRecord,
 } from "@/lib/admin-records";
@@ -290,7 +291,7 @@ export function tradeSheetRows() {
 
 export type ImportPreviewRow = { action: "create" | "update" | "skip"; label: string; detail: string };
 
-export function importTradePriceRows(rows: string[][], options?: { dryRun?: boolean }) {
+export async function importTradePriceRows(rows: string[][], options?: { dryRun?: boolean }) {
   const dryRun = Boolean(options?.dryRun);
   const clean = rows.filter((row) => row.some((cell) => String(cell ?? "").trim()));
   if (!clean.length) return { updated: 0, created: 0, missing: [] as string[], skipped: 0, preview: [] as ImportPreviewRow[] };
@@ -398,6 +399,10 @@ export function importTradePriceRows(rows: string[][], options?: { dryRun?: bool
     });
     updated += 1;
   }
-  if (!dryRun) saveRecords(tradeProductStorageKey, records);
-  return { updated, created, missing, skipped, preview };
+  let saved = true;
+  if (!dryRun) {
+    const synced = await saveRecordsAndSync(tradeProductStorageKey, records);
+    saved = synced.ok;
+  }
+  return { updated, created, missing, skipped, preview, saved };
 }

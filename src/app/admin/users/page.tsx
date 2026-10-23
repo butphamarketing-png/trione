@@ -22,6 +22,7 @@ export default function UsersPage() {
   const [role, setRole] = useState<AccountRole>("Nhân viên");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [passwordKey, setPasswordKey] = useState(0);
   const passwordDraft = useRef<PasswordDraft>({ password: "", confirm: "", id: "", user: "" });
 
@@ -29,9 +30,19 @@ export default function UsersPage() {
     let cancelled = false;
     void import("@/lib/catalog-sync").then(async (mod) => {
       await mod.ensureCatalog();
-      if (!cancelled) setAccounts(readAccounts());
+      if (cancelled) return;
+      if (!sessionStorage.getItem("trione-accounts")) {
+        setLoadError("Chưa tải được danh sách tài khoản. Tải lại trang.");
+        return;
+      }
+      setLoadError("");
+      setAccounts(readAccounts());
     });
-    const refresh = () => setAccounts(readAccounts());
+    const refresh = () => {
+      if (!sessionStorage.getItem("trione-accounts")) return;
+      setLoadError("");
+      setAccounts(readAccounts());
+    };
     window.addEventListener("trione-catalog", refresh);
     return () => {
       cancelled = true;
@@ -47,7 +58,12 @@ export default function UsersPage() {
       setNotice("");
       return;
     }
-    if (!accounts || accounts.some((item) => item.user.toLowerCase() === nextUser.toLowerCase())) {
+    if (!accounts) {
+      setError("Chưa tải được danh sách tài khoản. Tải lại trang.");
+      setNotice("");
+      return;
+    }
+    if (accounts.some((item) => item.user.toLowerCase() === nextUser.toLowerCase())) {
       setError("Tài khoản này đã có.");
       setNotice("");
       return;
@@ -131,7 +147,13 @@ export default function UsersPage() {
     return ok;
   }
 
-  if (!accounts) return <div className="rounded-sm border-t-4 border-[#2f6fed] bg-white p-4 text-sm text-zinc-500">Đang tải...</div>;
+  if (!accounts) {
+    return (
+      <div className="rounded-sm border-t-4 border-[#2f6fed] bg-white p-4 text-sm text-zinc-500">
+        {loadError || "Đang tải..."}
+      </div>
+    );
+  }
 
   const rows = accounts.map((item, index) => [String(index + 1), item.name, item.user, item.role, item.status]);
 

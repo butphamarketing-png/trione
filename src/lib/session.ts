@@ -28,6 +28,26 @@ export function clearSession() {
   sessionStorage.removeItem(KEY);
 }
 
+const privateCatalogKeys = new Set(["trione-accounts", "trione-demo-requests"]);
+
+export function clearPrivateBrowserData() {
+  if (typeof window === "undefined") return;
+  const drop: string[] = [];
+  for (let index = 0; index < sessionStorage.length; index += 1) {
+    const key = sessionStorage.key(index);
+    if (!key) continue;
+    if (privateCatalogKeys.has(key) || key.startsWith("trione-staff-profile:")) drop.push(key);
+  }
+  for (const key of drop) sessionStorage.removeItem(key);
+  try {
+    const dirty = JSON.parse(sessionStorage.getItem("trione-catalog-dirty") || "{}") as Record<string, number>;
+    for (const key of drop) delete dirty[key];
+    sessionStorage.setItem("trione-catalog-dirty", JSON.stringify(dirty));
+  } catch {
+    sessionStorage.removeItem("trione-catalog-dirty");
+  }
+}
+
 export function homeForRole(role: DemoRole) {
   if (role === "admin") return "/admin";
   if (role === "customer") return "/thu-cu";

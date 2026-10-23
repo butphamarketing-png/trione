@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { clearSession } from "@/lib/session";
+import { clearPrivateBrowserData, clearSession } from "@/lib/session";
 
 export function LogoutButton({ className }: { className?: string }) {
   const router = useRouter();
@@ -15,6 +15,7 @@ export function LogoutButton({ className }: { className?: string }) {
           .finally(() => fetch("/api/logout", { method: "POST" }).catch(() => undefined))
           .finally(() => {
             clearSession();
+            clearPrivateBrowserData();
             router.push("/dang-nhap");
           });
       }}

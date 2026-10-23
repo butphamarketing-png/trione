@@ -8,6 +8,7 @@ import {
   saveMedia,
   type MediaItem,
 } from "@/lib/demo-media";
+import { queryMatches } from "@/lib/search-text";
 import { useMediaOverrides, useMediaSrc } from "@/lib/use-live-media";
 
 type GroupFilter = "all" | MediaItem["group"];
@@ -19,14 +20,6 @@ const groups: { id: GroupFilter; label: string }[] = [
   { id: "trade", label: "Thu cũ" },
   { id: "exchange", label: "Đổi mới" },
 ];
-
-function fold(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/gi, "d")
-    .toLowerCase();
-}
 
 export default function MediaPage() {
   const overrides = useMediaOverrides();
@@ -58,12 +51,9 @@ export default function MediaPage() {
   }, []);
 
   const visible = useMemo(() => {
-    const tokens = fold(q).trim().split(/\s+/).filter(Boolean);
     return items.filter((item) => {
       if (group !== "all" && item.group !== group) return false;
-      if (!tokens.length) return true;
-      const hay = fold(`${item.label} ${item.usedOn} ${item.id}`);
-      return tokens.every((token) => hay.includes(token));
+      return queryMatches(`${item.label} ${item.usedOn} ${item.id}`, q);
     });
   }, [items, group, q]);
 

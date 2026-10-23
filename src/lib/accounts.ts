@@ -48,12 +48,12 @@ export function readAccounts(): Account[] {
   if (typeof window === "undefined") return seed.map((item) => ({ ...item }));
   try {
     const raw = sessionStorage.getItem(KEY);
-    if (!raw) return seed.map((item) => ({ ...item }));
+    if (!raw) return [];
     const parsed = JSON.parse(raw) as Partial<Account>[];
-    if (!Array.isArray(parsed) || !parsed.length) return seed.map((item) => ({ ...item }));
+    if (!Array.isArray(parsed)) return [];
     return parsed.map((item, index) => normalizeAccount(item, index)).filter((item) => item.user && item.name);
   } catch {
-    return seed.map((item) => ({ ...item }));
+    return [];
   }
 }
 

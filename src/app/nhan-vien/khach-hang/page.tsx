@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { queryMatches } from "@/lib/search-text";
 import { useLiveCustomers } from "@/lib/use-live-requests";
 
 export default function CustomersPage() {
@@ -11,8 +12,7 @@ export default function CustomersPage() {
     () =>
       customers.filter(
         (c) =>
-          !q.trim() ||
-          `${c.username} ${c.name} ${c.phone} ${c.address} ${c.type}`.toLowerCase().includes(q.toLowerCase())
+          !q.trim() || queryMatches(`${c.username} ${c.name} ${c.phone} ${c.address} ${c.type}`, q)
       ),
     [q, customers]
   );

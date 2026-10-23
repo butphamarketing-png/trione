@@ -27,6 +27,7 @@ type ImportResult = {
   missing: string[];
   skipped: number;
   preview?: ImportPreviewRow[];
+  saved?: boolean;
 };
 
 async function readGrid(file: File): Promise<{ csv?: string; rows?: string[][]; error?: string }> {
@@ -68,7 +69,7 @@ function ImportCard({
   blurb: string;
   downloadLabel: string;
   onDownload: () => void | Promise<void>;
-  runImport: (input: { csv?: string; rows?: string[][] }, dryRun: boolean) => ImportResult;
+  runImport: (input: { csv?: string; rows?: string[][] }, dryRun: boolean) => ImportResult | Promise<ImportResult>;
   acceptHint: string;
 }) {
   const [file, setFile] = useState("");
@@ -78,6 +79,7 @@ function ImportCard({
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<ImportPreviewRow[] | null>(null);
   const [counts, setCounts] = useState<{ updated: number; created: number; skipped: number } | null>(null);
+  const [busy, setBusy] = useState(false);
 
   function clearResult() {
     setMessage("");
@@ -86,7 +88,8 @@ function ImportCard({
     setCounts(null);
   }
 
-  function apply(dryRun: boolean) {
+  async function apply(dryRun: boolean) {
+    if (busy) return;
     if (!csv && !rows) {
       setError("Chọn file Excel hoặc CSV trước khi nhập.");
       setMessage("");
@@ -94,23 +97,33 @@ function ImportCard({
       setCounts(null);
       return;
     }
-    const result = runImport({ csv, rows: rows ?? undefined }, dryRun);
-    setCounts({
-      updated: result.updated,
-      created: result.created ?? 0,
-      skipped: result.skipped,
-    });
-    setPreview(result.preview?.slice(0, 40) ?? null);
-    if (dryRun) {
-      setMessage(
-        `Xem trước: tạo mới ${result.created ?? 0} · cập nhật ${result.updated} · bỏ qua ${result.skipped}. Bấm Xác nhận import để ghi.`,
-      );
-      setError(result.missing.length ? `Không khớp: ${result.missing.slice(0, 12).join(", ")}` : "");
-      return;
+    setBusy(true);
+    try {
+      const result = await runImport({ csv, rows: rows ?? undefined }, dryRun);
+      setCounts({
+        updated: result.updated,
+        created: result.created ?? 0,
+        skipped: result.skipped,
+      });
+      setPreview(result.preview?.slice(0, 40) ?? null);
+      if (dryRun) {
+        setMessage(
+          `Xem trước: tạo mới ${result.created ?? 0} · cập nhật ${result.updated} · bỏ qua ${result.skipped}. Bấm Xác nhận import để ghi.`,
+        );
+        setError(result.missing.length ? `Không khớp: ${result.missing.slice(0, 12).join(", ")}` : "");
+        return;
+      }
+      if (result.saved === false) {
+        setMessage("");
+        setError("Đã lưu trên máy này, nhưng chưa lên trang chủ. Bấm Xác nhận import lại.");
+        return;
+      }
+      const formatted = formatResult(title, result);
+      setMessage(formatted.message);
+      setError(formatted.error);
+    } finally {
+      setBusy(false);
     }
-    const formatted = formatResult(title, result);
-    setMessage(formatted.message);
-    setError(formatted.error);
   }
 
   return (
@@ -150,10 +163,15 @@ function ImportCard({
         </label>
       </div>
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => apply(true)} className="rounded border px-4 py-2 text-sm font-semibold">
+        <button type="button" onClick={() => void apply(true)} disabled={busy} className="rounded border px-4 py-2 text-sm font-semibold disabled:opacity-50">
           Xem trước
         </button>
-        <button type="button" onClick={() => apply(false)} className="rounded bg-[#22a45a] px-4 py-2 text-sm font-semibold text-white">
+        <button
+          type="button"
+          onClick={() => void apply(false)}
+          disabled={busy || (!csv && !rows)}
+          className="rounded bg-[#22a45a] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
           Xác nhận import
         </button>
       </div>

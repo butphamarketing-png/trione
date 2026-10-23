@@ -232,9 +232,17 @@ export function saveRecordsLocal(key: string, records: AdminRecord[]) {
 export function saveRecords(key: string, records: AdminRecord[]) {
   const next = saveRecordsLocal(key, records);
   if (typeof window !== "undefined") {
-    void import("@/lib/catalog-sync").then((mod) => mod.publishCatalog());
+    void import("@/lib/catalog-sync").then((mod) => mod.publishCatalogNow());
   }
   return next;
+}
+
+export async function saveRecordsAndSync(key: string, records: AdminRecord[]) {
+  const next = saveRecordsLocal(key, records);
+  if (typeof window === "undefined") return { records: next, ok: true };
+  const { publishCatalogNow } = await import("@/lib/catalog-sync");
+  const ok = await publishCatalogNow();
+  return { records: next, ok };
 }
 
 export function ingestStored(fullKey: string, raw: string) {

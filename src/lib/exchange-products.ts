@@ -1,5 +1,5 @@
 import { brands, garminNew } from "@/data/catalog";
-import { albumSources, blankExtra, loadRecords, normalizeRecord, saveRecords, shownProductImage, type AdminRecord } from "@/lib/admin-records";
+import { albumSources, blankExtra, loadRecords, normalizeRecord, saveRecords, saveRecordsAndSync, shownProductImage, type AdminRecord } from "@/lib/admin-records";
 import { vndComma } from "@/lib/pricing";
 
 export const exchangeStorageKey = "Sản phẩm đổi mới";
@@ -178,7 +178,7 @@ function slugifySku(value: string) {
 
 export type ImportPreviewRow = { action: "create" | "update" | "skip"; label: string; detail: string };
 
-export function importExchangePriceRows(rows: string[][], options?: { dryRun?: boolean }) {
+export async function importExchangePriceRows(rows: string[][], options?: { dryRun?: boolean }) {
   const dryRun = Boolean(options?.dryRun);
   const clean = rows.filter((row) => row.some((cell) => String(cell ?? "").trim()));
   if (!clean.length) return { updated: 0, created: 0, missing: [] as string[], skipped: 0, preview: [] as ImportPreviewRow[] };
@@ -279,8 +279,12 @@ export function importExchangePriceRows(rows: string[][], options?: { dryRun?: b
     if (supportRaw) record.cells[supportIndex] = vndComma(money(supportRaw));
     updated += 1;
   }
-  if (!dryRun) saveRecords(exchangeStorageKey, records);
-  return { updated, created, missing, skipped, preview };
+  let saved = true;
+  if (!dryRun) {
+    const synced = await saveRecordsAndSync(exchangeStorageKey, records);
+    saved = synced.ok;
+  }
+  return { updated, created, missing, skipped, preview, saved };
 }
 
 export function supportCsv() {
@@ -361,7 +365,7 @@ function headerAt(header: string[], test: (value: string) => boolean) {
   return header.findIndex((cell) => test(fold(cell)));
 }
 
-export function importSupportRows(rows: string[][], options?: { dryRun?: boolean }) {
+export async function importSupportRows(rows: string[][], options?: { dryRun?: boolean }) {
   const dryRun = Boolean(options?.dryRun);
   const clean = rows.filter((row) => row.some((cell) => cell.trim()));
   if (!clean.length) return { updated: 0, created: 0, missing: [] as string[], skipped: 0, preview: [] as ImportPreviewRow[] };
@@ -412,8 +416,12 @@ export function importSupportRows(rows: string[][], options?: { dryRun?: boolean
     record.cells[supportIndex] = vndComma(money(raw));
     updated += 1;
   }
-  if (!dryRun) saveRecords(exchangeStorageKey, records);
-  return { updated, created: 0, missing, skipped, preview };
+  let saved = true;
+  if (!dryRun) {
+    const synced = await saveRecordsAndSync(exchangeStorageKey, records);
+    saved = synced.ok;
+  }
+  return { updated, created: 0, missing, skipped, preview, saved };
 }
 
 export function importSupportCsv(text: string, options?: { dryRun?: boolean }) {

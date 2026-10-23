@@ -17,13 +17,17 @@ import {
 import { brands } from "@/data/catalog";
 import { exchangeStorageKey, migrateExchangeRecord } from "@/lib/exchange-products";
 import { groupVnd } from "@/lib/pricing";
+import { queryMatches } from "@/lib/search-text";
 
-function foldSearch(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/gi, "d")
-    .toLowerCase();
+function searchableText(record: AdminRecord) {
+  const extra = record.extra;
+  return [record.cells.join(" "), extra.sku, extra.serial, extra.slug, extra.shortDesc, extra.seoTitle, extra.keywords]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function matchesQuery(record: AdminRecord, query: string) {
+  return queryMatches(searchableText(record), query);
 }
 
 function shownCell(column: string, cell: string) {
@@ -341,7 +345,7 @@ function AdminTableInner({
     () =>
       (records ?? []).filter((record) => {
         if (brand && record.extra.category !== brand) return false;
-        return !q.trim() || foldSearch(record.cells.join(" ")).includes(foldSearch(q));
+        return matchesQuery(record, q);
       }),
     [records, q, brand]
   );

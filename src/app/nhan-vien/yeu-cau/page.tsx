@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { StaffRequestTable } from "@/components/staff-request-table";
 import { staffStatusLabel, type RequestStatus } from "@/data/staff";
+import { queryMatches } from "@/lib/search-text";
 import { useLiveRequests } from "@/lib/use-live-requests";
 
 export default function RequestListPage() {
@@ -20,17 +21,7 @@ export default function RequestListPage() {
   const items = useMemo(
     () =>
       all.filter((r) => {
-        const haystack = `${r.id} ${r.name} ${r.username} ${r.oldDevice}`
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/đ/gi, "d")
-          .toLowerCase();
-        const query = q
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/đ/gi, "d")
-          .toLowerCase();
-        const byQ = !q.trim() || haystack.includes(query);
+        const byQ = !q.trim() || queryMatches(`${r.id} ${r.name} ${r.username} ${r.oldDevice}`, q);
         const byS = status === "all" || r.status === status;
         return byQ && byS;
       }),

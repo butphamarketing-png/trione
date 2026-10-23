@@ -36,43 +36,51 @@ async function readLocal() {
   }
 }
 
-async function readJson(bucket: string, file: string) {
+async function readJson(bucket: string, file: string): Promise<Record<string, string> | null> {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!base || !key) return {};
+  if (!base || !key) return null;
   try {
     const res = await fetch(`${base}/storage/v1/object/${bucket}/${file}?t=${Date.now()}`, {
       headers: { authorization: `Bearer ${key}`, apikey: key },
       cache: "no-store",
     });
-    if (!res.ok) return {};
+    if (!res.ok) {
+      if (res.status === 404) return {};
+      const text = await res.text();
+      if (text.includes("not_found") || text.includes("Object not found")) return {};
+      return null;
+    }
     return asStore(await res.json());
   } catch {
-    return {};
+    return null;
   }
 }
 
-async function readAccounts(): Promise<StoredAccount[]> {
-  const local = await readLocal();
-  let remote: Record<string, string> = {};
-  const supabase = createServiceClient();
-  if (supabase) {
-    try {
-      await ensurePrivateBucket(supabase);
-      const stored = await readJson(PRIVATE_BUCKET, FILE);
-      const legacy = await readJson(MEDIA_BUCKET, PUBLIC_FILE);
-      remote = { ...legacy, ...stored };
-    } catch {
-      remote = {};
-    }
-  }
-  const raw = remote["trione-accounts"] || local["trione-accounts"] || "[]";
+function parseAccounts(raw: string | undefined): StoredAccount[] {
   try {
-    const parsed = JSON.parse(raw) as StoredAccount[];
+    const parsed = JSON.parse(raw || "[]") as StoredAccount[];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
+}
+
+async function readAccounts(): Promise<StoredAccount[] | null> {
+  const local = await readLocal();
+  const supabase = createServiceClient();
+  if (!supabase) return parseAccounts(local["trione-accounts"]);
+  try {
+    await ensurePrivateBucket(supabase);
+  } catch {
+    return local["trione-accounts"] ? parseAccounts(local["trione-accounts"]) : null;
+  }
+  const stored = await readJson(PRIVATE_BUCKET, FILE);
+  if (stored === null) return null;
+  const legacy = await readJson(MEDIA_BUCKET, PUBLIC_FILE);
+  if (legacy === null && !stored["trione-accounts"]) return null;
+  const remote = { ...(legacy ?? {}), ...stored };
+  return parseAccounts(remote["trione-accounts"] || local["trione-accounts"]);
 }
 
 function isAdminRole(role: string | undefined) {
@@ -95,6 +103,7 @@ export async function POST(request: Request) {
   if (!user || !pass) return NextResponse.json({ ok: false }, { status: 401 });
 
   const accounts = await readAccounts();
+  if (!accounts) return NextResponse.json({ ok: false }, { status: 503 });
   const account = accounts.find((item) => (item.user || "").trim().toLowerCase() === user.toLowerCase());
   if (account) {
     if (account.status === "Ngưng" || account.password !== pass) {
