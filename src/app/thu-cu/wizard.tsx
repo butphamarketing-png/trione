@@ -57,9 +57,18 @@ function searchTokens(value: string) {
   return foldText(value).trim().split(/\s+/).filter(Boolean);
 }
 
+function compactText(value: string) {
+  return foldText(value).replace(/[^a-z0-9]+/g, "");
+}
+
 function textHasTokens(value: string, tokens: string[]) {
   const haystack = foldText(value);
-  return tokens.every((token) => haystack.includes(token));
+  const compact = compactText(value);
+  return tokens.every((token) => {
+    if (haystack.includes(token)) return true;
+    const squashed = compactText(token);
+    return squashed.length > 0 && compact.includes(squashed);
+  });
 }
 
 function openingFromSlug(slug: string[]) {
