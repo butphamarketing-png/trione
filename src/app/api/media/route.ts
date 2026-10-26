@@ -1,7 +1,7 @@
 import { mkdir, readFile, readdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
-import { isMediaSlotId, isRequestPhotoId } from "@/lib/media-ids";
+import { isMediaSlotId, isRequestPhotoId, isUploadableMediaId } from "@/lib/media-ids";
 import { requestPhotoOwner } from "@/lib/request-photo-access";
 import { readRequestSession } from "@/lib/api-session";
 import { createServiceClient, ensureMediaBucket, ensurePrivateBucket, MEDIA_BUCKET, PRIVATE_BUCKET, mediaPublicUrl, storagePath } from "@/lib/supabase";
@@ -122,7 +122,7 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const id = safeId(String(form.get("id") ?? ""));
   const file = form.get("file");
-  if (!id || !isMediaSlotId(id) || !(file instanceof File)) {
+  if (!id || !isUploadableMediaId(id) || !(file instanceof File)) {
     return NextResponse.json({ error: "Thiếu id hợp lệ hoặc file" }, { status: 400 });
   }
   const requestPhoto = isRequestPhotoId(id);
@@ -159,9 +159,9 @@ export async function POST(req: Request) {
         const uploaded = await supabase.storage.from(MEDIA_BUCKET).upload(storagePath(id), buf, {
           upsert: true,
           contentType: type,
-          cacheControl: "3600",
+          cacheControl: "no-cache",
         });
-        if (!uploaded.error) savedUrl = mediaPublicUrl(id);
+        if (!uploaded.error) savedUrl = mediaPublicUrl(id, Date.now().toString());
       }
     } catch {
       savedUrl = "";
@@ -180,7 +180,7 @@ export async function DELETE(req: Request) {
   const session = readRequestSession(req);
   if (session?.role !== "admin") return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
   const id = safeId(new URL(req.url).searchParams.get("id") ?? "");
-  if (!id || !isMediaSlotId(id)) return NextResponse.json({ error: "Thiếu id hợp lệ" }, { status: 400 });
+  if (!id || !isUploadableMediaId(id)) return NextResponse.json({ error: "Thiếu id hợp lệ" }, { status: 400 });
   await unlink(path.join(dir, fileName(id))).catch(() => undefined);
   await unlink(path.join(dir, `${fileName(id)}.json`)).catch(() => undefined);
   const supabase = createServiceClient();

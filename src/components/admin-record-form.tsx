@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { accountRoles } from "@/lib/accounts";
 import { brands, lines, models } from "@/data/catalog";
 import { cloneRecord, type AdminAlbumImage, type AdminExtra, type AdminRecord } from "@/lib/admin-records";
-import { fileToDataUrl } from "@/lib/demo-media";
+import { fileToDataUrl, saveMedia } from "@/lib/demo-media";
 import { groupVnd } from "@/lib/pricing";
 import { defaultSiteSettings, readSiteSettings, useSiteSettings, type SiteSettings } from "@/lib/site-settings";
 import { readLevel1Categories, type Level1Category } from "@/lib/level1-categories";
@@ -148,6 +148,15 @@ export function AdminRecordForm({
   const [pickedAlbum, setPickedAlbum] = useState<string[]>([]);
   const photoSize = columns.some((column) => column.includes("Giá")) ? "600 px × 560 px" : "600 px × 400 px";
 
+  function publicMediaSlot(record: AdminRecord) {
+    const sku = record.extra.sku.trim().toLowerCase();
+    if (!/^[\w.-]{1,64}$/.test(sku)) return "";
+    if (isExchange) return `garmin:${sku}`;
+    if (isProduct) return `model:${sku}`;
+    if (columns.includes("Hình") && columns.includes("Danh mục cấp 1") && !columns.includes("Nổi bật")) return `line:${sku}`;
+    return "";
+  }
+
   function commit(next: AdminRecord) {
     draftRef.current = next;
     onChange(next);
@@ -179,22 +188,25 @@ export function AdminRecordForm({
     }
     setFileError("");
     setImageBusy(true);
+    const previous = draftRef.current.extra.image;
     try {
       const dataUrl = await fileToDataUrl(file, 900);
-      if (!dataUrl.startsWith("data:image/")) {
+      if (!displayableDataUrl(dataUrl)) {
         setFileError("Không đọc được ảnh. Hãy chọn file JPG hoặc PNG.");
         return;
       }
-      const previous = draftRef.current.extra.image;
       setExtra("image", dataUrl);
-      const url = await uploadProductImage(dataUrl, `record-${draftRef.current.id}-${Date.now()}`);
+      const slot = publicMediaSlot(draftRef.current);
+      const url = await uploadProductImage(dataUrl, slot || freshPhotoId("record"));
       if (!url) {
         setExtra("image", previous.startsWith("data:") ? "" : previous);
         setFileError("Ảnh chưa lên trang chủ. Bấm chọn hình và lưu lại.");
         return;
       }
+      if (slot) saveMedia(slot, url);
       setExtra("image", url);
     } catch {
+      setExtra("image", previous.startsWith("data:") ? "" : previous);
       setFileError("Không đọc được ảnh. Hãy chọn file JPG hoặc PNG.");
     } finally {
       setImageBusy(false);
@@ -305,9 +317,9 @@ export function AdminRecordForm({
         await Promise.all(
           list.map(async (file) => {
             const src = await fileToDataUrl(file, 700);
-            if (!src.startsWith("data:image/")) return null;
-            const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-            const url = await uploadProductImage(src, `album-${id}`);
+            if (!displayableDataUrl(src)) return null;
+            const id = freshPhotoId("album");
+            const url = await uploadProductImage(src, id);
             if (!url) return null;
             return {
               id,
@@ -920,14 +932,22 @@ function Section({ id, title, note, action, children }: { id?: string; title: st
   );
 }
 
+function freshPhotoId(prefix: "record" | "album") {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 async function uploadProductImage(dataUrl: string, id: string) {
   const blob = await (await fetch(dataUrl)).blob();
   const body = new FormData();
   body.set("id", id);
   body.set("file", new File([blob], "photo.webp", { type: blob.type || "image/webp" }));
   const uploaded = await fetch("/api/media", { method: "POST", body });
-  const saved = (await uploaded.json()) as { url?: string };
+  const saved = (await uploaded.json().catch(() => ({}))) as { url?: string };
   return uploaded.ok && saved.url ? saved.url : "";
+}
+
+function displayableDataUrl(value: string) {
+  return /^data:image\/(?:jpe?g|png|gif|webp);/i.test(value);
 }
 
 function isImageFile(file: File) {
