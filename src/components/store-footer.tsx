@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { LogoutButton } from "@/components/logout-button";
+import { readSession, type DemoSession } from "@/lib/session";
 import { mapEmbedSrc, phoneHref, useSiteSettings } from "@/lib/site-settings";
 
 export function TrioneMark({
@@ -313,8 +315,81 @@ export function SiteSupportNote() {
   );
 }
 
+function AccountGlyph() {
+  return (
+    <span className="grid h-9 w-9 place-items-center rounded-full border border-white/30">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+        <circle cx="12" cy="8" r="3.2" />
+        <path d="M5 19c1.5-3 4-4.5 7-4.5s5.5 1.5 7 4.5" />
+      </svg>
+    </span>
+  );
+}
+
+function AccountLabel({ subtitle }: { subtitle: string }) {
+  return (
+    <span className="hidden sm:block">
+      <span className="block text-[12px] font-bold">
+        TÀI KHOẢN <span className="text-[10px]">▾</span>
+      </span>
+      <span className="text-[11px] text-zinc-400">{subtitle}</span>
+    </span>
+  );
+}
+
+function AccountMenu({ session }: { session: DemoSession }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointer(event: MouseEvent) {
+      if (!box.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={box} className="relative">
+      <button
+        type="button"
+        className="flex items-center gap-2 text-left text-sm"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <AccountGlyph />
+        <AccountLabel subtitle={session.name || "Thông tin cá nhân"} />
+      </button>
+      {open ? (
+        <div role="menu" className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1a] py-2 text-left shadow-xl">
+          <div className="border-b border-white/10 px-3 pb-2">
+            <p className="truncate text-sm font-semibold text-white">{session.name}</p>
+            <p className="truncate text-[11px] text-zinc-400">{session.user}</p>
+          </div>
+          <LogoutButton className="block w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10" />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function WizardHeader() {
   const site = useSiteSettings();
+  const [session, setSession] = useState<DemoSession | null>(null);
+
+  useEffect(() => {
+    setSession(readSession());
+  }, []);
+
   return (
     <header className="bg-black text-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
@@ -325,20 +400,14 @@ export function WizardHeader() {
           <p className="text-xs font-extrabold leading-tight tracking-wide sm:text-[20px] sm:tracking-[0.08em]">{site.seoTitle || "Chương trình thu cũ đồng hồ"}</p>
           <p className="mt-1 hidden text-[11px] tracking-[0.28em] text-zinc-400 sm:block">{site.slogan || "ĐỊNH GIÁ NHANH · QUY TRÌNH MINH BẠCH"}</p>
         </div>
-        <Link href="/dang-nhap" className="flex items-center gap-2 text-sm">
-          <span className="grid h-9 w-9 place-items-center rounded-full border border-white/30">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-              <circle cx="12" cy="8" r="3.2" />
-              <path d="M5 19c1.5-3 4-4.5 7-4.5s5.5 1.5 7 4.5" />
-            </svg>
-          </span>
-          <span className="hidden sm:block">
-            <span className="block text-[12px] font-bold">
-              TÀI KHOẢN <span className="text-[10px]">▾</span>
-            </span>
-            <span className="text-[11px] text-zinc-400">Thông tin cá nhân</span>
-          </span>
-        </Link>
+        {session ? (
+          <AccountMenu session={session} />
+        ) : (
+          <Link href="/dang-nhap" className="flex items-center gap-2 text-sm">
+            <AccountGlyph />
+            <AccountLabel subtitle="Thông tin cá nhân" />
+          </Link>
+        )}
       </div>
       <div className="h-[3px] bg-[#e11d2e]" />
     </header>
