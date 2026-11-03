@@ -107,7 +107,25 @@ export function findRequest(id: string): TradeRequest | undefined {
 export async function saveTradeRequest(request: TradeRequest) {
   const store = load();
   store.extra = [request, ...store.extra.filter((r) => r.id !== request.id)];
-  return persist(store);
+  const ok = await persist(store);
+  if (ok) notifyNewOrder(request);
+  return ok;
+}
+
+function notifyNewOrder(request: TradeRequest) {
+  if (typeof window === "undefined") return;
+  const reviewUrl = `${window.location.origin}/admin/don-hang/${encodeURIComponent(request.id)}`;
+  void fetch("/api/notify-order", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      id: request.id,
+      name: request.name,
+      oldDevice: request.oldDevice,
+      newDevice: request.newDevice,
+      reviewUrl,
+    }),
+  }).catch(() => undefined);
 }
 
 export async function patchRequest(id: string, patch: Partial<TradeRequest>) {

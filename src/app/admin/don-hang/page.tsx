@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminTable } from "@/components/admin-table";
+import { ApprovalQueue } from "@/components/approval-queue";
 import { statusLabel, type RequestStatus, type TradeRequest } from "@/data/staff";
 import { saveRequestEdits } from "@/lib/demo-requests";
 import type { AdminRecord } from "@/lib/admin-records";
@@ -101,7 +102,10 @@ export default function OrdersAdminPage() {
     vnd(request.supportPrice ?? 0),
     vnd(request.tradeIn),
   ]);
+  const waiting = live.filter((item) => item.status === "dang-cho-duyet");
   return (
+    <>
+    <ApprovalQueue items={waiting} detailBase="/admin/don-hang" />
     <AdminTable
       title="Quản lý đơn hàng"
       titleLinks={false}
@@ -131,5 +135,6 @@ export default function OrdersAdminPage() {
       ]}
       rows={rows}
     />
+    </>
   );
 }

@@ -7,6 +7,7 @@ import { BrandLogo } from "@/components/store-footer";
 import { useSiteSettings } from "@/lib/site-settings";
 import { LogoutButton } from "@/components/logout-button";
 import { confirmServerSession, readSession } from "@/lib/session";
+import { useLiveRequests } from "@/lib/use-live-requests";
 
 type NavItem = { href: string; label: string };
 type NavGroup = { label: string; children: NavItem[] };
@@ -77,6 +78,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [path]);
   const [hello, setHello] = useState("");
   const site = useSiteSettings();
+  const waiting = useLiveRequests().filter((item) => item.status === "dang-cho-duyet").length;
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -201,8 +203,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link href="/admin/thiet-lap" className="hidden hover:text-zinc-900 sm:inline" aria-label="Thiết lập">
                 ⚙
               </Link>
-              <Link href="/admin/don-hang" className="relative hover:text-zinc-900" aria-label="Đơn hàng">
-                🔔<span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#e11d2e]" />
+              <Link href="/admin/don-hang" className="relative hover:text-zinc-900" aria-label="Đơn chờ duyệt">
+                🔔
+                {waiting > 0 ? (
+                  <span className="absolute -top-2 -right-2 min-w-4 rounded-full bg-[#e11d2e] px-1 text-center text-[10px] leading-4 text-white">
+                    {waiting}
+                  </span>
+                ) : null}
               </Link>
               <LogoutButton className="text-[#2f6fed]" />
             </div>

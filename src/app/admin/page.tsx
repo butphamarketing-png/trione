@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ApprovalQueue } from "@/components/approval-queue";
 import { statusLabel } from "@/data/staff";
 import { readExchangeProducts } from "@/lib/exchange-products";
 import { readTradeProducts } from "@/lib/trade-products";
@@ -25,7 +26,8 @@ export default function AdminHome() {
     };
   }, []);
   const recent = live.slice(0, 8);
-  const waiting = live.filter((item) => item.status === "dang-cho-duyet").length;
+  const waitingList = live.filter((item) => item.status === "dang-cho-duyet");
+  const waiting = waitingList.length;
   return (
     <div>
       <h1 className="mb-4 text-xl font-bold">Bảng điều khiển</h1>
@@ -35,7 +37,10 @@ export default function AdminHome() {
         <Stat n={tradeCount} l="SP thu cũ" href="/admin/san-pham-thu-cu" />
         <Stat n={exchangeCount} l="SP đổi mới" href="/admin/doi-moi" />
       </div>
-      <div className="mt-6 overflow-hidden rounded-sm border-t-4 border-[#2f6fed] bg-white">
+      <div className="mt-6">
+        <ApprovalQueue items={waitingList} detailBase="/admin/don-hang" />
+      </div>
+      <div className="overflow-hidden rounded-sm border-t-4 border-[#2f6fed] bg-white">
         <h2 className="p-4 font-semibold">Đơn gần đây</h2>
         <table className="w-full text-sm">
           <thead className="text-left text-xs text-zinc-500">
@@ -49,7 +54,11 @@ export default function AdminHome() {
           <tbody>
             {recent.map((r) => (
               <tr key={r.id} className="border-t border-zinc-100">
-                <td className="px-3 py-2 font-medium whitespace-nowrap">{r.id}</td>
+                <td className="px-3 py-2 font-medium whitespace-nowrap">
+                  <Link href={`/admin/don-hang/${r.id}`} className="text-[#2f6fed] hover:underline">
+                    {r.id}
+                  </Link>
+                </td>
                 <td className="hidden px-3 py-2 sm:table-cell">{r.username}</td>
                 <td className="px-3 py-2">{r.oldDevice}</td>
                 <td className="px-3 py-2">{statusLabel[r.status]}</td>

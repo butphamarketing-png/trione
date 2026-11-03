@@ -722,7 +722,9 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
             <div className="mb-6 flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
               <div className="border-l-4 border-[#e11d2e] pl-4">
                 <h1 className="text-[28px] leading-tight font-bold">Yêu cầu đã gửi thành công</h1>
-                <p className="mt-1 text-zinc-500">Nhân viên {site.company} sẽ liên hệ để thẩm định trong giờ làm việc.</p>
+                <p className="mt-1 text-zinc-500">
+                  Đơn đang chờ duyệt trên admin. Nhân viên {site.company} sẽ liên hệ để thẩm định trong giờ làm việc.
+                </p>
               </div>
               <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                 ✓ ĐÃ HOÀN TẤT 7 BƯỚC
@@ -746,9 +748,15 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
               </div>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
-              <a className="rounded-xl bg-[#e11d2e] px-5 py-3 font-semibold text-white" href={`/nhan-vien/yeu-cau/${requestCode}`}>
-                Xem cổng nhân viên
-              </a>
+              {readSession()?.role === "admin" ? (
+                <a className="rounded-xl bg-[#e11d2e] px-5 py-3 font-semibold text-white" href={`/admin/don-hang/${requestCode}`}>
+                  Duyệt đơn trên admin
+                </a>
+              ) : (
+                <a className="rounded-xl bg-[#e11d2e] px-5 py-3 font-semibold text-white" href={`/nhan-vien/yeu-cau/${requestCode}`}>
+                  Xem cổng nhân viên
+                </a>
+              )}
               <Link className="rounded-xl border bg-white px-5 py-3" href="/thu-cu">
                 Tạo yêu cầu khác
               </Link>
