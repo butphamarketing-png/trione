@@ -442,14 +442,7 @@ export function WizardHeader() {
           <p className="mt-1 hidden truncate text-[11px] tracking-[0.28em] text-zinc-400 sm:block">{site.slogan || "ĐỊNH GIÁ NHANH · QUY TRÌNH MINH BẠCH"}</p>
         </div>
         <div className="relative z-10 shrink-0">
-          {account ? (
-            <AccountMenu session={account} />
-          ) : (
-            <Link href="/dang-nhap" className="relative z-10 flex min-h-11 items-center gap-2 text-sm">
-              <AccountGlyph />
-              <AccountLabel subtitle="Thông tin cá nhân" />
-            </Link>
-          )}
+          <AccountMenu session={account ?? guestSession} />
         </div>
       </div>
       <div className="h-[3px] bg-[#e11d2e]" />
