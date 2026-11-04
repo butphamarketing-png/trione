@@ -2,14 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { staffStatusLabel, type RequestStatus, type TradeRequest } from "@/data/staff";
-import { patchRequest } from "@/lib/demo-requests";
+import { OrderApproveButtons } from "@/components/order-approve-buttons";
+import { type TradeRequest } from "@/data/staff";
 import { vnd } from "@/lib/pricing";
-
-function stampNow() {
-  const now = new Date();
-  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-}
 
 export function ApprovalQueue({
   items,
@@ -18,18 +13,8 @@ export function ApprovalQueue({
   items: TradeRequest[];
   detailBase: string;
 }) {
-  const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
   const [ok, setOk] = useState(true);
-
-  async function setStatus(id: string, status: RequestStatus) {
-    if (busyId) return;
-    setBusyId(id);
-    const saved = await patchRequest(id, { status, updatedAt: stampNow() });
-    setOk(saved);
-    setNotice(saved ? `Đã cập nhật ${id} · ${staffStatusLabel[status]}` : `Chưa lưu được ${id}. Thử lại.`);
-    setBusyId("");
-  }
 
   if (!items.length) return null;
 
@@ -64,24 +49,15 @@ export function ApprovalQueue({
               <td className="px-3 py-2">{item.oldDevice}</td>
               <td className="hidden px-3 py-2 lg:table-cell">{vnd(item.tradeIn)}</td>
               <td className="px-3 py-2">
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={Boolean(busyId)}
-                    onClick={() => void setStatus(item.id, "da-duyet")}
-                    className="rounded bg-emerald-600 px-3 py-1 text-xs font-semibold text-white disabled:bg-zinc-300"
-                  >
-                    Duyệt
-                  </button>
-                  <button
-                    type="button"
-                    disabled={Boolean(busyId)}
-                    onClick={() => void setStatus(item.id, "chua-duyet")}
-                    className="rounded bg-[#e11d2e] px-3 py-1 text-xs font-semibold text-white disabled:bg-zinc-300"
-                  >
-                    Không duyệt
-                  </button>
-                </div>
+                <OrderApproveButtons
+                  id={item.id}
+                  status={item.status}
+                  compact
+                  onDone={(saved, message) => {
+                    setOk(saved);
+                    setNotice(message);
+                  }}
+                />
               </td>
             </tr>
           ))}

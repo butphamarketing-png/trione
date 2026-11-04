@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "@/components/store-footer";
 import { useSiteSettings } from "@/lib/site-settings";
 import { LogoutButton } from "@/components/logout-button";
-import { confirmServerSession, readSession } from "@/lib/session";
+import { confirmServerSession } from "@/lib/session";
 import { useLiveRequests } from "@/lib/use-live-requests";
 
 type NavItem = { href: string; label: string };
@@ -82,23 +82,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const s = readSession();
-      if (!s) {
-        router.replace("/dang-nhap");
-        return;
-      }
-      if (s.role === "customer") {
-        router.replace("/thu-cu");
-        return;
-      }
-      if (s.role !== "admin") {
-        router.replace("/nhan-vien");
-        return;
-      }
       const confirmed = await confirmServerSession();
       if (cancelled) return;
       if (!confirmed) {
         router.replace("/dang-nhap");
+        return;
+      }
+      if (confirmed.role === "customer") {
+        router.replace("/thu-cu");
+        return;
+      }
+      if (confirmed.role !== "admin") {
+        router.replace("/nhan-vien");
         return;
       }
       setHello(confirmed.user);

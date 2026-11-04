@@ -711,7 +711,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
 
   if (submitted) {
     return (
-      <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#f7f7f8]">
+      <div className="relative flex min-h-screen flex-col bg-[#f7f7f8]">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute top-40 right-[-120px] h-[520px] w-[520px] rounded-full border-[40px] border-rose-100/70" />
         </div>
@@ -769,7 +769,7 @@ export function TradeInWizard({ initialSlug = [] }: { initialSlug?: string[] }) 
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#f7f7f8] pb-24 sm:pb-0">
+    <div className="relative flex min-h-screen flex-col overflow-x-clip bg-[#f7f7f8] pb-24 sm:pb-0">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute right-[-120px] top-40 h-[520px] w-[520px] rounded-full border-[40px] border-rose-100/70" />
       </div>

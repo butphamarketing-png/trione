@@ -157,6 +157,7 @@ export function AdminTable(props: {
   onCommit?: (records: AdminRecord[]) => void | boolean | Promise<void | boolean>;
   beforeSave?: (record: AdminRecord) => string;
   renderExtra?: (mode: "add" | "edit" | "view") => ReactNode;
+  renderActions?: (record: AdminRecord) => ReactNode;
 }) {
   return (
     <Suspense fallback={null}>
@@ -188,6 +189,7 @@ function AdminTableInner({
   onCommit,
   beforeSave,
   renderExtra,
+  renderActions,
 }: {
   title: string;
   columns: string[];
@@ -211,6 +213,7 @@ function AdminTableInner({
   onCommit?: (records: AdminRecord[]) => void | boolean | Promise<void | boolean>;
   beforeSave?: (record: AdminRecord) => string;
   renderExtra?: (mode: "add" | "edit" | "view") => ReactNode;
+  renderActions?: (record: AdminRecord) => ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -588,7 +591,7 @@ function AdminTableInner({
                   {column}
                 </th>
               ))}
-              <th className="sticky right-0 z-10 bg-[#f7d354] px-4 py-3 font-semibold shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.2)]">
+              <th className="sticky right-0 z-20 min-w-[220px] bg-[#f7d354] px-4 py-3 font-semibold shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.2)]">
                 Thao tác
               </th>
             </tr>
@@ -685,10 +688,14 @@ function AdminTableInner({
                     )}
                   </td>
                 ))}
-                <td className="sticky right-0 z-10 whitespace-nowrap bg-white px-4 py-3 shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.12)]">
-                  <a href={href("edit", record.id)} title="Chỉnh sửa" aria-label="Chỉnh sửa" className="text-sm text-zinc-700 hover:text-black">
-                    Sửa
-                  </a>
+                <td className="sticky right-0 z-20 min-w-[220px] bg-white px-4 py-3 shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.12)]">
+                  {renderActions ? (
+                    <span className="mr-3 inline-flex flex-wrap items-center gap-2">{renderActions(record)}</span>
+                  ) : (
+                    <a href={href("edit", record.id)} title="Chỉnh sửa" aria-label="Chỉnh sửa" className="text-sm text-zinc-700 hover:text-black">
+                      Sửa
+                    </a>
+                  )}
                   <button
                     type="button"
                     title="Xóa"

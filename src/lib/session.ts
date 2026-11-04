@@ -12,7 +12,11 @@ export type DemoSession = {
 const KEY = "trione-demo-session";
 
 export function saveSession(s: DemoSession) {
-  sessionStorage.setItem(KEY, JSON.stringify(s));
+  try {
+    sessionStorage.setItem(KEY, JSON.stringify(s));
+  } catch {
+    /* quota / private mode */
+  }
 }
 
 export function readSession(): DemoSession | null {
@@ -25,7 +29,11 @@ export function readSession(): DemoSession | null {
 }
 
 export function clearSession() {
-  sessionStorage.removeItem(KEY);
+  try {
+    sessionStorage.removeItem(KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 const privateCatalogKeys = new Set(["trione-accounts", "trione-demo-requests"]);
@@ -61,17 +69,25 @@ export function resolveLogin(user: string, pass: string): DemoSession | null {
 }
 
 export async function confirmServerSession() {
-  const local = readSession();
-  if (!local) return null;
   const res = await fetch("/api/session", { cache: "no-store" }).catch(() => null);
   if (!res?.ok) {
     clearSession();
     return null;
   }
   const data = (await res.json()) as { user?: string; role?: DemoRole };
-  if (!data.user || data.user.toLowerCase() !== local.user.toLowerCase() || data.role !== local.role) {
+  if (!data.user || !data.role) {
     clearSession();
     return null;
   }
-  return local;
+  const local = readSession();
+  const account = readAccounts().find((item) => item.user.toLowerCase() === data.user.toLowerCase());
+  const named = account ? roleSession(account) : null;
+  const next: DemoSession = {
+    user: data.user,
+    role: data.role,
+    name: named?.name || local?.name || data.user,
+    title: named?.title || local?.title || "",
+  };
+  saveSession(next);
+  return next;
 }

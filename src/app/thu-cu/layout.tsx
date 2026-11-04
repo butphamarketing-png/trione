@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { confirmServerSession, readSession } from "@/lib/session";
+import { confirmServerSession } from "@/lib/session";
 
 export default function ThuCuLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -12,11 +12,6 @@ export default function ThuCuLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      if (!readSession()) {
-        const next = path === "/thu-cu" || path.startsWith("/thu-cu/") ? path : "/thu-cu";
-        router.replace(`/dang-nhap?next=${encodeURIComponent(next)}`);
-        return;
-      }
       const confirmed = await confirmServerSession();
       if (cancelled) return;
       if (!confirmed) {

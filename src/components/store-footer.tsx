@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { LogoutButton } from "@/components/logout-button";
-import { readSession, type DemoSession } from "@/lib/session";
+import { confirmServerSession, readSession, type DemoSession } from "@/lib/session";
 import { mapEmbedSrc, phoneHref, useSiteSettings } from "@/lib/site-settings";
 
 export function TrioneMark({
@@ -328,11 +328,11 @@ function AccountGlyph() {
 
 function AccountLabel({ subtitle }: { subtitle: string }) {
   return (
-    <span className="hidden sm:block">
-      <span className="block text-[12px] font-bold">
+    <span className="min-w-0">
+      <span className="block text-[12px] font-bold leading-none">
         TÀI KHOẢN <span className="text-[10px]">▾</span>
       </span>
-      <span className="text-[11px] text-zinc-400">{subtitle}</span>
+      <span className="mt-0.5 block max-w-[9rem] truncate text-[11px] text-zinc-400">{subtitle}</span>
     </span>
   );
 }
@@ -340,28 +340,39 @@ function AccountLabel({ subtitle }: { subtitle: string }) {
 function AccountMenu({ session }: { session: DemoSession }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const [menu, setMenu] = useState({ top: 0, right: 0 });
 
   useEffect(() => {
     if (!open) return;
+    function place() {
+      const rect = button.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMenu({ top: rect.bottom + 8, right: Math.max(8, window.innerWidth - rect.right) });
+    }
+    place();
     function onPointer(event: MouseEvent) {
       if (!box.current?.contains(event.target as Node)) setOpen(false);
     }
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
     }
+    window.addEventListener("resize", place);
     document.addEventListener("mousedown", onPointer);
     document.addEventListener("keydown", onKey);
     return () => {
+      window.removeEventListener("resize", place);
       document.removeEventListener("mousedown", onPointer);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
 
   return (
-    <div ref={box} className="relative">
+    <div ref={box} className="relative z-50">
       <button
+        ref={button}
         type="button"
-        className="flex items-center gap-2 text-left text-sm"
+        className="relative z-50 flex min-h-11 items-center gap-2 text-left text-sm"
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
@@ -370,12 +381,16 @@ function AccountMenu({ session }: { session: DemoSession }) {
         <AccountLabel subtitle={session.name || "Thông tin cá nhân"} />
       </button>
       {open ? (
-        <div role="menu" className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1a] py-2 text-left shadow-xl">
+        <div
+          role="menu"
+          style={{ top: menu.top, right: menu.right }}
+          className="fixed z-[80] w-56 overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1a] py-2 text-left shadow-xl"
+        >
           <div className="border-b border-white/10 px-3 pb-2">
             <p className="truncate text-sm font-semibold text-white">{session.name}</p>
             <p className="truncate text-[11px] text-zinc-400">{session.user}</p>
           </div>
-          <LogoutButton className="block w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10" />
+          <LogoutButton className="block w-full px-3 py-2.5 text-left text-sm font-semibold text-white hover:bg-white/10" />
         </div>
       ) : null}
     </div>
@@ -387,27 +402,37 @@ export function WizardHeader() {
   const [session, setSession] = useState<DemoSession | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     setSession(readSession());
+    void confirmServerSession().then((confirmed) => {
+      if (cancelled || !confirmed) return;
+      setSession(confirmed);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
-    <header className="bg-black text-white">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
-        <Link href="/thu-cu" className="shrink-0">
+    <header className="relative z-50 bg-black text-white">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <Link href="/thu-cu" className="relative z-10 shrink-0">
           <BrandLogo size={36} light wide />
         </Link>
-        <div className="min-w-0 text-center">
-          <p className="text-xs font-extrabold leading-tight tracking-wide sm:text-[20px] sm:tracking-[0.08em]">{site.seoTitle || "Chương trình thu cũ đồng hồ"}</p>
-          <p className="mt-1 hidden text-[11px] tracking-[0.28em] text-zinc-400 sm:block">{site.slogan || "ĐỊNH GIÁ NHANH · QUY TRÌNH MINH BẠCH"}</p>
+        <div className="min-w-0 flex-1 overflow-hidden text-center pointer-events-none">
+          <p className="truncate text-xs font-extrabold leading-tight tracking-wide sm:text-[20px] sm:tracking-[0.08em]">{site.seoTitle || "Chương trình thu cũ đồng hồ"}</p>
+          <p className="mt-1 hidden truncate text-[11px] tracking-[0.28em] text-zinc-400 sm:block">{site.slogan || "ĐỊNH GIÁ NHANH · QUY TRÌNH MINH BẠCH"}</p>
         </div>
-        {session ? (
-          <AccountMenu session={session} />
-        ) : (
-          <Link href="/dang-nhap" className="flex items-center gap-2 text-sm">
-            <AccountGlyph />
-            <AccountLabel subtitle="Thông tin cá nhân" />
-          </Link>
-        )}
+        <div className="relative z-10 shrink-0">
+          {session ? (
+            <AccountMenu session={session} />
+          ) : (
+            <Link href="/dang-nhap" className="relative z-10 flex min-h-11 items-center gap-2 text-sm">
+              <AccountGlyph />
+              <AccountLabel subtitle="Thông tin cá nhân" />
+            </Link>
+          )}
+        </div>
       </div>
       <div className="h-[3px] bg-[#e11d2e]" />
     </header>

@@ -2,6 +2,7 @@
 
 import { AdminTable } from "@/components/admin-table";
 import { ApprovalQueue } from "@/components/approval-queue";
+import { OrderApproveButtons } from "@/components/order-approve-buttons";
 import { statusLabel, type RequestStatus, type TradeRequest } from "@/data/staff";
 import { saveRequestEdits } from "@/lib/demo-requests";
 import type { AdminRecord } from "@/lib/admin-records";
@@ -47,8 +48,10 @@ function suggestedOption(request: TradeRequest, titles: string[]) {
 }
 
 function statusFromLabel(label: string): RequestStatus {
-  if (label.includes("Đã duyệt")) return "da-duyet";
-  if (label.includes("Chưa duyệt")) return "chua-duyet";
+  const text = label.toLowerCase();
+  if (text.includes("chờ")) return "dang-cho-duyet";
+  if (text.includes("chưa") || text.includes("không duyệt") || text.includes("từ chối")) return "chua-duyet";
+  if (text.includes("đã duyệt") || text.includes("hoàn")) return "da-duyet";
   return "dang-cho-duyet";
 }
 
@@ -113,6 +116,19 @@ export default function OrdersAdminPage() {
       allowCreate={false}
       wide
       onCommit={sync}
+      renderActions={(record) => {
+        const id = record.cells[1]?.trim() ?? "";
+        const liveItem = live.find((item) => item.id === id);
+        const status = liveItem?.status ?? statusFromLabel(record.cells[14] ?? "");
+        return (
+          <>
+            <OrderApproveButtons id={id} status={status} compact />
+            <a href={`/admin/don-hang/${encodeURIComponent(id)}`} className="text-sm text-[#2f6fed] hover:underline">
+              Chi tiết
+            </a>
+          </>
+        );
+      }}
       redIndexes={[4]}
       columns={[
         "STT",

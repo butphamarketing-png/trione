@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ApprovalQueue } from "@/components/approval-queue";
+import { OrderApproveButtons } from "@/components/order-approve-buttons";
 import { statusLabel } from "@/data/staff";
 import { readExchangeProducts } from "@/lib/exchange-products";
 import { readTradeProducts } from "@/lib/trade-products";
@@ -49,6 +50,7 @@ export default function AdminHome() {
               <th className="hidden px-3 py-2 sm:table-cell">Username</th>
               <th className="px-3 py-2">Máy cũ</th>
               <th className="px-3 py-2">Trạng thái</th>
+              <th className="px-3 py-2">Duyệt</th>
             </tr>
           </thead>
           <tbody>
@@ -62,6 +64,9 @@ export default function AdminHome() {
                 <td className="hidden px-3 py-2 sm:table-cell">{r.username}</td>
                 <td className="px-3 py-2">{r.oldDevice}</td>
                 <td className="px-3 py-2">{statusLabel[r.status]}</td>
+                <td className="px-3 py-2">
+                  <OrderApproveButtons id={r.id} status={r.status} compact />
+                </td>
               </tr>
             ))}
           </tbody>

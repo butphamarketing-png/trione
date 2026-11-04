@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { WatchFace } from "@/components/watch-face";
 import { staffStatusLabel, statusClass, type RequestStatus } from "@/data/staff";
+import { OrderApproveButtons } from "@/components/order-approve-buttons";
 import { patchRequest } from "@/lib/demo-requests";
 import { useLiveRequests } from "@/lib/use-live-requests";
 import { exchangeDue, vnd } from "@/lib/pricing";
@@ -106,27 +107,20 @@ export function RequestDetail({ id, backHref, backLabel }: { id: string; backHre
         </div>
       </div>
 
-      {waiting ? (
-        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="text-sm text-amber-900">Đơn đang chờ duyệt. Chọn Duyệt hoặc Không duyệt để ghi lên máy chủ.</p>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void setStatus("da-duyet")}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:bg-zinc-300"
-          >
-            Duyệt
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void setStatus("chua-duyet")}
-            className="rounded-lg bg-[#e11d2e] px-4 py-2 text-sm font-semibold text-white disabled:bg-zinc-300"
-          >
-            Không duyệt
-          </button>
-        </div>
-      ) : null}
+      <div className={`mt-4 flex flex-wrap items-center gap-3 rounded-2xl border px-4 py-3 ${waiting ? "border-amber-200 bg-amber-50" : "border-zinc-200 bg-white"}`}>
+        <p className={`text-sm ${waiting ? "text-amber-900" : "text-zinc-600"}`}>
+          {waiting ? "Đơn đang chờ duyệt. Chọn Duyệt hoặc Không duyệt để ghi lên máy chủ." : `Trạng thái hiện tại: ${staffStatusLabel[found.status]}.`}
+        </p>
+        <OrderApproveButtons
+          id={found.id}
+          status={found.status}
+          onDone={(ok, message, next) => {
+            setSavedOk(ok);
+            setSaved(message);
+            if (ok) setDraft(next);
+          }}
+        />
+      </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-8">
         <Meta icon="▣" k="MÃ ĐƠN HÀNG" v={found.id} />

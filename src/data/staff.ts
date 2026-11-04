@@ -15,8 +15,25 @@ export const statusClass: Record<RequestStatus, string> = {
 };
 
 export function normalizeRequestStatus(status: string): RequestStatus {
-  if (status === "da-duyet" || status === "hoan-tat") return "da-duyet";
-  if (status === "chua-duyet" || status === "tu-choi") return "chua-duyet";
+  const text = (status || "").trim().toLowerCase();
+  if (
+    text === "da-duyet" ||
+    text === "hoan-tat" ||
+    text === "đã duyệt" ||
+    text.includes("hoàn tất") ||
+    (text.includes("đã duyệt") && !text.includes("chờ"))
+  ) {
+    return "da-duyet";
+  }
+  if (
+    text === "chua-duyet" ||
+    text === "tu-choi" ||
+    text === "chưa duyệt" ||
+    text.includes("không duyệt") ||
+    text.includes("từ chối")
+  ) {
+    return "chua-duyet";
+  }
   return "dang-cho-duyet";
 }
 

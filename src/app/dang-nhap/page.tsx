@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { BrandLogo } from "@/components/store-footer";
-import { homeForRole, readSession, saveSession, type DemoSession } from "@/lib/session";
+import { confirmServerSession, homeForRole, saveSession, type DemoSession } from "@/lib/session";
 import { useMediaSrc } from "@/lib/use-live-media";
 import { useSiteSettings } from "@/lib/site-settings";
 
@@ -34,8 +34,9 @@ function LoginForm() {
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
   useEffect(() => {
-    const session = readSession();
-    if (session) router.replace(nextPath ?? homeForRole(session.role));
+    void confirmServerSession().then((session) => {
+      if (session) router.replace(nextPath ?? homeForRole(session.role));
+    });
   }, [nextPath, router]);
 
   async function submit(e: React.FormEvent) {
