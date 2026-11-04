@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { LogoutButton } from "@/components/logout-button";
+import { useAuthSession } from "@/components/session-context";
 import { confirmServerSession, readSession, type DemoSession } from "@/lib/session";
 import { mapEmbedSrc, phoneHref, useSiteSettings } from "@/lib/site-settings";
 
@@ -337,6 +339,8 @@ function AccountLabel({ subtitle }: { subtitle: string }) {
   );
 }
 
+const guestSession: DemoSession = { user: "", role: "customer", name: "Thông tin cá nhân", title: "" };
+
 function AccountMenu({ session }: { session: DemoSession }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -399,19 +403,33 @@ function AccountMenu({ session }: { session: DemoSession }) {
 
 export function WizardHeader() {
   const site = useSiteSettings();
-  const [session, setSession] = useState<DemoSession | null>(null);
+  const path = usePathname();
+  const auth = useAuthSession();
+  const [session, setSession] = useState<DemoSession | null>(auth);
+  const [checked, setChecked] = useState(Boolean(auth));
 
   useEffect(() => {
+    if (auth) {
+      setSession(auth);
+      setChecked(true);
+      return;
+    }
     let cancelled = false;
-    setSession(readSession());
+    const local = readSession();
+    if (local) setSession(local);
     void confirmServerSession().then((confirmed) => {
-      if (cancelled || !confirmed) return;
+      if (cancelled) return;
       setSession(confirmed);
+      setChecked(true);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [auth]);
+
+  const onTradeIn = path.startsWith("/thu-cu") || Boolean(auth);
+  const shown = auth || session;
+  const account = shown || (onTradeIn || !checked ? guestSession : null);
 
   return (
     <header className="relative z-50 bg-black text-white">
@@ -424,8 +442,8 @@ export function WizardHeader() {
           <p className="mt-1 hidden truncate text-[11px] tracking-[0.28em] text-zinc-400 sm:block">{site.slogan || "ĐỊNH GIÁ NHANH · QUY TRÌNH MINH BẠCH"}</p>
         </div>
         <div className="relative z-10 shrink-0">
-          {session ? (
-            <AccountMenu session={session} />
+          {account ? (
+            <AccountMenu session={account} />
           ) : (
             <Link href="/dang-nhap" className="relative z-10 flex min-h-11 items-center gap-2 text-sm">
               <AccountGlyph />

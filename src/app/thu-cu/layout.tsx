@@ -2,12 +2,13 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { confirmServerSession } from "@/lib/session";
+import { SessionProvider } from "@/components/session-context";
+import { confirmServerSession, type DemoSession } from "@/lib/session";
 
 export default function ThuCuLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const path = usePathname();
-  const [allowed, setAllowed] = useState(false);
+  const [session, setSession] = useState<DemoSession | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -19,16 +20,16 @@ export default function ThuCuLayout({ children }: { children: React.ReactNode })
         router.replace(`/dang-nhap?next=${encodeURIComponent(next)}`);
         return;
       }
-      setAllowed(true);
+      setSession(confirmed);
     })();
     return () => {
       cancelled = true;
     };
   }, [path, router]);
 
-  if (!allowed) {
+  if (!session) {
     return <div className="grid min-h-screen place-items-center bg-[#f4f6f8] text-sm text-zinc-500">Đang kiểm tra đăng nhập...</div>;
   }
 
-  return children;
+  return <SessionProvider value={session}>{children}</SessionProvider>;
 }
