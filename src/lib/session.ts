@@ -75,17 +75,19 @@ export async function confirmServerSession() {
     return null;
   }
   const data = (await res.json()) as { user?: string; role?: DemoRole };
-  if (!data.user || !data.role) {
+  const user = data.user;
+  const role = data.role;
+  if (!user || !role) {
     clearSession();
     return null;
   }
   const local = readSession();
-  const account = readAccounts().find((item) => item.user.toLowerCase() === data.user.toLowerCase());
+  const account = readAccounts().find((item) => item.user.toLowerCase() === user.toLowerCase());
   const named = account ? roleSession(account) : null;
   const next: DemoSession = {
-    user: data.user,
-    role: data.role,
-    name: named?.name || local?.name || data.user,
+    user,
+    role,
+    name: named?.name || local?.name || user,
     title: named?.title || local?.title || "",
   };
   saveSession(next);
