@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import Script from "next/script";
+import { MaintenancePage } from "@/components/maintenance-page";
 import { SiteDocument } from "@/components/site-document";
 import { defaultSiteSettings, googleMeasurementId, googleSiteVerification } from "@/lib/site-defaults";
 import { localBusinessJson, siteOrigin } from "@/lib/public-seo";
@@ -48,6 +49,16 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  if (process.env.MAINTENANCE_MODE?.trim() === "1") {
+    return (
+      <html lang="vi" className={`${beVietnam.variable} ${beVietnam.className} h-full antialiased`}>
+        <body className="min-h-full flex flex-col" suppressHydrationWarning>
+          <MaintenancePage />
+        </body>
+      </html>
+    );
+  }
+
   const site = await readServerSiteSettings();
   const measurementId = googleMeasurementId(site.analytics);
   const structured = JSON.stringify(localBusinessJson(site)).replace(/</g, "\\u003c");
